@@ -1,0 +1,221 @@
+// Enhanced Schema Extensions for Earthworm Integration
+// This extends the existing schema with new models for advanced learning modes
+
+// Extended ItemType to support new learning modes
+enum ItemType { 
+  SENTENCE 
+  PHRASE 
+  LISTENING 
+  CHINESE_TO_ENGLISH    // New: Chinese prompt to English construction
+  CONJUNCTION_BUILD     // New: Earthworm-style sentence building
+  SPELLING_MATCH        // New: Character-to-spelling matching
+}
+
+// New model for Chinese-English sentence pairs
+model ChineseSentence {
+  id          Int      @id @default(autoincrement())
+  chinese     String   // Chinese source sentence
+  english     String   // Target English sentence
+  difficulty  Int      @default(1) // 1-5 difficulty level
+  grammar     String?  // Grammar pattern (e.g., "present_tense", "past_simple")
+  topic       String?  // Topic category (e.g., "daily_life", "business")
+  tokens      Json     // English words/phrases as JSON array
+  hints       Json?    // Progressive hints as JSON array
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  items       Item[]
+  attempts    ChineseAttempt[]
+  progress    ChineseProgress[]
+  
+  @@index([difficulty])
+  @@index([grammar])
+  @@index([topic])
+}
+
+// Enhanced Item model with Chinese sentence reference
+model Item {
+  id               Int     @id @default(autoincrement())
+  unitId           Int
+  type             ItemType
+  prompt           String?
+  answer           String
+  tokens           Json?
+  extras           Json?
+  chineseSentenceId Int?   // New: Link to Chinese sentence
+  
+  // Relations
+  unit             Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  chineseSentence  ChineseSentence? @relation(fields: [chineseSentenceId], references: [id])
+  attempts         Attempt[]
+  progress         Progress[]
+}
+
+// Extended attempt tracking for Chinese-English exercises
+model ChineseAttempt {
+  id               Int      @id @default(autoincrement())
+  userId           String
+  chineseSentenceId Int
+  userInput        String   // User's constructed sentence
+  correct          Boolean
+  hintsUsed        Int      @default(0)
+  timeToComplete   Int?     // Time in seconds
+  mistakes         Json?    // Array of mistake positions/types
+  createdAt        DateTime @default(now())
+  
+  // Relations
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chineseSentence  ChineseSentence @relation(fields: [chineseSentenceId], references: [id])
+  
+  @@index([userId, chineseSentenceId])
+}
+
+// Enhanced progress tracking for Chinese-English learning
+model ChineseProgress {
+  id               Int      @id @default(autoincrement())
+  userId           String
+  chineseSentenceId Int
+  repetitions      Int      @default(0)
+  interval         Int      @default(0)     // Days until next review
+  efactor          Float    @default(2.5)   // SM-2 ease factor
+  nextDue          DateTime @default(now())
+  masteryLevel     Int      @default(0)     // 0-5 mastery level
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chineseSentence  ChineseSentence @relation(fields: [chineseSentenceId], references: [id])
+  
+  @@unique([userId, chineseSentenceId])
+  @@index([userId, nextDue])
+}
+
+// New model for conjunction patterns (Earthworm methodology)
+model ConjunctionPattern {
+  id          Int      @id @default(autoincrement())
+  pattern     String   // e.g., "Subject + Verb + Object"
+  template    String   // e.g., "{subject} {verb} {object}"
+  difficulty  Int      @default(1)
+  examples    Json     // Array of example sentences
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  sentences   ConjunctionSentence[]
+}
+
+// Sentences built using conjunction patterns
+model ConjunctionSentence {
+  id          Int      @id @default(autoincrement())
+  patternId   Int
+  chinese     String
+  english     String
+  components  Json     // Breakdown of sentence components
+  difficulty  Int      @default(1)
+  
+  // Relations
+  pattern     ConjunctionPattern @relation(fields: [patternId], references: [id])
+  attempts    ConjunctionAttempt[]
+  progress    ConjunctionProgress[]
+}
+
+// Attempts for conjunction-based exercises
+model ConjunctionAttempt {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  sentenceId  Int
+  userSentence String
+  correct     Boolean
+  componentErrors Json? // Which components were wrong
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentence    ConjunctionSentence @relation(fields: [sentenceId], references: [id])
+}
+
+// Progress for conjunction exercises
+model ConjunctionProgress {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  sentenceId  Int
+  repetitions Int      @default(0)
+  interval    Int      @default(0)
+  efactor     Float    @default(2.5)
+  nextDue     DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentence    ConjunctionSentence @relation(fields: [sentenceId], references: [id])
+  
+  @@unique([userId, sentenceId])
+}
+
+// Game sessions for tracking streaks and scoring
+model GameSession {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  gameMode    String   // 'word-blitz', 'sentence-builder', 'chinese-english', 'conjunction'
+  score       Int      @default(0)
+  streak      Int      @default(0)
+  maxStreak   Int      @default(0)
+  correctAnswers Int   @default(0)
+  totalAnswers   Int   @default(0)
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, gameMode])
+  @@index([score])
+}
+
+// Daily challenges for engagement
+model DailyChallenge {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique @default(now())
+  challengeType String // 'word-blitz', 'sentence-builder', 'chinese-english'
+  content     Json     // Challenge configuration
+  rewards     Json?    // Points, badges, etc.
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  completions DailyChallengeCompletion[]
+}
+
+// User completions of daily challenges
+model DailyChallengeCompletion {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  challengeId Int
+  score       Int      @default(0)
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  
+  // Relations
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   DailyChallenge @relation(fields: [challengeId], references: [id])
+  
+  @@unique([userId, challengeId])
+}
+
+// User relations extensions
+model User {
+  id        String   @id @default(cuid())
+  anonId    String   @unique
+  createdAt DateTime @default(now())
+  
+  // Existing relations
+  attempts  Attempt[]
+  progress  Progress[]
+  score     Score?
+  
+  // New relations
+  chineseAttempts       ChineseAttempt[]
+  chineseProgress       ChineseProgress[]
+  conjunctionAttempts   ConjunctionAttempt[]
+  conjunctionProgress   ConjunctionProgress[]
+  gameSessions          GameSession[]
+  challengeCompletions  DailyChallengeCompletion[]
+}

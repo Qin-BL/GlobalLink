@@ -1,0 +1,197 @@
+[
+  {
+    "term": "apple",
+    "meaning": "苹果",
+    "imageUrl": "/images/apple.jpg",
+    "audioUrl": "/audio/apple.mp3"
+  },
+  {
+    "term": "banana",
+    "meaning": "香蕉"
+  },
+  {
+    "term": "cat",
+    "meaning": "猫",
+    "imageUrl": "/images/cat.jpg"
+  },
+  {
+    "term": "dog",
+    "meaning": "狗",
+    "imageUrl": "/images/dog.jpg",
+    "audioUrl": "/audio/dog.mp3"
+  },
+  {
+    "term": "house",
+    "meaning": "房子"
+  },
+  {
+    "term": "book",
+    "meaning": "书",
+    "imageUrl": "/images/book.jpg"
+  },
+  {
+    "term": "car",
+    "meaning": "汽车",
+    "audioUrl": "/audio/car.mp3"
+  },
+  {
+    "term": "water",
+    "meaning": "水"
+  },
+  {
+    "term": "music",
+    "meaning": "音乐"
+  },
+  {
+    "term": "school",
+    "meaning": "学校"
+  },
+  {
+    "term": "computer",
+    "meaning": "电脑"
+  },
+  {
+    "term": "phone",
+    "meaning": "手机"
+  },
+  {
+    "term": "table",
+    "meaning": "桌子"
+  },
+  {
+    "term": "chair",
+    "meaning": "椅子"
+  },
+  {
+    "term": "window",
+    "meaning": "窗户"
+  },
+  {
+    "term": "sun",
+    "meaning": "太阳"
+  },
+  {
+    "term": "moon",
+    "meaning": "月亮"
+  },
+  {
+    "term": "star",
+    "meaning": "星星"
+  },
+  {
+    "term": "river",
+    "meaning": "河流"
+  },
+  {
+    "term": "mountain",
+    "meaning": "山"
+  },
+  {
+    "term": "teacher",
+    "meaning": "老师"
+  },
+  {
+    "term": "student",
+    "meaning": "学生"
+  },
+  {
+    "term": "friend",
+    "meaning": "朋友"
+  },
+  {
+    "term": "family",
+    "meaning": "家庭"
+  },
+  {
+    "term": "city",
+    "meaning": "城市"
+  },
+  {
+    "term": "country",
+    "meaning": "国家"
+  },
+  {
+    "term": "weather",
+    "meaning": "天气"
+  },
+  {
+    "term": "food",
+    "meaning": "食物"
+  },
+  {
+    "term": "coffee",
+    "meaning": "咖啡"
+  },
+  {
+    "term": "tea",
+    "meaning": "茶"
+  },
+  {
+    "term": "bread",
+    "meaning": "面包"
+  },
+  {
+    "term": "milk",
+    "meaning": "牛奶"
+  },
+  {
+    "term": "train",
+    "meaning": "火车"
+  },
+  {
+    "term": "bus",
+    "meaning": "公交车"
+  },
+  {
+    "term": "airplane",
+    "meaning": "飞机"
+  },
+  {
+    "term": "ticket",
+    "meaning": "票"
+  },
+  {
+    "term": "hotel",
+    "meaning": "酒店"
+  },
+  {
+    "term": "key",
+    "meaning": "钥匙"
+  },
+  {
+    "term": "door",
+    "meaning": "门"
+  },
+  {
+    "term": "address",
+    "meaning": "地址"
+  },
+  {
+    "term": "map",
+    "meaning": "地图"
+  },
+  {
+    "term": "bathroom",
+    "meaning": "洗手间"
+  },
+  {
+    "term": "breakfast",
+    "meaning": "早餐"
+  },
+  {
+    "term": "lunch",
+    "meaning": "午餐"
+  },
+  {
+    "term": "dinner",
+    "meaning": "晚餐"
+  },
+  {
+    "term": "tomorrow",
+    "meaning": "明天"
+  },
+  {
+    "term": "yesterday",
+    "meaning": "昨天"
+  }
+]

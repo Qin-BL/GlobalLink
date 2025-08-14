@@ -1,0 +1,92 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "sqlite"; url = "file:./dev.db" }
+
+model User {
+  id        String   @id @default(cuid())
+  anonId    String   @unique
+  createdAt DateTime @default(now())
+  attempts  Attempt[]
+  progress  Progress[]
+  score     Score?
+}
+
+model Course {
+  id        Int     @id @default(autoincrement())
+  slug      String  @unique
+  title     String
+  mode      String
+  meta      Json?
+  units     Unit[]
+  createdAt DateTime @default(now())
+}
+
+model Unit {
+  id        Int    @id @default(autoincrement())
+  courseId  Int
+  index     Int
+  title     String
+  items     Item[]
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Item {
+  id        Int     @id @default(autoincrement())
+  unitId    Int
+  type      ItemType
+  prompt    String?
+  answer    String
+  tokens    Json?
+  extras    Json?
+  unit      Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  attempts  Attempt[]
+  progress  Progress[]
+}
+
+enum ItemType { SENTENCE PHRASE LISTENING }
+
+model Word {
+  id        Int      @id @default(autoincrement())
+  term      String
+  meaning   String
+  imageUrl  String?
+  audioUrl  String?
+  level     Int      @default(1)
+  createdAt DateTime @default(now())
+  attempts  Attempt[]
+  progress  Progress[]
+}
+
+model Attempt {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  itemId    Int?
+  wordId    Int?
+  correct   Boolean
+  latencyMs Int?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item      Item?    @relation(fields: [itemId], references: [id])
+  word      Word?    @relation(fields: [wordId], references: [id])
+}
+
+model Progress {
+  id           Int      @id @default(autoincrement())
+  userId       String
+  itemId       Int?
+  wordId       Int?
+  repetitions  Int      @default(0)
+  interval     Int      @default(0)
+  efactor      Float    @default(2.5)
+  nextDue      DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item         Item?    @relation(fields: [itemId], references: [id])
+  word         Word?    @relation(fields: [wordId], references: [id])
+}
+
+model Score {
+  id        Int     @id @default(autoincrement())
+  userId    String  @unique
+  points    Int     @default(0)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
