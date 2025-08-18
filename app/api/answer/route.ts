@@ -4,7 +4,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(()=>({}));
   const { userId, type, id, ok } = body as { userId?: string, type?: string, id?: number, ok?: boolean };
   if (!type || !id || typeof ok !== 'boolean') return NextResponse.json({ ok: false, error: 'invalid' }, { status: 400 });
-  let user = null;
+  let user: any = null;
   if (userId) {
     user = await prisma.user.findUnique({ where: { anonId: userId } });
     if (!user) user = await prisma.user.create({ data: { anonId: userId } });
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   // SM-2 scheduling
   const now = new Date();
   const quality = ok ? 5 : 2;
-  let prog = null;
+  let prog: any = null;
   if (type === 'word') {
     const wordId = id;
     prog = await prisma.progress.findFirst({ where: { userId: user.id, wordId } });

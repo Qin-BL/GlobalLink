@@ -1,0 +1,198 @@
+[
+  {
+    "id": 1,
+    "title": "日常英语对话基础",
+    "description": "学习最实用的日常英语对话，包括问候、购物、就餐等场景",
+    "category": "speaking",
+    "difficulty": "beginner",
+    "cefr": "A1",
+    "duration": "4小时",
+    "lessons": 12,
+    "instructor": "Sarah Johnson",
+    "image": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop",
+    "price": "Free",
+    "tags": ["对话", "日常", "入门"],
+    "featured": true,
+    "lessons_detail": [
+      {
+        "id": 1,
+        "title": "问候与自我介绍",
+        "duration": "20分钟",
+        "content": {
+          "vocabulary": ["hello", "goodbye", "name", "nice to meet you", "how are you"],
+          "phrases": [
+            {
+              "english": "Hello, my name is...",
+              "chinese": "你好，我的名字是..."
+            },
+            {
+              "english": "Nice to meet you",
+              "chinese": "很高兴见到你"
+            },
+            {
+              "english": "How are you today?",
+              "chinese": "你今天好吗？"
+            }
+          ],
+          "dialogue": [
+            {"speaker": "A", "text": "Hello! My name is Tom. What's your name?"},
+            {"speaker": "B", "text": "Hi Tom! I'm Sarah. Nice to meet you!"},
+            {"speaker": "A", "text": "Nice to meet you too, Sarah. How are you today?"},
+            {"speaker": "B", "text": "I'm doing well, thank you. How about you?"}
+          ]
+        }
+      },
+      {
+        "id": 2,
+        "title": "询问时间和日期",
+        "duration": "20分钟",
+        "content": {
+          "vocabulary": ["time", "clock", "today", "tomorrow", "yesterday", "morning", "afternoon", "evening"],
+          "phrases": [
+            {
+              "english": "What time is it?",
+              "chinese": "现在几点？"
+            },
+            {
+              "english": "It's 3 o'clock",
+              "chinese": "现在三点"
+            },
+            {
+              "english": "What day is today?",
+              "chinese": "今天星期几？"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "title": "商务英语基础",
+    "description": "职场必备的英语表达，包括邮件写作、会议沟通、电话交流等",
+    "category": "business",
+    "difficulty": "intermediate",
+    "cefr": "B1",
+    "duration": "6小时",
+    "lessons": 18,
+    "instructor": "Michael Chen",
+    "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop",
+    "price": "Free",
+    "tags": ["商务", "职场", "邮件"],
+    "featured": true,
+    "lessons_detail": [
+      {
+        "id": 1,
+        "title": "商务邮件基础",
+        "duration": "25分钟",
+        "content": {
+          "vocabulary": ["email", "subject", "attachment", "reply", "forward", "meeting", "schedule"],
+          "phrases": [
+            {
+              "english": "I hope this email finds you well",
+              "chinese": "希望您一切顺利"
+            },
+            {
+              "english": "Please find attached...",
+              "chinese": "请查看附件..."
+            },
+            {
+              "english": "Looking forward to your reply",
+              "chinese": "期待您的回复"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "title": "旅游英语实用指南",
+    "description": "出国旅游必备英语，包括机场、酒店、餐厅、购物等场景",
+    "category": "travel",
+    "difficulty": "beginner",
+    "cefr": "A2",
+    "duration": "5小时",
+    "lessons": 15,
+    "instructor": "Emma Wilson",
+    "image": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop",
+    "price": "Free",
+    "tags": ["旅游", "实用", "出国"],
+    "featured": false
+  },
+  {
+    "id": 4,
+    "title": "英语语法完全指南",
+    "description": "系统学习英语语法规则，从基础到高级，配有大量练习",
+    "category": "grammar",
+    "difficulty": "intermediate",
+    "cefr": "B2",
+    "duration": "8小时",
+    "lessons": 24,
+    "instructor": "David Smith",
+    "image": "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=250&fit=crop",
+    "price": "Free",
+    "tags": ["语法", "系统", "练习"],
+    "featured": false
+  },
+  {
+    "id": 5,
+    "title": "雅思口语突破",
+    "description": "雅思口语考试技巧和实战练习，帮助你取得理想成绩",
+    "category": "exam",
+    "difficulty": "advanced",
+    "cefr": "C1",
+    "duration": "10小时",
+    "lessons": 30,
+    "instructor": "Lisa Brown",
+    "image": "https://images.unsplash.com/photo-1606092195730-5d7b9af1efc5?w=400&h=250&fit=crop",
+    "price": "Premium",
+    "tags": ["雅思", "口语", "考试"],
+    "featured": true
+  },
+  {
+    "id": 6,
+    "title": "英语听力强化训练",
+    "description": "通过各种场景和材料提升英语听力理解能力",
+    "category": "listening",
+    "difficulty": "intermediate",
+    "cefr": "B1",
+    "duration": "7小时",
+    "lessons": 21,
+    "instructor": "Tom Anderson",
+    "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop",
+    "price": "Free",
+    "tags": ["听力", "训练", "场景"],
+    "featured": false
+  },
+  {
+    "id": 7,
+    "title": "程序员英语词汇专项",
+    "description": "IT行业必备英语词汇和技术文档阅读技巧",
+    "category": "vocabulary",
+    "difficulty": "intermediate",
+    "cefr": "B2",
+    "duration": "4小时",
+    "lessons": 16,
+    "instructor": "Alex Zhang",
+    "image": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop",
+    "price": "Free",
+    "tags": ["程序员", "IT", "技术"],
+    "featured": false
+  },
+  {
+    "id": 8,
+    "title": "英语写作技巧提升",
+    "description": "学习英语写作的结构、技巧和常用表达方式",
+    "category": "writing",
+    "difficulty": "intermediate",
+    "cefr": "B2",
+    "duration": "6小时",
+    "lessons": 18,
+    "instructor": "Jennifer Lee",
+    "image": "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=250&fit=crop",
+    "price": "Free",
+    "tags": ["写作", "技巧", "表达"],
+    "featured": false
+  }
+]

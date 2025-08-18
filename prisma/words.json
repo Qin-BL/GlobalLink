@@ -193,5 +193,245 @@
   {
     "term": "yesterday",
     "meaning": "昨天"
+  },
+  {
+    "term": "beautiful",
+    "meaning": "美丽的"
+  },
+  {
+    "term": "intelligent",
+    "meaning": "聪明的"
+  },
+  {
+    "term": "important",
+    "meaning": "重要的"
+  },
+  {
+    "term": "interesting",
+    "meaning": "有趣的"
+  },
+  {
+    "term": "comfortable",
+    "meaning": "舒适的"
+  },
+  {
+    "term": "successful",
+    "meaning": "成功的"
+  },
+  {
+    "term": "difficult",
+    "meaning": "困难的"
+  },
+  {
+    "term": "popular",
+    "meaning": "受欢迎的"
+  },
+  {
+    "term": "expensive",
+    "meaning": "昂贵的"
+  },
+  {
+    "term": "dangerous",
+    "meaning": "危险的"
+  },
+  {
+    "term": "understand",
+    "meaning": "理解"
+  },
+  {
+    "term": "remember",
+    "meaning": "记住"
+  },
+  {
+    "term": "explain",
+    "meaning": "解释"
+  },
+  {
+    "term": "suggest",
+    "meaning": "建议"
+  },
+  {
+    "term": "recommend",
+    "meaning": "推荐"
+  },
+  {
+    "term": "discover",
+    "meaning": "发现"
+  },
+  {
+    "term": "improve",
+    "meaning": "改善"
+  },
+  {
+    "term": "achieve",
+    "meaning": "实现"
+  },
+  {
+    "term": "develop",
+    "meaning": "发展"
+  },
+  {
+    "term": "communicate",
+    "meaning": "交流"
+  },
+  {
+    "term": "technology",
+    "meaning": "技术"
+  },
+  {
+    "term": "environment",
+    "meaning": "环境"
+  },
+  {
+    "term": "education",
+    "meaning": "教育"
+  },
+  {
+    "term": "experience",
+    "meaning": "经验"
+  },
+  {
+    "term": "information",
+    "meaning": "信息"
+  },
+  {
+    "term": "opportunity",
+    "meaning": "机会"
+  },
+  {
+    "term": "relationship",
+    "meaning": "关系"
+  },
+  {
+    "term": "responsibility",
+    "meaning": "责任"
+  },
+  {
+    "term": "organization",
+    "meaning": "组织"
+  },
+  {
+    "term": "knowledge",
+    "meaning": "知识"
+  },
+  {
+    "term": "hospital",
+    "meaning": "医院"
+  },
+  {
+    "term": "restaurant",
+    "meaning": "餐厅"
+  },
+  {
+    "term": "supermarket",
+    "meaning": "超市"
+  },
+  {
+    "term": "library",
+    "meaning": "图书馆"
+  },
+  {
+    "term": "museum",
+    "meaning": "博物馆"
+  },
+  {
+    "term": "university",
+    "meaning": "大学"
+  },
+  {
+    "term": "apartment",
+    "meaning": "公寓"
+  },
+  {
+    "term": "building",
+    "meaning": "建筑物"
+  },
+  {
+    "term": "office",
+    "meaning": "办公室"
+  },
+  {
+    "term": "factory",
+    "meaning": "工厂"
+  },
+  {
+    "term": "engineer",
+    "meaning": "工程师"
+  },
+  {
+    "term": "doctor",
+    "meaning": "医生"
+  },
+  {
+    "term": "lawyer",
+    "meaning": "律师"
+  },
+  {
+    "term": "manager",
+    "meaning": "经理"
+  },
+  {
+    "term": "designer",
+    "meaning": "设计师"
+  },
+  {
+    "term": "programmer",
+    "meaning": "程序员"
+  },
+  {
+    "term": "scientist",
+    "meaning": "科学家"
+  },
+  {
+    "term": "artist",
+    "meaning": "艺术家"
+  },
+  {
+    "term": "musician",
+    "meaning": "音乐家"
+  },
+  {
+    "term": "photographer",
+    "meaning": "摄影师"
+  },
+  {
+    "term": "mathematics",
+    "meaning": "数学"
+  },
+  {
+    "term": "science",
+    "meaning": "科学"
+  },
+  {
+    "term": "history",
+    "meaning": "历史"
+  },
+  {
+    "term": "geography",
+    "meaning": "地理"
+  },
+  {
+    "term": "chemistry",
+    "meaning": "化学"
+  },
+  {
+    "term": "physics",
+    "meaning": "物理"
+  },
+  {
+    "term": "biology",
+    "meaning": "生物"
+  },
+  {
+    "term": "literature",
+    "meaning": "文学"
+  },
+  {
+    "term": "language",
+    "meaning": "语言"
+  },
+  {
+    "term": "vocabulary",
+    "meaning": "词汇"
   }
 ]

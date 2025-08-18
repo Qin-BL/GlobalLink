@@ -1,0 +1,162 @@
+[
+  {
+    "id": 1,
+    "chinese": "我今天很开心。",
+    "english": "I am very happy today.",
+    "tokens": ["I", "am", "very", "happy", "today", "."],
+    "difficulty": "beginner",
+    "category": "daily"
+  },
+  {
+    "id": 2,
+    "chinese": "请把门关上。",
+    "english": "Please close the door.",
+    "tokens": ["Please", "close", "the", "door", "."],
+    "difficulty": "beginner",
+    "category": "daily"
+  },
+  {
+    "id": 3,
+    "chinese": "这本书非常有趣。",
+    "english": "This book is very interesting.",
+    "tokens": ["This", "book", "is", "very", "interesting", "."],
+    "difficulty": "beginner",
+    "category": "daily"
+  },
+  {
+    "id": 4,
+    "chinese": "我需要去超市买一些食物。",
+    "english": "I need to go to the supermarket to buy some food.",
+    "tokens": ["I", "need", "to", "go", "to", "the", "supermarket", "to", "buy", "some", "food", "."],
+    "difficulty": "intermediate",
+    "category": "daily"
+  },
+  {
+    "id": 5,
+    "chinese": "明天的会议被推迟到下周。",
+    "english": "Tomorrow's meeting has been postponed to next week.",
+    "tokens": ["Tomorrow's", "meeting", "has", "been", "postponed", "to", "next", "week", "."],
+    "difficulty": "intermediate",
+    "category": "business"
+  },
+  {
+    "id": 6,
+    "chinese": "你能帮我一下吗？",
+    "english": "Could you help me please?",
+    "tokens": ["Could", "you", "help", "me", "please", "?"],
+    "difficulty": "beginner",
+    "category": "daily"
+  },
+  {
+    "id": 7,
+    "chinese": "我正在学习英语。",
+    "english": "I am learning English.",
+    "tokens": ["I", "am", "learning", "English", "."],
+    "difficulty": "beginner",
+    "category": "education"
+  },
+  {
+    "id": 8,
+    "chinese": "这个项目需要更多时间来完成。",
+    "english": "This project needs more time to complete.",
+    "tokens": ["This", "project", "needs", "more", "time", "to", "complete", "."],
+    "difficulty": "intermediate",
+    "category": "business"
+  },
+  {
+    "id": 9,
+    "chinese": "天气预报说明天会下雨。",
+    "english": "The weather forecast says it will rain tomorrow.",
+    "tokens": ["The", "weather", "forecast", "says", "it", "will", "rain", "tomorrow", "."],
+    "difficulty": "intermediate",
+    "category": "daily"
+  },
+  {
+    "id": 10,
+    "chinese": "我的朋友来自不同的国家。",
+    "english": "My friends come from different countries.",
+    "tokens": ["My", "friends", "come", "from", "different", "countries", "."],
+    "difficulty": "beginner",
+    "category": "social"
+  },
+  {
+    "id": 11,
+    "chinese": "科技正在改变我们的生活方式。",
+    "english": "Technology is changing the way we live.",
+    "tokens": ["Technology", "is", "changing", "the", "way", "we", "live", "."],
+    "difficulty": "advanced",
+    "category": "technology"
+  },
+  {
+    "id": 12,
+    "chinese": "请在这里签名。",
+    "english": "Please sign here.",
+    "tokens": ["Please", "sign", "here", "."],
+    "difficulty": "beginner",
+    "category": "formal"
+  },
+  {
+    "id": 13,
+    "chinese": "我昨天看了一部很好的电影。",
+    "english": "I watched a great movie yesterday.",
+    "tokens": ["I", "watched", "a", "great", "movie", "yesterday", "."],
+    "difficulty": "beginner",
+    "category": "entertainment"
+  },
+  {
+    "id": 14,
+    "chinese": "环境保护对我们的未来很重要。",
+    "english": "Environmental protection is important for our future.",
+    "tokens": ["Environmental", "protection", "is", "important", "for", "our", "future", "."],
+    "difficulty": "advanced",
+    "category": "environment"
+  },
+  {
+    "id": 15,
+    "chinese": "我通常七点起床。",
+    "english": "I usually get up at seven o'clock.",
+    "tokens": ["I", "usually", "get", "up", "at", "seven", "o'clock", "."],
+    "difficulty": "beginner",
+    "category": "daily"
+  },
+  {
+    "id": 16,
+    "chinese": "这家餐厅的食物很美味。",
+    "english": "The food in this restaurant is delicious.",
+    "tokens": ["The", "food", "in", "this", "restaurant", "is", "delicious", "."],
+    "difficulty": "beginner",
+    "category": "food"
+  },
+  {
+    "id": 17,
+    "chinese": "互联网使信息传播更加便捷。",
+    "english": "The Internet makes information sharing more convenient.",
+    "tokens": ["The", "Internet", "makes", "information", "sharing", "more", "convenient", "."],
+    "difficulty": "advanced",
+    "category": "technology"
+  },
+  {
+    "id": 18,
+    "chinese": "我们需要更好的团队合作。",
+    "english": "We need better teamwork.",
+    "tokens": ["We", "need", "better", "teamwork", "."],
+    "difficulty": "intermediate",
+    "category": "business"
+  },
+  {
+    "id": 19,
+    "chinese": "音乐能够治愈人的心灵。",
+    "english": "Music can heal the soul.",
+    "tokens": ["Music", "can", "heal", "the", "soul", "."],
+    "difficulty": "intermediate",
+    "category": "art"
+  },
+  {
+    "id": 20,
+    "chinese": "学习新语言需要耐心和练习。",
+    "english": "Learning a new language requires patience and practice.",
+    "tokens": ["Learning", "a", "new", "language", "requires", "patience", "and", "practice", "."],
+    "difficulty": "advanced",
+    "category": "education"
+  }
+]

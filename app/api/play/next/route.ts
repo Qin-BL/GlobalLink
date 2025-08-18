@@ -4,7 +4,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const courseId = url.searchParams.get('courseId');
   const anonId = url.searchParams.get('userId');
-  let user = null;
+  let user: any = null;
   if (anonId) {
     user = await prisma.user.findUnique({ where: { anonId } });
     if (!user) user = await prisma.user.create({ data: { anonId } });
@@ -16,14 +16,18 @@ export async function GET(req: Request) {
       if (user) {
         const due = await prisma.progress.findMany({ where: { userId: user.id, wordId: { not: null }, nextDue: { lte: new Date() } }, include: { word: true } });
         if (due.length) {
-          const word = due[Math.floor(Math.random()*due.length)].word;
-          return NextResponse.json({ type: 'word', word, choices: await buildChoices(word.id) });
+          const progress = due[Math.floor(Math.random()*due.length)];
+          const word = progress.word;
+          if (word) {
+            return NextResponse.json({ type: 'word', word, choices: await buildChoices(word.id) });
+          }
         }
       }
       const count = await prisma.word.count();
       if (count === 0) return NextResponse.json({ error: 'no words' }, { status: 404 });
       const skip = Math.floor(Math.random()*count);
       const word = await prisma.word.findFirst({ skip });
+      if (!word) return NextResponse.json({ error: 'no word found' }, { status: 404 });
       return NextResponse.json({ type: 'word', word, choices: await buildChoices(word.id) });
     } else {
       const unitIds = course.units.map(u=>u.id);
@@ -44,6 +48,7 @@ export async function GET(req: Request) {
   if (count === 0) return NextResponse.json({ error: 'no words' }, { status: 404 });
   const skip = Math.floor(Math.random()*count);
   const word = await prisma.word.findFirst({ skip });
+  if (!word) return NextResponse.json({ error: 'no word found' }, { status: 404 });
   return NextResponse.json({ type: 'word', word, choices: await buildChoices(word.id) });
   async function buildChoices(wordId:number) {
     const others = await prisma.word.findMany({ take: 50 });
@@ -53,7 +58,7 @@ export async function GET(req: Request) {
       const idx = Math.floor(Math.random()*pool.length);
       set.add(pool[idx]); pool.splice(idx,1);
     }
-    const choices = [ (await prisma.word.findUnique({ where: { id: wordId } })).meaning, ...Array.from(set) ];
+    const choices = [ (await prisma.word.findUnique({ where: { id: wordId } }))?.meaning || '', ...Array.from(set) ];
     for (let i = choices.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [choices[i],choices[j]]=[choices[j],choices[i]]; }
     return choices;
   }

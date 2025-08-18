@@ -1,5 +1,11 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "sqlite"; url = "file:./dev.db" }
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
 
 model User {
   id        String   @id @default(cuid())
@@ -8,6 +14,11 @@ model User {
   attempts  Attempt[]
   progress  Progress[]
   score     Score?
+  chineseAttempts ChineseAttempt[]
+  chineseProgress ChineseProgress[]
+  learningSessions LearningSession[]
+  achievements UserAchievement[]
+  stats     LearningStats?
 }
 
 model Course {
@@ -15,7 +26,7 @@ model Course {
   slug      String  @unique
   title     String
   mode      String
-  meta      Json?
+  meta      String? // 改为String存储JSON
   units     Unit[]
   createdAt DateTime @default(now())
 }
@@ -32,17 +43,17 @@ model Unit {
 model Item {
   id        Int     @id @default(autoincrement())
   unitId    Int
-  type      ItemType
+  type      String  // 改为String类型
   prompt    String?
   answer    String
-  tokens    Json?
-  extras    Json?
+  tokens    String? // 改为String存储JSON
+  extras    String? // 改为String存储JSON
   unit      Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
   attempts  Attempt[]
   progress  Progress[]
 }
 
-enum ItemType { SENTENCE PHRASE LISTENING }
+// 删除enum，已改为String类型
 
 model Word {
   id        Int      @id @default(autoincrement())
@@ -89,4 +100,128 @@ model Score {
   userId    String  @unique
   points    Int     @default(0)
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 新增汉英对照学习相关的数据模型
+model ChineseSentence {
+  id            Int      @id @default(autoincrement())
+  chinese       String
+  english       String
+  difficulty    Int      @default(1)
+  grammarPattern String?
+  topicCategory String?
+  tokens        String?  // 英文单词标记数组，存储为JSON字符串
+  hints         String?  // 渐进式提示，存储为JSON字符串
+  audioChinese  String?  // 中文音频路径
+  audioEnglish  String?  // 英文音频路径
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  attempts      ChineseAttempt[]
+  progress      ChineseProgress[]
+}
+
+model ChineseAttempt {
+  id              Int             @id @default(autoincrement())
+  userId          String
+  sentenceId      Int
+  userInput       String          // 用户构建的句子tokens，存储为JSON字符串
+  correct         Boolean
+  accuracyScore   Float?          // 准确率分数 0-1
+  timeToComplete  Int?            // 完成时间(秒)
+  hintsUsed       Int             @default(0)
+  mistakes        String?         // 错误详情，存储为JSON字符串
+  createdAt       DateTime        @default(now())
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentence        ChineseSentence @relation(fields: [sentenceId], references: [id])
+}
+
+model ChineseProgress {
+  id              Int             @id @default(autoincrement())
+  userId          String
+  sentenceId      Int
+  repetitions     Int             @default(0)
+  intervalDays    Int             @default(0)
+  easeFactor      Float           @default(2.5)
+  nextReviewDate  DateTime        @default(now())
+  masteryLevel    Int             @default(0) // 0-5 掌握程度
+  lastReviewed    DateTime?
+  updatedAt       DateTime        @updatedAt
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentence        ChineseSentence @relation(fields: [sentenceId], references: [id])
+
+  @@unique([userId, sentenceId])
+}
+
+// 学习会话记录
+model LearningSession {
+  id        String   @id @default(cuid())
+  userId    String
+  gameType  String   // word-blitz, sentence-builder, chinese-english
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  score     Int      @default(0)
+  accuracy  Float?   // 准确率 0-1
+  timeSpent Int?     // 花费时间(秒)
+  streakCount Int    @default(0)
+  totalQuestions Int @default(0)
+  correctAnswers Int @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts  SessionAttempt[]
+}
+
+// 会话内的答题记录
+model SessionAttempt {
+  id          String         @id @default(cuid())
+  sessionId   String
+  itemType    String         // word, sentence, speaking
+  itemId      String         // 对应的内容ID
+  correct     Boolean
+  timeSpent   Int?           // 单题花费时间(毫秒)
+  hintsUsed   Int            @default(0)
+  answerData  String?        // 答案数据JSON
+  createdAt   DateTime       @default(now())
+  session     LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+// 用户成就系统
+model Achievement {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique  // 成就标识符
+  title       String              // 成就标题
+  description String              // 成就描述
+  icon        String?             // 成就图标
+  category    String              // 成就分类
+  condition   String              // 获得条件JSON
+  points      Int      @default(0) // 成就积分
+  isSecret    Boolean  @default(false) // 是否隐藏成就
+  createdAt   DateTime @default(now())
+  userAchievements UserAchievement[]
+}
+
+// 用户获得的成就
+model UserAchievement {
+  id            Int         @id @default(autoincrement())
+  userId        String
+  achievementId Int
+  unlockedAt    DateTime    @default(now())
+  progress      Float?      // 进度 0-1
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  
+  @@unique([userId, achievementId])
+}
+
+// 学习统计
+model LearningStats {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  totalStudyTime  Int      @default(0) // 总学习时间(分钟)
+  streakDays      Int      @default(0) // 连续学习天数
+  totalSessions   Int      @default(0) // 总学习会话数
+  wordsLearned    Int      @default(0) // 学过的单词数
+  sentencesBuilt  Int      @default(0) // 构建的句子数
+  speakingMinutes Int      @default(0) // 口语练习分钟数
+  lastStudyDate   DateTime? // 最后学习日期
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
