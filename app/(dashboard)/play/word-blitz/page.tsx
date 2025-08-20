@@ -17,7 +17,7 @@ import {
   Trophy,
   TrendingUp
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { PageContainer, CardContainer } from '@/components/layout/MainContent';
 import { useLayoutStore } from '@/store/layout';
@@ -28,9 +28,81 @@ import {
   getLearningStats,
   updateLearningStats 
 } from '@/lib/localStorage';
+import { 
+  loadGameDataForCourse, 
+  FlashCardItem, 
+  saveGameSession, 
+  GameSession 
+} from '@/lib/gameData';
+
+// 游戏配置选择组件
+interface GameSetupProps {
+  onStartGame: (courseId: string) => void;
+  onClose: () => void;
+}
+
+function GameSetup({ onStartGame, onClose }: GameSetupProps) {
+  const [selectedCourse, setSelectedCourse] = useState('01');
+  
+  const courses = [
+    { id: '01', title: '基础英语入门 - 第一课', difficulty: '初级', lessons: 50 },
+    { id: '02', title: '日常对话进阶训练', difficulty: '初级', lessons: 45 },
+    { id: '03', title: '商务英语基础', difficulty: '中级', lessons: 60 },
+    { id: '04', title: '语法结构强化', difficulty: '中级', lessons: 55 },
+    { id: '05', title: '高级表达技巧', difficulty: '高级', lessons: 40 }
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 w-full max-w-md mx-4"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">选择课程</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="space-y-3 mb-6">
+          {courses.map((course) => (
+            <button
+              key={course.id}
+              onClick={() => setSelectedCourse(course.id)}
+              className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
+                selectedCourse === course.id
+                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                  : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
+              }`}
+            >
+              <h3 className="font-medium text-gray-900 dark:text-white">{course.title}</h3>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-sm text-gray-500 dark:text-gray-400">难度: {course.difficulty}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{course.lessons} 个项目</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        <button
+          onClick={() => onStartGame(selectedCourse)}
+          className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+        >
+          开始游戏
+        </button>
+      </motion.div>
+    </div>
+  );
+}
 
 interface Word {
-  id: number;
+  id: string;
   term: string;
   meaning: string;
   imageUrl?: string;
@@ -80,12 +152,12 @@ function ChoiceButton({
       className={`
         p-4 rounded-xl border-2 transition-all duration-300 text-left font-medium relative overflow-hidden
         ${isCorrect 
-          ? 'bg-gradient-success text-white border-success shadow-glow-success' 
+          ? 'bg-green-500 text-white border-green-500 shadow-lg' 
           : isWrong
-          ? 'bg-error text-white border-error shadow-glow-error'
+          ? 'bg-red-500 text-white border-red-500 shadow-lg'
           : isSelected
-          ? 'border-info bg-hover shadow-glow' 
-          : 'border-border-color bg-card-dark hover:border-info hover:bg-hover'
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg' 
+          : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-slate-700'
         }
       `}
     >
@@ -99,72 +171,52 @@ function WordCard({ word, onPlayAudio }: { word: Word | null; onPlayAudio: () =>
   if (!word) {
     return (
       <CardContainer className="text-center p-8">
-        <div className="w-48 h-48 rounded-lg mx-auto mb-4 flex items-center justify-center bg-secondary-dark">
-          <Target className="w-16 h-16 text-text-muted" />
+        <div className="w-48 h-48 rounded-lg mx-auto mb-4 flex items-center justify-center bg-gray-100 dark:bg-slate-700">
+          <Target className="w-16 h-16 text-gray-400 dark:text-gray-500" />
         </div>
-        <div className="text-2xl font-bold text-text-muted">加载中...</div>
+        <div className="text-2xl font-bold text-gray-400 dark:text-gray-500">加载中...</div>
       </CardContainer>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <CardContainer className="text-center p-8" hover={false}>
-        {/* 单词图片 */}
-        {word.imageUrl && (
-          <motion.div
-            className="mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-          >
-            <img 
-              src={word.imageUrl} 
-              alt={word.term} 
-              className="w-48 h-48 object-cover rounded-lg mx-auto shadow-lg"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
-          </motion.div>
-        )}
-        
-        {/* 英文单词 */}
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
+    <CardContainer className="text-center p-8" hover={false}>
+      {/* 单词图片 */}
+      {word.imageUrl && (
+        <div className="mb-6">
+          <img 
+            src={word.imageUrl} 
+            alt={word.term} 
+            className="w-48 h-48 object-cover rounded-lg mx-auto shadow-lg"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+      
+      {/* 英文单词 */}
+      <div className="mb-6">
+        <div className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-wide">
+          {word.term}
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          选择正确的中文释义
+        </p>
+      </div>
+      
+      {/* 播放按钮 */}
+      <div>
+        <button 
+          onClick={onPlayAudio}
+          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
         >
-          <div className="text-4xl font-bold mb-2 text-gradient tracking-wide">
-            {word.term}
-          </div>
-          <p className="text-sm text-text-secondary">
-            选择正确的中文释义
-          </p>
-        </motion.div>
-        
-        {/* 播放按钮 */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-        >
-          <button 
-            onClick={onPlayAudio}
-            className="btn btn-primary flex items-center gap-2"
-          >
-            <Volume2 className="w-4 h-4" />
-            播放发音
-          </button>
-        </motion.div>
-      </CardContainer>
-    </motion.div>
+          <Volume2 className="w-4 h-4" />
+          播放发音
+        </button>
+      </div>
+    </CardContainer>
   );
 }
 
@@ -181,13 +233,17 @@ function generateUserId(): string {
 
 export default function WordBlitz() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setBreadcrumbs } = useLayoutStore();
   
+  // 游戏状态
+  const [showSetup, setShowSetup] = useState(false);
+  const [gameData, setGameData] = useState<FlashCardItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState<Word | null>(null);
   const [choices, setChoices] = useState<string[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [gameResult, setGameResult] = useState<'correct' | 'wrong' | null>(null);
   const [gameStats, setGameStats] = useState<GameStats>({
@@ -206,31 +262,142 @@ export default function WordBlitz() {
   useEffect(() => {
     setBreadcrumbs([
       { label: '首页', href: '/' },
-      { label: '游戏模式', href: '/games' },
+      { label: '游戏模式', href: '/play' },
       { label: '百词斩', href: '/play/word-blitz' }
     ]);
   }, [setBreadcrumbs]);
 
-  // 加载课程列表
+  // 检查URL参数，如果有课程ID则直接开始游戏
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await fetch('/api/courses');
-        const data = await response.json();
-        setCourses(data.courses || []);
-        
-        // 自动选择百词斩课程
-        const wordBlitzCourse = data.courses.find((c: Course) => c.mode === 'word-blitz');
-        if (wordBlitzCourse) {
-          setSelectedCourseId(wordBlitzCourse.id);
-        }
-      } catch (error) {
-        console.error('Failed to load courses:', error);
+    const courseIdFromUrl = searchParams.get('courseId');
+    if (courseIdFromUrl) {
+      setShowSetup(false);
+      handleStartGame(courseIdFromUrl);
+    } else {
+      // 如果没有courseId，自动开始使用默认课程01
+      handleStartGame('01');
+    }
+  }, [searchParams]);
+
+  // 开始游戏
+  const handleStartGame = async (courseId: string) => {
+    setLoading(true);
+    setShowSetup(false);
+    setSelectedCourse(courseId);
+    
+    try {
+      // 使用API直接获取单词数据
+      const query = `?courseId=${courseId}&userId=${userId}`;
+      const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
+      
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
       }
+      
+      const apiData = await response.json();
+      
+      // 检查是否有错误返回
+      if (apiData.error) {
+        console.warn('API returned error:', apiData.error);
+        // 如果API返回错误，尝试不带courseId的请求来获取随机单词
+        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
+        const fallbackData = await fallbackResponse.json();
+        
+        if (fallbackData.type === 'word') {
+          const word: Word = {
+            id: fallbackData.word.id.toString(),
+            term: fallbackData.word.term,
+            meaning: fallbackData.word.meaning
+          };
+          
+          setCurrentWord(word);
+          setChoices(fallbackData.choices);
+          setSelectedChoice(null);
+          setGameResult(null);
+          setGameData([{ ...word, options: fallbackData.choices }] as any);
+          
+          toast.success('开始练习单词！');
+          return;
+        } else {
+          throw new Error('无法加载单词数据');
+        }
+      }
+      
+      // console.log('Word blitz API response:', apiData);
+      
+      if (apiData.type === 'word') {
+        // 直接使用API返回的单词数据
+        const word: Word = {
+          id: apiData.word.id.toString(),
+          term: apiData.word.term,
+          meaning: apiData.word.meaning
+        };
+        
+        setCurrentWord(word);
+        setChoices(apiData.choices);
+        setSelectedChoice(null);
+        setGameResult(null);
+        
+        // 为了维持现有的游戏状态管理，我们仍然设置 gameData
+        setGameData([{ ...word, options: apiData.choices }] as any);
+        
+        toast.success('课程加载成功！开始游戏吧！');
+      } else {
+        // console.log('Unexpected API response format:', apiData);
+        throw new Error('无效的API响应格式');
+      }
+      
+    } catch (error) {
+      console.error('Failed to load game data:', error);
+      toast.error('加载课程失败，将使用默认单词库');
+      
+      // 最后的降级处理：尝试获取随机单词
+      try {
+        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
+        const fallbackData = await fallbackResponse.json();
+        
+        if (fallbackData.type === 'word') {
+          const word: Word = {
+            id: fallbackData.word.id.toString(),
+            term: fallbackData.word.term,
+            meaning: fallbackData.word.meaning
+          };
+          
+          setCurrentWord(word);
+          setChoices(fallbackData.choices);
+          setSelectedChoice(null);
+          setGameResult(null);
+          setGameData([{ ...word, options: fallbackData.choices }] as any);
+          
+          toast.success('使用默认单词库开始游戏！');
+        } else {
+          setShowSetup(true);
+        }
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        setShowSetup(true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初始化当前单词
+  const initializeCurrentWord = (item: FlashCardItem) => {
+    const word: Word = {
+      id: item.id,
+      term: item.english,
+      meaning: item.chinese
     };
     
-    fetchCourses();
-  }, []);
+    setCurrentWord(word);
+    setChoices(item.options);
+    setSelectedChoice(null);
+    setGameResult(null);
+  };
+
+  // 当前单词数据
+  const currentGameData = gameData[currentIndex];
 
   // 播放单词发音
   const playWordAudio = useCallback(() => {
@@ -261,46 +428,114 @@ export default function WordBlitz() {
 
   // 加载下一个单词
   const loadNextWord = async () => {
-    setLoading(true);
-    setSelectedChoice(null);
-    setGameResult(null);
-    
     try {
-      const query = selectedCourseId 
-        ? `?courseId=${selectedCourseId}&userId=${userId}` 
-        : `?userId=${userId}`;
-      
+      const query = `?courseId=${selectedCourse}&userId=${userId}`;
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
-      const data = await response.json();
+      const apiData = await response.json();
       
-      if (data.type === 'word') {
-        setCurrentWord(data.word);
-        setChoices(data.choices || []);
+      // 检查是否有错误返回
+      if (apiData.error) {
+        // 如果API返回错误，尝试不带courseId的请求来获取随机单词
+        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
+        const fallbackData = await fallbackResponse.json();
+        
+        if (fallbackData.type === 'word') {
+          const word: Word = {
+            id: fallbackData.word.id.toString(),
+            term: fallbackData.word.term,
+            meaning: fallbackData.word.meaning
+          };
+          
+          setCurrentWord(word);
+          setChoices(fallbackData.choices);
+          setSelectedChoice(null);
+          setGameResult(null);
+          
+          // 自动播放单词发音
+          setTimeout(() => {
+            speakWord(word.term);
+          }, 500);
+          return;
+        }
+      }
+      
+      if (apiData.type === 'word') {
+        const word: Word = {
+          id: apiData.word.id.toString(),
+          term: apiData.word.term,
+          meaning: apiData.word.meaning
+        };
+        
+        setCurrentWord(word);
+        setChoices(apiData.choices);
+        setSelectedChoice(null);
+        setGameResult(null);
         
         // 自动播放单词发音
         setTimeout(() => {
-          if (data.word.audioUrl) {
-            const audio = new Audio(data.word.audioUrl);
-            audio.play().catch(() => speakWord(data.word.term));
-          } else {
-            speakWord(data.word.term);
-          }
+          speakWord(word.term);
         }, 500);
+      } else {
+        // 如果没有更多单词，结束游戏
+        handleGameComplete();
       }
     } catch (error) {
       console.error('Failed to load next word:', error);
-      toast.error('加载单词失败');
-    } finally {
-      setLoading(false);
+      
+      // 降级处理：尝试获取随机单词
+      try {
+        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
+        const fallbackData = await fallbackResponse.json();
+        
+        if (fallbackData.type === 'word') {
+          const word: Word = {
+            id: fallbackData.word.id.toString(),
+            term: fallbackData.word.term,
+            meaning: fallbackData.word.meaning
+          };
+          
+          setCurrentWord(word);
+          setChoices(fallbackData.choices);
+          setSelectedChoice(null);
+          setGameResult(null);
+          
+          // 自动播放单词发音
+          setTimeout(() => {
+            speakWord(word.term);
+          }, 500);
+        } else {
+          handleGameComplete();
+        }
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        handleGameComplete();
+      }
     }
   };
 
-  // 当课程改变时加载单词
-  useEffect(() => {
-    if (selectedCourseId !== null) {
-      loadNextWord();
-    }
-  }, [selectedCourseId]);
+  // 游戏完成
+  const handleGameComplete = () => {
+    const session: GameSession = {
+      id: `session-${Date.now()}`,
+      courseId: selectedCourse,
+      gameType: 'word-blitz',
+      words: [],
+      score: gameStats.score,
+      correctAnswers: gameStats.correctAnswers,
+      totalAnswers: gameStats.totalAnswers,
+      streak: gameStats.streak,
+      startTime: new Date(Date.now() - gameStats.totalAnswers * 30000), // 估算
+      endTime: new Date(),
+      completed: true
+    };
+    
+    saveGameSession(session);
+    
+    toast.success('恭喜完成所有题目！');
+    setTimeout(() => {
+      window.location.href = '/dashboard';
+    }, 3000);
+  };
 
   // 处理选择答案
   const handleChoiceSelect = async (choice: string) => {
@@ -324,7 +559,8 @@ export default function WordBlitz() {
     // 使用本地存储记录学习进度
     try {
       // 更新单词进度（SM2算法）
-      updateWordProgress(currentWord.id, isCorrect);
+      const wordId = typeof currentWord.id === 'string' ? parseInt(currentWord.id.split('-')[1] || '0') : currentWord.id;
+      updateWordProgress(wordId, isCorrect);
       
       // 添加学习活动记录
       addActivity({
@@ -393,20 +629,65 @@ export default function WordBlitz() {
     <div className="flex items-center gap-3">
       <button
         onClick={playWordAudio}
-        className="btn btn-secondary"
+        className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
         title="播放发音 (空格键)"
       >
         <Volume2 className="w-4 h-4" />
       </button>
       <button
         onClick={loadNextWord}
-        className="btn btn-secondary"
+        className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
         title="跳过单词"
       >
         <RotateCcw className="w-4 h-4" />
       </button>
     </div>
   );
+
+  if (showSetup) {
+    return (
+      <>
+        <PageContainer>
+          <div className="flex justify-center items-center min-h-[400px]">
+            <p className="text-gray-600 dark:text-gray-300">请选择课程开始游戏</p>
+          </div>
+        </PageContainer>
+        <GameSetup 
+          onStartGame={handleStartGame}
+          onClose={() => setShowSetup(false)}
+        />
+      </>
+    );
+  }
+
+  if (loading) {
+    return (
+      <PageContainer>
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">加载课程数据中...</p>
+          </div>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (!currentWord) {
+    return (
+      <PageContainer>
+        <div className="text-center py-16">
+          <p className="text-gray-600 dark:text-gray-300 mb-4">没有可用的题目</p>
+          <button
+            onClick={() => setShowSetup(true)}
+            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg"
+          >
+            重新选择课程
+          </button>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer
@@ -416,25 +697,25 @@ export default function WordBlitz() {
     >
       {/* 游戏统计 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-text-primary mb-1">{gameStats.score}</div>
-          <div className="text-sm text-text-secondary">积分</div>
-        </CardContainer>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
+          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{gameStats.score}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">积分</div>
+        </div>
         
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-warning mb-1">🔥 {gameStats.streak}</div>
-          <div className="text-sm text-text-secondary">连击</div>
-        </CardContainer>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
+          <div className="text-2xl font-bold text-orange-500 mb-1">🔥 {gameStats.streak}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">连击</div>
+        </div>
         
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-success mb-1">{accuracyRate}%</div>
-          <div className="text-sm text-text-secondary">准确率</div>
-        </CardContainer>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
+          <div className="text-2xl font-bold text-green-500 mb-1">{accuracyRate}%</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">准确率</div>
+        </div>
         
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-info mb-1">{gameStats.totalAnswers}</div>
-          <div className="text-sm text-text-secondary">已答题</div>
-        </CardContainer>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
+          <div className="text-2xl font-bold text-blue-500 mb-1">{gameStats.totalAnswers}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">已答题</div>
+        </div>
       </div>
 
       {/* 进度条 */}
@@ -445,67 +726,50 @@ export default function WordBlitz() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          <div className="progress-bar">
+          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div 
-              className="progress-fill"
+              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500"
               style={{ width: `${accuracyRate}%` }}
             />
           </div>
-          <div className="flex justify-between text-sm text-text-muted mt-2">
+          <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
             <span>学习进度</span>
             <span>{accuracyRate}%</span>
           </div>
         </motion.div>
       )}
 
-      {/* 课程设置 */}
-      <CardContainer className="p-4 mb-6" hover={false}>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-text-secondary" />
-              <label className="text-sm text-text-secondary">选择课程:</label>
-              <select
-                value={selectedCourseId ?? ''}
-                onChange={(e) => setSelectedCourseId(Number(e.target.value) || null)}
-                className="input"
-                style={{ minWidth: '200px' }}
-              >
-                <option value="">默认课程</option>
-                {courses.map(course => (
-                  <option key={course.id} value={course.id}>
-                    {course.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {/* 游戏进度 */}
+      {gameData.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              第 {currentIndex + 1} 题，共 {gameData.length} 题
+            </span>
+            <button
+              onClick={() => setShowSetup(true)}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
+              title="重新选择课程"
+            >
+              <Settings size={16} />
+            </button>
+          </div>
+          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500"
+              style={{ width: `${((currentIndex + 1) / gameData.length) * 100}%` }}
+            />
           </div>
         </div>
-      </CardContainer>
+      )}
 
-      {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="loading-spinner"></div>
-        </div>
-      ) : (
-        <>
-          {/* 单词显示卡片 */}
-          <motion.div
-            className="mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
+      {/* 单词显示卡片 */}
+          <div className="mb-8">
             <WordCard word={currentWord} onPlayAudio={playWordAudio} />
-          </motion.div>
+          </div>
 
           {/* 选择按钮 */}
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {choices.map((choice, index) => (
               <ChoiceButton
                 key={choice}
@@ -517,23 +781,18 @@ export default function WordBlitz() {
                 delay={index * 0.1}
               />
             ))}
-          </motion.div>
+          </div>
 
           {/* 快捷键提示 */}
-          <motion.div
-            className="text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            <CardContainer className="p-3" hover={false}>
-              <div className="flex flex-wrap gap-4 justify-center text-xs text-text-muted">
+          <div className="text-center">
+            <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3">
+              <div className="flex flex-wrap gap-4 justify-center text-xs text-gray-500 dark:text-gray-400">
                 <span>空格键 = 播放发音</span>
                 <span>1-4 = 选择对应选项</span>
                 <span>快速选择提升分数</span>
               </div>
-            </CardContainer>
-          </motion.div>
+            </div>
+          </div>
 
           {/* 游戏结果显示 */}
           <AnimatePresence>
@@ -546,25 +805,23 @@ export default function WordBlitz() {
                 transition={{ duration: 0.3 }}
               >
                 {gameResult === 'correct' ? (
-                  <CardContainer className="p-4 border-success bg-success/10" hover={false}>
-                    <div className="flex items-center justify-center gap-2 text-success">
+                  <div className="bg-white dark:bg-slate-800 border border-green-500 bg-green-50 dark:bg-green-900/20 rounded-xl p-4">
+                    <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
                       <CheckCircle className="w-5 h-5" />
                       <span className="font-medium">正确！"{currentWord.term}" 的意思是 "{currentWord.meaning}"</span>
                     </div>
-                  </CardContainer>
+                  </div>
                 ) : (
-                  <CardContainer className="p-4 border-error bg-error/10" hover={false}>
-                    <div className="flex items-center justify-center gap-2 text-error">
+                  <div className="bg-white dark:bg-slate-800 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
+                    <div className="flex items-center justify-center gap-2 text-red-600 dark:text-red-400">
                       <XCircle className="w-5 h-5" />
                       <span className="font-medium">错误！正确答案是 "{currentWord.meaning}"</span>
                     </div>
-                  </CardContainer>
+                  </div>
                 )}
               </motion.div>
             )}
           </AnimatePresence>
-        </>
-      )}
     </PageContainer>
   );
 }

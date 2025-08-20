@@ -82,7 +82,9 @@
       "Bash(curl:*)",
       "Bash(rm:*)",
       "Bash(mkdir:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(wc:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": [],

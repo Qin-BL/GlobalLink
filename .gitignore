@@ -5,6 +5,8 @@ node_modules
 .claude
 
 .next
+.next-env
+.codebudy
+.idea
 
 docs
-

@@ -14,6 +14,9 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { loadGameDataForCourse, SentenceBuilderItem } from '@/lib/gameData';
+import toast from 'react-hot-toast';
 
 // 键盘练习模式
 type PracticeMode = 'typing' | 'speed' | 'accuracy';
@@ -59,12 +62,83 @@ const practiceTexts = [
   }
 ];
 
+// 课程选择组件
+interface CourseSetupProps {
+  onStartPractice: (courseId: string) => void;
+  onClose: () => void;
+}
+
+function CourseSetup({ onStartPractice, onClose }: CourseSetupProps) {
+  const [selectedCourse, setSelectedCourse] = useState('01');
+  
+  const courses = [
+    { id: '01', title: '基础英语入门 - 第一课', difficulty: '初级', lessons: 50 },
+    { id: '02', title: '日常对话进阶训练', difficulty: '初级', lessons: 45 },
+    { id: '03', title: '商务英语基础', difficulty: '中级', lessons: 60 },
+    { id: '04', title: '语法结构强化', difficulty: '中级', lessons: 55 },
+    { id: '05', title: '高级表达技巧', difficulty: '高级', lessons: 40 }
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 w-full max-w-md mx-4"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">选择练习课程</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="space-y-3 mb-6">
+          {courses.map((course) => (
+            <button
+              key={course.id}
+              onClick={() => setSelectedCourse(course.id)}
+              className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
+                selectedCourse === course.id
+                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                  : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
+              }`}
+            >
+              <h3 className="font-medium text-gray-900 dark:text-white">{course.title}</h3>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-sm text-gray-500 dark:text-gray-400">难度: {course.difficulty}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{course.lessons} 个项目</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        <button
+          onClick={() => onStartPractice(selectedCourse)}
+          className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+        >
+          开始键盘练习
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function KeyboardPracticePage() {
+  const searchParams = useSearchParams();
   const [selectedMode, setSelectedMode] = useState<PracticeMode>('typing');
   const [selectedText, setSelectedText] = useState(practiceTexts[0]);
   const [currentInput, setCurrentInput] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
+  const [courseData, setCourseData] = useState<SentenceBuilderItem[]>([]);
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<TypingStats>({
     wpm: 0,
     accuracy: 0,
@@ -72,6 +146,66 @@ export default function KeyboardPracticePage() {
     totalChars: 0,
     correctChars: 0
   });
+
+  // 检查URL参数并初始化
+  useEffect(() => {
+    const courseIdFromUrl = searchParams.get('courseId');
+    if (courseIdFromUrl) {
+      handleStartPractice(courseIdFromUrl);
+    } else {
+      setShowSetup(true);
+      setLoading(false);
+    }
+  }, [searchParams]);
+
+  // 加载课程数据
+  const handleStartPractice = async (courseId: string) => {
+    setLoading(true);
+    setShowSetup(false);
+    
+    try {
+      const data = await loadGameDataForCourse(courseId, 'sentence-builder');
+      setCourseData(data);
+      
+      if (data.length > 0) {
+        // 使用第一个句子作为练习文本
+        updatePracticeText(data[0]);
+        setCurrentSentenceIndex(0);
+      }
+      
+      toast.success('课程加载成功！开始键盘练习吧！');
+    } catch (error) {
+      console.error('Failed to load course data:', error);
+      toast.error('加载课程失败，请重试');
+      setShowSetup(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 更新练习文本
+  const updatePracticeText = (sentence: SentenceBuilderItem) => {
+    setSelectedText({
+      id: parseInt(sentence.id),
+      level: 'course',
+      title: `第${currentSentenceIndex + 1}句练习`,
+      text: sentence.english.toLowerCase(),
+      difficulty: '课程'
+    });
+  };
+
+  // 下一句练习
+  const nextSentence = () => {
+    if (currentSentenceIndex < courseData.length - 1) {
+      const nextIndex = currentSentenceIndex + 1;
+      setCurrentSentenceIndex(nextIndex);
+      updatePracticeText(courseData[nextIndex]);
+      resetPractice();
+    } else {
+      toast.success('恭喜完成所有练习！');
+    }
+  };
+
 
   // 计算打字统计
   const calculateStats = useCallback(() => {
@@ -147,7 +281,13 @@ export default function KeyboardPracticePage() {
     // 检查是否完成
     if (value === selectedText.text) {
       setIsActive(false);
-      // TODO: 保存成绩，显示完成提示
+      // 显示完成提示
+      toast.success('完成！准备下一句练习');
+      
+      // 自动进入下一句（2秒后）
+      setTimeout(() => {
+        nextSentence();
+      }, 2000);
     }
   };
 
@@ -174,8 +314,29 @@ export default function KeyboardPracticePage() {
     });
   };
 
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">加载课程数据中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 mt-10">
+      {/* 课程选择弹框 */}
+      <AnimatePresence>
+        {showSetup && (
+          <CourseSetup 
+            onStartPractice={handleStartPractice}
+            onClose={() => setShowSetup(false)}
+          />
+        )}
+      </AnimatePresence>
       {/* 页面头部 */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -292,6 +453,27 @@ export default function KeyboardPracticePage() {
                   <RotateCcw size={18} />
                   重置
                 </button>
+                
+                {/* 课程控制按钮 */}
+                {courseData.length > 0 && (
+                  <>
+                    <button
+                      onClick={nextSentence}
+                      disabled={currentSentenceIndex >= courseData.length - 1}
+                      className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-2.5 px-4 rounded-lg transition-colors"
+                    >
+                      <Target size={18} />
+                      下一句 ({currentSentenceIndex + 1}/{courseData.length})
+                    </button>
+                    <button
+                      onClick={() => setShowSetup(true)}
+                      className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-2.5 px-4 rounded-lg transition-colors"
+                    >
+                      <Keyboard size={18} />
+                      重选课程
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

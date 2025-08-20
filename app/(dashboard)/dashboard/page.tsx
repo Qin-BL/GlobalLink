@@ -108,10 +108,10 @@ export default function DashboardPage() {
     <div className="page-container">
       {/* 欢迎标题 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
           欢迎使用 English SM2！
         </h1>
-        <p style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-gray-600 dark:text-gray-300">
           开始你的免费英语学习之旅，科学高效地掌握英语！
         </p>
       </div>
@@ -149,25 +149,25 @@ export default function DashboardPage() {
       </div>
 
       {/* 今日进度 */}
-      <div className="card p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>今日学习进度</h2>
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">今日学习进度</h2>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <span className="text-sm text-gray-600 dark:text-gray-300">
             已完成 {todayProgress} / {userStats.dailyGoal} 个单词
           </span>
-          <span className="text-sm font-medium" style={{ color: 'var(--info-color)' }}>
+          <span className="text-sm font-medium text-purple-500">
             {Math.round((todayProgress / userStats.dailyGoal) * 100)}%
           </span>
         </div>
-        <div className="progress-bar">
+        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div 
-            className="progress-fill" 
+            className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500" 
             style={{ width: `${Math.min((todayProgress / userStats.dailyGoal) * 100, 100)}%` }}
           ></div>
         </div>
         {todayProgress >= userStats.dailyGoal && (
-          <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(35, 134, 54, 0.1)', border: '1px solid var(--success-color)' }}>
-            <p className="font-medium" style={{ color: 'var(--success-color)' }}>🎉 恭喜！今日目标已完成！</p>
+          <div className="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
+            <p className="font-medium text-green-600 dark:text-green-400">🎉 恭喜！今日目标已完成！</p>
           </div>
         )}
       </div>
@@ -175,8 +175,8 @@ export default function DashboardPage() {
       {/* 主要操作区域 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* 学习模块 */}
-        <div className="card p-6">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>开始学习</h2>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">开始学习</h2>
           <div className="space-y-4">
             <ActionCard
               title="单词闪卡"
@@ -203,8 +203,8 @@ export default function DashboardPage() {
         </div>
 
         {/* 复习和统计 */}
-        <div className="card p-6">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>复习与分析</h2>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">复习与分析</h2>
           <div className="space-y-4">
             <ActionCard
               title="错题回顾"
@@ -233,28 +233,26 @@ export default function DashboardPage() {
 
       {/* 最近活动 */}
       {recentActivity.length > 0 && (
-        <div className="card p-6">
-          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>最近学习活动</h2>
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">最近学习活动</h2>
           <div className="space-y-3">
             {recentActivity.slice(0, 5).map((activity) => (
               <div 
                 key={activity.sessionId}
-                className="flex items-center justify-between p-3 rounded-lg"
-                style={{ background: 'var(--hover-bg)' }}
+                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-700"
               >
                 <div className="flex items-center">
                   <span 
-                    className="w-2 h-2 rounded-full mr-3"
-                    style={{ background: activity.isCorrect ? 'var(--success-color)' : 'var(--error-color)' }}
+                    className={`w-2 h-2 rounded-full mr-3 ${activity.isCorrect ? 'bg-green-500' : 'bg-red-500'}`}
                   ></span>
                   <div>
-                    <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{activity.word}</span>
-                    <span className="text-sm ml-2" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="font-medium text-gray-900 dark:text-white">{activity.word}</span>
+                    <span className="text-sm ml-2 text-gray-600 dark:text-gray-300">
                       {activity.isCorrect ? '✅ 正确' : '❌ 错误'}
                     </span>
                   </div>
                 </div>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   {new Date(activity.timestamp).toLocaleTimeString('zh-CN', {
                     hour: '2-digit',
                     minute: '2-digit'
@@ -267,8 +265,7 @@ export default function DashboardPage() {
             <div className="mt-4 text-center">
               <Link 
                 href="/statistics"
-                className="text-sm font-medium hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--info-color)' }}
+                className="text-sm font-medium text-purple-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
               >
                 查看更多活动 →
               </Link>
@@ -320,19 +317,16 @@ function ActionCard({ title, description, icon, href, color }: ActionCardProps) 
   return (
     <Link 
       href={href}
-      className="block rounded-lg p-4 transition-all duration-200 hover:transform hover:translateY(-1px)"
-      style={{ 
-        background: color,
-        border: '1px solid var(--border-color)'
-      }}
+      className="block rounded-lg p-4 transition-all duration-200 hover:transform hover:translateY(-1px) bg-opacity-50 border border-gray-200 dark:border-slate-600"
+      style={{ background: color }}
     >
       <div className="flex items-center">
         <span className="text-2xl mr-4">{icon}</span>
         <div>
-          <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{description}</p>
+          <h3 className="font-medium text-gray-900 dark:text-white">{title}</h3>
+          <p className="text-sm mt-1 text-gray-600 dark:text-gray-300">{description}</p>
         </div>
-        <span className="ml-auto" style={{ color: 'var(--text-muted)' }}>→</span>
+        <span className="ml-auto text-gray-500 dark:text-gray-400">→</span>
       </div>
     </Link>
   )

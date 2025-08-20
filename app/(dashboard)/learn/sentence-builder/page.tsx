@@ -65,10 +65,10 @@ function WordToken({
       className={`
         px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-sm
         ${isSelected 
-          ? 'bg-info/10 border-info text-info' 
+          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-600 dark:text-blue-400' 
           : isHighlighted
-          ? 'bg-warning/10 border-warning text-warning'
-          : 'bg-card-dark border-border-color text-text-primary hover:bg-hover hover:border-info'
+          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-600 dark:text-yellow-400'
+          : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-blue-500'
         }
         active:scale-95 shadow-sm hover:shadow-md
       `}
@@ -81,9 +81,9 @@ function WordToken({
 // 句子构建区域组件
 function SentenceArea({ tokens, onRemove }: { tokens: string[]; onRemove: (index: number) => void }) {
   return (
-    <div className="min-h-24 border-2 border-dashed border-border-color rounded-lg p-4 bg-secondary-dark transition-all duration-200">
+    <div className="min-h-24 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-4 bg-gray-50 dark:bg-slate-700 transition-all duration-200">
       {tokens.length === 0 ? (
-        <div className="flex items-center justify-center h-16 text-text-muted italic">
+        <div className="flex items-center justify-center h-16 text-gray-500 dark:text-gray-400 italic">
           <Target className="w-5 h-5 mr-2" />
           点击下方单词来构建句子
         </div>
@@ -101,7 +101,7 @@ function SentenceArea({ tokens, onRemove }: { tokens: string[]; onRemove: (index
               >
                 <button
                   onClick={() => onRemove(index)}
-                  className="px-3 py-2 bg-info/10 border border-info rounded-md text-info hover:bg-info/20 transition-colors font-medium"
+                  className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-600 rounded-md text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors font-medium"
                 >
                   {token}
                 </button>
@@ -174,10 +174,12 @@ export default function SentenceBuilder() {
         const data = await response.json();
         setCourses(data.courses || []);
         
-        // 自动选择连词造句课程
-        const sentenceBuilderCourse = data.courses.find((c: Course) => c.mode === 'sentence-builder');
-        if (sentenceBuilderCourse) {
-          setSelectedCourseId(sentenceBuilderCourse.id);
+        // 自动选择第一个课程作为默认课程
+        if (data.courses && data.courses.length > 0) {
+          setSelectedCourseId(data.courses[0].id);
+        } else {
+          // 如果没有课程数据，使用默认课程ID
+          setSelectedCourseId(1);
         }
       } catch (error) {
         console.error('Failed to load courses:', error);
@@ -195,16 +197,30 @@ export default function SentenceBuilder() {
         ? `?courseId=${selectedCourseId}&userId=${userId}` 
         : `?userId=${userId}`;
       
+      // console.log('Loading sentence builder item with query:', query);
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
       const data = await response.json();
+      // console.log('Sentence builder API response:', data);
       
       if (data.type === 'item') {
         setItem(data.item);
-        setWordPool(shuffle(data.item.tokens || []));
+        
+        // 从答案中生成单词池
+        const answerWords = data.item.answer.toLowerCase().split(' ');
+        // 添加一些干扰词
+        const distractorWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'have', 'has', 'do', 'does', 'will', 'can', 'could', 'should', 'would'];
+        const shuffledDistractors = distractorWords.sort(() => Math.random() - 0.5).slice(0, 3);
+        const allWords = [...answerWords, ...shuffledDistractors];
+        
+        setWordPool(shuffle(allWords));
         setSelectedTokens([]);
         setResult('idle');
         setShowHint(false);
         setHighlightedIndex(0);
+        
+        // console.log('Generated word pool:', allWords);
+      } else {
+        // console.log('No item data received:', data);
       }
     } catch (error) {
       console.error('Failed to load next item:', error);
@@ -377,23 +393,23 @@ export default function SentenceBuilder() {
       {/* 游戏统计 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-text-primary mb-1">{gameStats.score.toLocaleString()}</div>
-          <div className="text-sm text-text-secondary">积分</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{gameStats.score.toLocaleString()}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">积分</div>
         </CardContainer>
         
         <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-warning mb-1">🔥 {gameStats.streak}</div>
-          <div className="text-sm text-text-secondary">连击</div>
+          <div className="text-2xl font-bold text-orange-500 mb-1">🔥 {gameStats.streak}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">连击</div>
         </CardContainer>
         
         <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-success mb-1">{accuracyRate}%</div>
-          <div className="text-sm text-text-secondary">准确率</div>
+          <div className="text-2xl font-bold text-green-500 mb-1">{accuracyRate}%</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">准确率</div>
         </CardContainer>
         
         <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-info mb-1">{gameStats.correctAnswers}/{gameStats.totalAnswers}</div>
-          <div className="text-sm text-text-secondary">正确/总数</div>
+          <div className="text-2xl font-bold text-blue-500 mb-1">{gameStats.correctAnswers}/{gameStats.totalAnswers}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">正确/总数</div>
         </CardContainer>
       </div>
 
@@ -402,11 +418,11 @@ export default function SentenceBuilder() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <label className="text-sm text-text-secondary">选择课程:</label>
+              <label className="text-sm text-gray-600 dark:text-gray-300">选择课程:</label>
               <select
                 value={selectedCourseId ?? ''}
                 onChange={(e) => setSelectedCourseId(Number(e.target.value) || null)}
-                className="input"
+                className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 style={{ minWidth: '200px' }}
               >
                 <option value="">默认课程</option>
@@ -428,45 +444,35 @@ export default function SentenceBuilder() {
       ) : item ? (
         <>
           {/* 题目提示区域 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-6"
-          >
+          <div className="mb-6">
             <CardContainer className="text-center p-6" hover={false}>
-              <div className="text-sm text-text-secondary mb-2">请构建句子:</div>
-              <div className="text-xl font-bold text-text-primary mb-4">
+              <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">请构建句子:</div>
+              <div className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                 {item.prompt}
               </div>
               
               <AnimatePresence>
                 {showHint && (
                   <motion.div
-                    className="bg-warning/10 border border-warning/30 rounded-lg p-3"
+                    className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <div className="text-sm text-warning">
+                    <div className="text-sm text-yellow-800 dark:text-yellow-200">
                       💡 提示: 参考答案是 "{item.answer}"
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </CardContainer>
-          </motion.div>
+          </div>
 
           {/* 句子构建区域 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mb-6"
-          >
+          <div className="mb-6">
             <CardContainer className="p-6" hover={false}>
-              <div className="text-sm text-text-secondary mb-3">你的答案:</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">你的答案:</div>
               <SentenceArea tokens={selectedTokens} onRemove={removeWord} />
               
               <div className="flex gap-3 mt-4">
@@ -487,17 +493,12 @@ export default function SentenceBuilder() {
                 </button>
               </div>
             </CardContainer>
-          </motion.div>
+          </div>
 
           {/* 单词池 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mb-6"
-          >
+          <div className="mb-6">
             <CardContainer className="p-6" hover={false}>
-              <div className="text-sm text-text-secondary mb-4">选择单词:</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300 mb-4">选择单词:</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {wordPool.map((word, index) => (
                   <WordToken
@@ -510,28 +511,23 @@ export default function SentenceBuilder() {
                 ))}
               </div>
             </CardContainer>
-          </motion.div>
+          </div>
 
           {/* 快捷键提示 */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mb-6"
-          >
+          <div className="mb-6">
             <CardContainer className="p-3" hover={false}>
-              <div className="flex items-center gap-2 mb-1 text-text-secondary">
+              <div className="flex items-center gap-2 mb-1 text-gray-600 dark:text-gray-300">
                 <Keyboard className="w-3 h-3" />
                 <span className="font-medium">快捷键:</span>
               </div>
-              <div className="flex flex-wrap gap-4 text-xs text-text-muted">
+              <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
                 <span>空格键 = 选择高亮单词</span>
                 <span>回车键 = 提交答案</span>
                 <span>退格键 = 撤销上一个单词</span>
                 <span>←→ = 切换高亮单词</span>
               </div>
             </CardContainer>
-          </motion.div>
+          </div>
 
           {/* 结果显示 */}
           <AnimatePresence>
@@ -543,15 +539,15 @@ export default function SentenceBuilder() {
                 transition={{ duration: 0.3 }}
               >
                 {result === 'correct' ? (
-                  <CardContainer className="p-4 border-success bg-success/10" hover={false}>
-                    <div className="flex items-center gap-2 text-success">
+                  <CardContainer className="p-4 border-green-500 bg-green-50 dark:bg-green-900/20" hover={false}>
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                       <CheckCircle className="w-5 h-5" />
                       <span className="font-medium">太棒了！答案正确！</span>
                     </div>
                   </CardContainer>
                 ) : (
-                  <CardContainer className="p-4 border-error bg-error/10" hover={false}>
-                    <div className="flex items-center gap-2 text-error">
+                  <CardContainer className="p-4 border-red-500 bg-red-50 dark:bg-red-900/20" hover={false}>
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
                       <XCircle className="w-5 h-5" />
                       <span className="font-medium">答案不正确，请再试一次！</span>
                     </div>
@@ -563,9 +559,9 @@ export default function SentenceBuilder() {
         </>
       ) : (
         <div className="text-center py-20">
-          <Target className="w-16 h-16 text-text-muted mx-auto mb-4" />
-          <p className="text-text-secondary">暂无题目数据</p>
-          <p className="text-sm text-text-muted mt-2">
+          <Target className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-300">暂无题目数据</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
             请选择一个课程开始练习
           </p>
         </div>

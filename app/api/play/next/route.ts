@@ -7,7 +7,17 @@ export async function GET(req: Request) {
   let user: any = null;
   if (anonId) {
     user = await prisma.user.findUnique({ where: { anonId } });
-    if (!user) user = await prisma.user.create({ data: { anonId } });
+    if (!user) {
+      try {
+        user = await prisma.user.create({ data: { anonId } });
+      } catch (error) {
+        // Handle unique constraint violation - user might have been created by another request
+        user = await prisma.user.findUnique({ where: { anonId } });
+        if (!user) {
+          throw error; // Re-throw if it's a different error
+        }
+      }
+    }
   }
   if (courseId) {
     const course = await prisma.course.findUnique({ where: { id: Number(courseId) }, include: { units: { include: { items: true } } } });

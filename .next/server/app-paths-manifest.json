@@ -1,21 +1,9 @@
 {
   "/api/analytics/heartbeat/route": "app/api/analytics/heartbeat/route.js",
-  "/api/courses/route": "app/api/courses/route.js",
   "/api/play/next/route": "app/api/play/next/route.js",
-  "/api/leaderboard/route": "app/api/leaderboard/route.js",
-  "/page": "app/page.js",
-  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/play/chinese-english/page": "app/(dashboard)/play/chinese-english/page.js",
-  "/(dashboard)/courses/page": "app/(dashboard)/courses/page.js",
-  "/(dashboard)/play/keyboard-practice/page": "app/(dashboard)/play/keyboard-practice/page.js",
+  "/api/courses/[id]/route": "app/api/courses/[id]/route.js",
+  "/api/courses/route": "app/api/courses/route.js",
   "/(dashboard)/learn/sentence-builder/page": "app/(dashboard)/learn/sentence-builder/page.js",
-  "/(dashboard)/learn/page": "app/(dashboard)/learn/page.js",
   "/(dashboard)/play/word-blitz/page": "app/(dashboard)/play/word-blitz/page.js",
-  "/(dashboard)/leaderboard/page": "app/(dashboard)/leaderboard/page.js",
-  "/(dashboard)/analytics/page": "app/(dashboard)/analytics/page.js",
-  "/(dashboard)/achievements/page": "app/(dashboard)/achievements/page.js",
-  "/(dashboard)/help/page": "app/(dashboard)/help/page.js",
-  "/(dashboard)/review/page": "app/(dashboard)/review/page.js",
-  "/(dashboard)/profile/page": "app/(dashboard)/profile/page.js",
-  "/(dashboard)/settings/page": "app/(dashboard)/settings/page.js"
+  "/(dashboard)/play/chinese-english/page": "app/(dashboard)/play/chinese-english/page.js"
 }

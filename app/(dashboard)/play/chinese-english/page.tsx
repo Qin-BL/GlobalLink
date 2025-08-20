@@ -1,510 +1,556 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, Lightbulb, RotateCcw, CheckCircle, XCircle, MessageSquare, Trophy } from 'lucide-react';
+import { Volume2, Lightbulb, RotateCcw, CheckCircle, XCircle, MessageSquare, Trophy, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageContainer, CardContainer } from '@/components/layout/MainContent';
 import { useLayoutStore } from '@/store/layout';
+import { useSearchParams } from 'next/navigation';
+import { loadGameDataForCourse, SentenceBuilderItem, saveGameSession, GameSession } from '@/lib/gameData';
+import { getFreeUserId } from '@/lib/localStorage';
 
-// 单词Token组件 - 可拖拽的单词块
-interface WordTokenProps {
-  id: string;
-  text: string;
-  isPlaced?: boolean;
-  isCorrect?: boolean;
-  isDistractor?: boolean;
+// 游戏配置选择组件
+interface GameSetupProps {
+  onStartGame: (courseId: string) => void;
+  onClose: () => void;
 }
 
-function WordToken({ id, text, isPlaced, isCorrect, isDistractor, onClick }: WordTokenProps & { onClick?: () => void }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+function GameSetup({ onStartGame, onClose }: GameSetupProps) {
+  const [selectedCourse, setSelectedCourse] = useState('01');
+  
+  const courses = [
+    { id: '01', title: '基础英语入门 - 第一课', difficulty: '初级', lessons: 50 },
+    { id: '02', title: '日常对话进阶训练', difficulty: '初级', lessons: 45 },
+    { id: '03', title: '商务英语基础', difficulty: '中级', lessons: 60 },
+    { id: '04', title: '语法结构强化', difficulty: '中级', lessons: 55 },
+    { id: '05', title: '高级表达技巧', difficulty: '高级', lessons: 40 }
+  ];
 
   return (
-    <button
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={onClick}
-      className={`
-        px-4 py-3 rounded-lg border-2 transition-all duration-200 cursor-pointer touch-manipulation
-        select-none font-medium text-sm min-w-16 text-center
-        ${isDragging ? 'opacity-50 scale-105 shadow-xl z-50' : ''}
-        ${isPlaced ? 'opacity-50' : ''}
-        ${isDistractor 
-          ? 'bg-secondary-dark border-border-color text-text-muted' 
-          : 'bg-info/10 border-info text-info hover:bg-info/20'
-        }
-        ${isCorrect === true ? 'bg-success/10 border-success text-success' : ''}
-        ${isCorrect === false ? 'bg-error/10 border-error text-error' : ''}
-        hover:scale-105 active:scale-95
-      `}
-    >
-      {text}
-    </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6 w-full max-w-md mx-4"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">选择课程</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="space-y-3 mb-6">
+          {courses.map((course) => (
+            <button
+              key={course.id}
+              onClick={() => setSelectedCourse(course.id)}
+              className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
+                selectedCourse === course.id
+                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                  : 'border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500'
+              }`}
+            >
+              <h3 className="font-medium text-gray-900 dark:text-white">{course.title}</h3>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-sm text-gray-500 dark:text-gray-400">难度: {course.difficulty}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{course.lessons} 个项目</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        <button
+          onClick={() => onStartGame(selectedCourse)}
+          className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+        >
+          开始游戏
+        </button>
+      </motion.div>
+    </div>
   );
 }
 
-// 放置区域组件 - 用户构建句子的区域
-import { useDroppable } from '@dnd-kit/core';
-
-interface DropZoneProps {
-  tokens: string[];
-  isActive: boolean;
-  validationResult?: { correct: boolean; errors: string[] } | null;
-  onRemoveToken?: (index: number) => void;
+// 单词Token组件
+interface WordTokenProps {
+  text: string;
+  isUsed?: boolean;
+  isCorrect?: boolean;
+  isWrong?: boolean;
+  onClick?: () => void;
 }
 
-function DropZone({ tokens, isActive, validationResult, onRemoveToken }: DropZoneProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: 'drop-zone',
-  });
-
+function WordToken({ text, isUsed, isCorrect, isWrong, onClick }: WordTokenProps) {
   return (
-    <div
-      ref={setNodeRef}
+    <motion.button
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      disabled={isUsed}
       className={`
-        min-h-32 border-2 border-dashed rounded-lg p-4 transition-all duration-200
-        flex flex-wrap gap-2 items-center justify-center
-        ${isOver || isActive
-          ? 'border-info bg-info/10 scale-102' 
-          : 'border-border-color bg-secondary-dark'
-        }
-        ${validationResult?.correct 
-          ? 'border-success bg-success/10' 
-          : validationResult?.correct === false 
-          ? 'border-error bg-error/10' 
-          : ''
-        }
+        px-4 py-3 rounded-lg font-medium text-sm border-2 transition-all
+        ${isUsed ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}
+        ${isCorrect ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-400' : ''}
+        ${isWrong ? 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-700 dark:text-red-400' : ''}
+        ${!isCorrect && !isWrong && !isUsed ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30' : ''}
       `}
     >
+      {text}
+    </motion.button>
+  );
+}
+
+// 句子构建区域
+interface SentenceAreaProps {
+  tokens: string[];
+  onRemoveToken: (index: number) => void;
+  isCorrect?: boolean;
+  isWrong?: boolean;
+}
+
+function SentenceArea({ tokens, onRemoveToken, isCorrect, isWrong }: SentenceAreaProps) {
+  return (
+    <div className={`
+      min-h-24 border-2 border-dashed rounded-lg p-4 transition-all
+      ${isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}
+      ${isWrong ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}
+      ${!isCorrect && !isWrong ? 'border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-700' : ''}
+    `}>
       {tokens.length === 0 ? (
-        <div className="text-text-muted text-sm italic">
-          将单词拖拽到这里组成句子，或点击下方单词
+        <div className="flex items-center justify-center h-16">
+          <p className="text-gray-500 dark:text-gray-400 text-sm italic">
+            点击下方单词来构建句子
+          </p>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {tokens.map((token, index) => (
-            <motion.button
-              key={`placed-${index}`}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              onClick={() => onRemoveToken?.(index)}
-              className="px-3 py-2 bg-card-dark border border-border-color rounded-md shadow-sm text-text-primary hover:bg-hover-bg cursor-pointer transition-colors"
-            >
-              {token}
-            </motion.button>
-          ))}
+          <AnimatePresence>
+            {tokens.map((token, index) => (
+              <motion.button
+                key={`placed-${index}-${token}`}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={() => onRemoveToken(index)}
+                className="px-3 py-2 bg-white dark:bg-slate-600 border border-gray-200 dark:border-slate-500 rounded-lg text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-500 cursor-pointer transition-colors"
+              >
+                {token}
+              </motion.button>
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>
   );
 }
 
-// 主要的汉英对照学习页面组件
+// 主游戏组件
 export default function ChineseEnglishGame() {
   const { setBreadcrumbs } = useLayoutStore();
+  const searchParams = useSearchParams();
   
-  // 状态管理
-  const [currentSentence, setCurrentSentence] = useState({
-    id: 1,
-    chinese: '我每天早上七点起床。',
-    english: 'I wake up at seven o\'clock every morning.',
-    tokens: ['I', 'wake', 'up', 'at', 'seven', 'o\'clock', 'every', 'morning'],
-    distractors: ['get', 'usually', 'sometimes', 'always'],
-    hint: '这是一个描述日常习惯的句子，使用现在时态'
-  });
-  
+  // 游戏状态
+  const [showSetup, setShowSetup] = useState(false);
+  const [gameData, setGameData] = useState<SentenceBuilderItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [availableTokens, setAvailableTokens] = useState<string[]>([]);
   const [placedTokens, setPlacedTokens] = useState<string[]>([]);
-  const [draggedToken, setDraggedToken] = useState<string | null>(null);
-  const [isDropZoneActive, setIsDropZoneActive] = useState(false);
+  const [usedTokens, setUsedTokens] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
+  const [validationState, setValidationState] = useState<'none' | 'correct' | 'wrong'>('none');
+  const [loading, setLoading] = useState(true);
+  
+  // 游戏统计
   const [gameStats, setGameStats] = useState({
-    score: 1250,
-    streak: 12,
-    progress: 7,
-    total: 20,
+    score: 0,
+    streak: 0,
+    correctAnswers: 0,
+    totalAnswers: 0,
     hintsUsed: 0
   });
-  const [validationResult, setValidationResult] = useState<{ correct: boolean; errors: string[] } | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
       { label: '首页', href: '/' },
-      { label: '游戏模式', href: '/games' },
-      { label: '汉英对照', href: '/play/chinese-english' }
+      { label: '游戏模式', href: '/play' },
+      { label: '中译英模式', href: '/play/chinese-english' }
     ]);
   }, [setBreadcrumbs]);
 
-  // 初始化可用单词
+  // 检查URL参数，如果有课程ID则直接开始游戏
   useEffect(() => {
-    const shuffledTokens = [...currentSentence.tokens, ...currentSentence.distractors]
-      .sort(() => Math.random() - 0.5);
-    setAvailableTokens(shuffledTokens);
-  }, [currentSentence]);
-
-  // 处理拖拽开始
-  const handleDragStart = (event: DragStartEvent) => {
-    setDraggedToken(event.active.id as string);
-  };
-
-  // 处理拖拽结束
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over) {
-      setDraggedToken(null);
-      setIsDropZoneActive(false);
-      return;
-    }
-
-    const tokenText = active.id as string;
-    
-    // 如果拖拽到放置区域
-    if (over.id === 'drop-zone') {
-      setPlacedTokens(prev => [...prev, tokenText]);
-      setAvailableTokens(prev => prev.filter(token => token !== tokenText));
-    }
-    
-    setDraggedToken(null);
-    setIsDropZoneActive(false);
-    setValidationResult(null);
-  };
-
-  // 处理拖拽悬停
-  const handleDragOver = (event: any) => {
-    if (event.over?.id === 'drop-zone') {
-      setIsDropZoneActive(true);
+    const courseIdFromUrl = searchParams.get('courseId');
+    if (courseIdFromUrl) {
+      setShowSetup(false);
+      handleStartGame(courseIdFromUrl);
     } else {
-      setIsDropZoneActive(false);
+      setShowSetup(true);
+      setLoading(false);
+    }
+  }, [searchParams]);
+
+  // 开始游戏
+  const handleStartGame = async (courseId: string) => {
+    setLoading(true);
+    setShowSetup(false);
+    
+    try {
+      const data = await loadGameDataForCourse(courseId, 'chinese-english');
+      setGameData(data);
+      
+      if (data.length > 0) {
+        initializeCurrentSentence(data[0]);
+      }
+      
+      toast.success('课程加载成功！开始游戏吧！');
+    } catch (error) {
+      console.error('Failed to load game data:', error);
+      toast.error('加载课程失败，请重试');
+      setShowSetup(true);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 播放中文发音
-  const playChineseAudio = () => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(currentSentence.chinese);
-      utterance.lang = 'zh-CN';
-      speechSynthesis.speak(utterance);
+  // 初始化当前句子
+  const initializeCurrentSentence = (item: SentenceBuilderItem) => {
+    const allTokens = [...item.words, ...item.distractors];
+    const shuffledTokens = allTokens.sort(() => Math.random() - 0.5);
+    
+    setAvailableTokens(shuffledTokens);
+    setPlacedTokens([]);
+    setUsedTokens(new Set());
+    setValidationState('none');
+    setShowHint(false);
+  };
+
+  // 当前句子数据
+  const currentSentence = gameData[currentIndex];
+
+  // 添加单词到句子
+  const addTokenToSentence = (token: string) => {
+    if (usedTokens.has(token)) return;
+    
+    setPlacedTokens(prev => [...prev, token]);
+    setUsedTokens(prev => new Set([...prev, token]));
+    setValidationState('none');
+  };
+
+  // 从句子中移除单词
+  const removeTokenFromSentence = (index: number) => {
+    const tokenToRemove = placedTokens[index];
+    setPlacedTokens(prev => prev.filter((_, i) => i !== index));
+    setUsedTokens(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(tokenToRemove);
+      return newSet;
+    });
+    setValidationState('none');
+  };
+
+  // 检查答案
+  const checkAnswer = () => {
+    if (!currentSentence || placedTokens.length === 0) return;
+    
+    const userAnswer = placedTokens.join(' ').toLowerCase();
+    const correctAnswer = currentSentence.english.toLowerCase();
+    
+    const isCorrect = userAnswer === correctAnswer;
+    
+    setValidationState(isCorrect ? 'correct' : 'wrong');
+    
+    // 更新统计
+    setGameStats(prev => ({
+      ...prev,
+      totalAnswers: prev.totalAnswers + 1,
+      correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0),
+      score: prev.score + (isCorrect ? (showHint ? 5 : 10) : 0),
+      streak: isCorrect ? prev.streak + 1 : 0
+    }));
+    
+    if (isCorrect) {
+      toast.success('回答正确！');
+      
+      // 2秒后自动进入下一题
+      setTimeout(() => {
+        handleNextSentence();
+      }, 2000);
+    } else {
+      toast.error('答案不正确，请重试');
     }
   };
 
-  // 播放英文发音
-  const playEnglishAudio = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      speechSynthesis.speak(utterance);
+  // 下一句
+  const handleNextSentence = () => {
+    if (currentIndex < gameData.length - 1) {
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
+      initializeCurrentSentence(gameData[nextIndex]);
+    } else {
+      // 游戏结束
+      toast.success('恭喜完成所有题目！');
+      handleGameComplete();
+    }
+  };
+
+  // 游戏完成
+  const handleGameComplete = () => {
+    const session: GameSession = {
+      id: `session-${Date.now()}`,
+      courseId: gameData[0]?.id.split('-')[0] || '01',
+      gameType: 'chinese-english',
+      words: [],
+      score: gameStats.score,
+      correctAnswers: gameStats.correctAnswers,
+      totalAnswers: gameStats.totalAnswers,
+      streak: gameStats.streak,
+      startTime: new Date(Date.now() - gameStats.totalAnswers * 30000), // 估算
+      endTime: new Date(),
+      completed: true
+    };
+    
+    saveGameSession(session);
+    
+    // 显示结果或返回首页
+    setTimeout(() => {
+      window.location.href = '/dashboard';
+    }, 3000);
+  };
+
+  // 重置当前题目
+  const resetCurrentSentence = () => {
+    if (currentSentence) {
+      initializeCurrentSentence(currentSentence);
     }
   };
 
   // 显示提示
-  const showHintDialog = () => {
-    setShowHint(true);
-    setGameStats(prev => ({ ...prev, hintsUsed: prev.hintsUsed + 1 }));
+  const toggleHint = () => {
+    setShowHint(!showHint);
+    if (!showHint) {
+      setGameStats(prev => ({ ...prev, hintsUsed: prev.hintsUsed + 1 }));
+    }
   };
 
-  // 重置当前句子
-  const resetSentence = () => {
-    setPlacedTokens([]);
-    const shuffledTokens = [...currentSentence.tokens, ...currentSentence.distractors]
-      .sort(() => Math.random() - 0.5);
-    setAvailableTokens(shuffledTokens);
-    setValidationResult(null);
-    setShowHint(false);
+  // 播放发音
+  const playPronunciation = () => {
+    if (currentSentence?.soundmark) {
+      // 这里可以集成语音合成API
+      toast.success('发音功能开发中...');
+    }
   };
 
-  // 验证答案
-  const validateAnswer = () => {
-    setIsSubmitting(true);
-    
-    // 模拟验证逻辑
-    setTimeout(() => {
-      const userAnswer = placedTokens.join(' ');
-      const correctAnswer = currentSentence.english;
-      const isCorrect = userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
-      
-      if (isCorrect) {
-        setValidationResult({ correct: true, errors: [] });
-        setGameStats(prev => ({ 
-          ...prev, 
-          score: prev.score + 100,
-          streak: prev.streak + 1,
-          progress: prev.progress + 1
-        }));
-        toast.success('恭喜！答案正确！', {
-          icon: '🎉',
-          duration: 2000,
-        });
-        
-        // 播放正确答案
-        playEnglishAudio(correctAnswer);
-        
-        // 2秒后跳转到下一句
-        setTimeout(() => {
-          // 这里可以加载下一个句子
-          resetSentence();
-        }, 2000);
-      } else {
-        setValidationResult({ correct: false, errors: ['单词顺序不正确'] });
-        toast.error('再试一次！', {
-          icon: '🤔',
-          duration: 2000,
-        });
-      }
-      
-      setIsSubmitting(false);
-    }, 500);
-  };
+  if (showSetup) {
+    return (
+      <>
+        <PageContainer>
+          <div className="flex justify-center items-center min-h-[400px]">
+            <p className="text-gray-600 dark:text-gray-300">请选择课程开始游戏</p>
+          </div>
+        </PageContainer>
+        <GameSetup 
+          onStartGame={handleStartGame}
+          onClose={() => setShowSetup(false)}
+        />
+      </>
+    );
+  }
 
-  const headerActions = (
-    <div className="flex items-center gap-3">
-      <button 
-        onClick={showHintDialog}
-        className="btn btn-secondary"
-        title="获取提示"
-      >
-        <Lightbulb className="w-4 h-4" />
-      </button>
-      <button 
-        onClick={playChineseAudio}
-        className="btn btn-secondary"
-        title="播放中文发音"
-      >
-        <Volume2 className="w-4 h-4" />
-      </button>
-      <button 
-        onClick={resetSentence}
-        className="btn btn-secondary"
-        title="重置"
-      >
-        <RotateCcw className="w-4 h-4" />
-      </button>
-    </div>
-  );
+  if (loading) {
+    return (
+      <PageContainer>
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">加载课程数据中...</p>
+          </div>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (!currentSentence) {
+    return (
+      <PageContainer>
+        <div className="text-center py-16">
+          <p className="text-gray-600 dark:text-gray-300 mb-4">没有可用的题目</p>
+          <button
+            onClick={() => setShowSetup(true)}
+            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg"
+          >
+            重新选择课程
+          </button>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
-    <PageContainer
-      title="汉英对照"
-      subtitle="拖拽单词组成正确的英文句子"
-      headerActions={headerActions}
-    >
-      {/* 游戏统计 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-text-primary mb-1">{gameStats.score.toLocaleString()}</div>
-          <div className="text-sm text-text-secondary">积分</div>
-        </CardContainer>
-        
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-warning mb-1">🔥 {gameStats.streak}</div>
-          <div className="text-sm text-text-secondary">连击</div>
-        </CardContainer>
-        
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-info mb-1">{gameStats.progress}/{gameStats.total}</div>
-          <div className="text-sm text-text-secondary">进度</div>
-        </CardContainer>
-        
-        <CardContainer className="text-center p-4" hover={false}>
-          <div className="text-2xl font-bold text-text-muted mb-1">{gameStats.hintsUsed}</div>
-          <div className="text-sm text-text-secondary">提示使用</div>
-        </CardContainer>
-      </div>
-
-      {/* 进度条 */}
-      <motion.div
-        className="mb-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.1 }}
-      >
-        <div className="progress-bar">
-          <motion.div 
-            className="progress-fill"
-            initial={{ width: 0 }}
-            animate={{ width: `${(gameStats.progress / gameStats.total) * 100}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
+    <PageContainer>
+      {/* 游戏头部 */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">中译英练习</h1>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowSetup(true)}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
+              title="设置"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
         </div>
-        <div className="flex justify-between text-sm text-text-muted mt-2">
-          <span>当前进度</span>
-          <span>{gameStats.progress}/{gameStats.total} 完成</span>
-        </div>
-      </motion.div>
-
-      {/* 中文句子显示区域 */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-6"
-      >
-        <CardContainer className="text-center p-6" hover={false}>
-          <div className="text-sm text-text-secondary mb-2">请将下面的中文翻译成英文</div>
-          <div className="text-2xl font-bold text-text-primary mb-4">
-            {currentSentence.chinese}
+        
+        {/* 进度和统计 */}
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              第 {currentIndex + 1} 题，共 {gameData.length} 题
+            </span>
+            <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">
+              分数: {gameStats.score}
+            </span>
           </div>
           
-          {/* 提示面板 */}
-          <AnimatePresence>
-            {showHint && (
-              <motion.div 
-                className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-4"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="text-sm text-warning">
-                  💡 提示: {currentSentence.hint}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all"
+              style={{ width: `${((currentIndex + 1) / gameData.length) * 100}%` }}
+            ></div>
+          </div>
           
-          <button 
-            onClick={playChineseAudio}
-            className="btn btn-primary"
-          >
-            🔊 播放中文发音
-          </button>
-        </CardContainer>
-      </motion.div>
+          <div className="flex justify-between items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span>连击: {gameStats.streak}</span>
+            <span>准确率: {gameStats.totalAnswers > 0 ? Math.round((gameStats.correctAnswers / gameStats.totalAnswers) * 100) : 0}%</span>
+          </div>
+        </div>
+      </div>
 
-      {/* 句子构建区域 */}
-      <DndContext 
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragOver={handleDragOver}
-      >
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-6"
-        >
-          <CardContainer className="p-6" hover={false}>
-            <div className="text-sm text-text-secondary mb-3">你的答案:</div>
-            
-            <DropZone 
-              tokens={placedTokens}
-              isActive={isDropZoneActive}
-              validationResult={validationResult}
-              onRemoveToken={(index) => {
-                const removedToken = placedTokens[index];
-                setPlacedTokens(prev => prev.filter((_, i) => i !== index));
-                setAvailableTokens(prev => [...prev, removedToken]);
-                setValidationResult(null);
-              }}
-            />
-            
-            {/* 操作按钮 */}
-            <div className="flex gap-3 mt-4">
-              <button 
-                onClick={resetSentence}
-                className="btn btn-secondary"
+      {/* 中文句子显示 */}
+      <div className="mb-6">
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">请翻译下面的句子:</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={playPronunciation}
+                className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
+                title="播放发音"
               >
-                ↶ 重置
+                <Volume2 size={18} />
               </button>
-              <button 
-                onClick={validateAnswer}
-                disabled={placedTokens.length === 0 || isSubmitting}
-                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              <button
+                onClick={toggleHint}
+                className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
+                title="显示提示"
               >
-                {isSubmitting ? '验证中...' : '✓ 提交答案'}
+                <Lightbulb size={18} />
               </button>
             </div>
-          </CardContainer>
-        </motion.div>
+          </div>
+          
+          <p className="text-xl text-gray-900 dark:text-white mb-4">
+            {currentSentence.chinese}
+          </p>
+          
+          {showHint && currentSentence.soundmark && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>音标提示:</strong> {currentSentence.soundmark}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* 单词池 */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <CardContainer className="p-6" hover={false}>
-            <div className="text-sm text-text-secondary mb-4">选择单词组成句子（可拖拽或点击）:</div>
-            <SortableContext items={availableTokens} strategy={horizontalListSortingStrategy}>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                {availableTokens.map((token) => (
-                  <WordToken 
-                    key={token}
-                    id={token}
-                    text={token}
-                    isDistractor={currentSentence.distractors.includes(token)}
-                    onClick={() => {
-                      // 点击单词将其添加到句子中
-                      setPlacedTokens(prev => [...prev, token]);
-                      setAvailableTokens(prev => prev.filter(t => t !== token));
-                      setValidationResult(null);
-                    }}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </CardContainer>
-        </motion.div>
+      {/* 句子构建区域 */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">你的答案:</h3>
+        <SentenceArea
+          tokens={placedTokens}
+          onRemoveToken={removeTokenFromSentence}
+          isCorrect={validationState === 'correct'}
+          isWrong={validationState === 'wrong'}
+        />
+      </div>
 
-        {/* 拖拽预览 */}
-        <DragOverlay>
-          {draggedToken ? (
-            <WordToken 
-              id={draggedToken}
-              text={draggedToken}
-              isDistractor={currentSentence.distractors.includes(draggedToken)}
+      {/* 单词选择区域 */}
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">可用单词:</h3>
+        <div className="flex flex-wrap gap-3">
+          {availableTokens.map((token, index) => (
+            <WordToken
+              key={`token-${index}-${token}`}
+              text={token}
+              isUsed={usedTokens.has(token)}
+              onClick={() => addTokenToSentence(token)}
             />
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+          ))}
+        </div>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="flex gap-3">
+        <button
+          onClick={checkAnswer}
+          disabled={placedTokens.length === 0}
+          className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+        >
+          检查答案
+        </button>
+        
+        <button
+          onClick={resetCurrentSentence}
+          className="px-6 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+          title="重置"
+        >
+          <RotateCcw size={20} />
+        </button>
+      </div>
 
       {/* 结果显示 */}
       <AnimatePresence>
-        {validationResult && (
+        {validationState === 'correct' && (
           <motion.div
-            className="mt-6"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl p-4"
           >
-            {validationResult.correct ? (
-              <CardContainer className="p-4 border-success bg-success/10" hover={false}>
-                <div className="flex items-center justify-center gap-2 text-success">
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="font-medium">正确！"{currentSentence.english}"</span>
-                </div>
-              </CardContainer>
-            ) : (
-              <CardContainer className="p-4 border-error bg-error/10" hover={false}>
-                <div className="flex items-center justify-center gap-2 text-error">
-                  <XCircle className="w-5 h-5" />
-                  <span className="font-medium">错误！正确答案是 "{currentSentence.english}"</span>
-                </div>
-              </CardContainer>
-            )}
+            <div className="flex items-center text-green-700 dark:text-green-400">
+              <CheckCircle size={20} className="mr-2" />
+              <span className="font-medium">正确答案!</span>
+            </div>
+            <p className="text-green-600 dark:text-green-300 mt-1">
+              {currentSentence.english}
+            </p>
+          </motion.div>
+        )}
+        
+        {validationState === 'wrong' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mt-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-4"
+          >
+            <div className="flex items-center text-red-700 dark:text-red-400">
+              <XCircle size={20} className="mr-2" />
+              <span className="font-medium">答案不正确</span>
+            </div>
+            <p className="text-red-600 dark:text-red-300 mt-1">
+              正确答案: {currentSentence.english}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
