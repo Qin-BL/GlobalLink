@@ -1,0 +1,104 @@
+/* 全局布局样式 */
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-content {
+  padding: 24px;
+  min-height: calc(100vh - 64px - 70px); /* 减去头部和底部的高度 */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .app-content {
+    padding: 16px;
+  }
+}
+
+/* 通用卡片样式 */
+.card-container {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+}
+
+.card-container:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 按钮样式 */
+.primary-button {
+  height: 40px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* 表单样式 */
+.form-container {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-title {
+  text-align: center;
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+
+/* 页面标题样式 */
+.page-title {
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+/* 头部样式 */
+.app-header {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: #001529;
+}
+
+.app-header .logo {
+  margin-right: 24px;
+}
+
+.app-header .logo a {
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+
+.app-header .logo a .anticon {
+  margin-right: 8px;
+  font-size: 24px;
+}
+
+.app-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-header .auth-buttons {
+  margin-left: auto;
+}

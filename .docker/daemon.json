@@ -1,0 +1,18 @@
+{
+    "registry-mirrors": [
+        "https://registry.docker-cn.com",
+        "https://hub-mirror.c.163.com",
+        "https://mirrors.aliyun.com",
+        "https://mirrors.tencent.com",
+        "https://registry.byteimage.com"
+    ],
+    "insecure-registries": ["localhost:5000"],
+    "dns": ["8.8.8.8", "114.114.114.114"],
+    "proxies": {
+        "default": {
+            "httpProxy": "http://proxy.example.com:8080",
+            "httpsProxy": "http://proxy.example.com:8080",
+            "noProxy": "localhost,127.0.0.1"
+        }
+    }
+}
