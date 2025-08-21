@@ -16,10 +16,12 @@ sudo systemctl start postgresql
 sudo systemctl enable postgresql
 
 # 创建数据库和用户
-echo "创建数据库和用户..."
-sudo -u postgres psql -c "CREATE DATABASE globallink;"
-sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD 'password';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
+ echo "创建数据库和用户..."
+ # 检查数据库是否存在，不存在则创建
+ sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'globallink'" | grep -q 1 || sudo -u postgres psql -c "CREATE DATABASE globallink;"
+ # 检查用户是否存在，不存在则创建
+ sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname = 'globallink'" | grep -q 1 || sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD 'password';"
+ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
 
 # 安装MongoDB
 echo "安装MongoDB..."
