@@ -20,21 +20,28 @@ echo "安装基本依赖..."
 sudo apt update
 sudo apt install -y git curl wget
 
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# 切换到项目根目录
+cd "$PROJECT_ROOT"
+
 # 运行数据库安装脚本
 echo "安装数据库..."
-bash ./install/without_docker/install_database.sh
+bash "$SCRIPT_DIR/install_database.sh"
 
 # 运行后端安装脚本
 echo "安装后端..."
-bash ./install/without_docker/install_backend.sh
+bash "$SCRIPT_DIR/install_backend.sh"
 
 # 运行前端安装脚本
 echo "安装前端..."
-bash ./install/without_docker/install_frontend.sh
+bash "$SCRIPT_DIR/install_frontend.sh"
 
 # 运行Nginx安装脚本
 echo "安装Nginx..."
-bash ./install/without_docker/install_nginx.sh
+bash "$SCRIPT_DIR/install_nginx.sh"
 
 # 启动所有服务
 echo "启动所有服务..."

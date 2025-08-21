@@ -5,19 +5,25 @@ set -e
 
 echo "===== 开始安装GlobalLink前端 ====="
 
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# 切换到项目根目录
+cd "$PROJECT_ROOT"
+
 # 确保工作目录正确
 if [ ! -d "frontend" ]; then
-  echo "错误：请在项目根目录下运行此脚本"
+  echo "错误：无法找到frontend目录，请确认项目结构是否正确"
   exit 1
 fi
 
 # 安装Node.js和npm
- echo "安装Node.js和npm..."
- sudo apt update
- sudo apt install -y curl
- # 安装Node.js 20.x (当前LTS版本)
- curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
- sudo apt install -y nodejs
+echo "安装Node.js和npm..."
+sudo apt update
+sudo apt install -y curl
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # 验证安装
 node --version

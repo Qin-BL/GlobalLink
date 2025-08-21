@@ -5,9 +5,16 @@ set -e
 
 echo "===== 开始安装GlobalLink后端 ====="
 
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# 切换到项目根目录
+cd "$PROJECT_ROOT"
+
 # 确保工作目录正确
 if [ ! -d "backend" ]; then
-  echo "错误：请在项目根目录下运行此脚本"
+  echo "错误：无法找到backend目录，请确认项目结构是否正确"
   exit 1
 fi
 
@@ -66,101 +73,28 @@ EOF
 chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
-  echo "创建服务管理脚本..."
-  # 简化的项目根目录计算方式
-  echo "当前工作目录: $(pwd)"
-  
-  # 获取脚本的绝对路径
-  SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-  echo "脚本绝对路径: $SCRIPT_PATH"
-  
-  # 直接计算项目根目录（假设脚本位于install/without_docker目录下）
-  # 方法1: 使用dirname两次获取上两级目录
-  PROJECT_ROOT1="$(dirname "$(dirname "$(dirname "$SCRIPT_PATH")")")"
-  
-  # 方法2: 使用cd命令切换
-  PROJECT_ROOT2="$(cd "$(dirname "$SCRIPT_PATH")" && cd ../.. && pwd 2>/dev/null || echo "")"
-  
-  # 选择有效的项目根目录
-  if [ -d "$PROJECT_ROOT1" ]; then
-    PROJECT_ROOT="$PROJECT_ROOT1"
-    echo "使用方法1计算项目根目录: $PROJECT_ROOT"
-  elif [ -d "$PROJECT_ROOT2" ]; then
-    PROJECT_ROOT="$PROJECT_ROOT2"
-    echo "使用方法2计算项目根目录: $PROJECT_ROOT"
-  else
-    # 如果以上方法都失败，尝试手动指定常见路径
-    COMMON_PATHS=("/home/admin/test/GlobalLink" "/root/GlobalLink" "./../../..")
-    for path in "${COMMON_PATHS[@]}"; do
-      if [ -d "$path" ] && [ -d "$path/backend" ]; then
-        PROJECT_ROOT="$path"
-        echo "使用备选路径: $PROJECT_ROOT"
-        break
-      fi
-    done
-  fi
-  
-  # 最终检查
-  if [ -d "$PROJECT_ROOT" ] && [ -d "$PROJECT_ROOT/backend" ]; then
-    echo "项目根目录确认: $PROJECT_ROOT"
-  else
-    echo "错误: 无法找到有效的项目根目录"
-    echo "尝试过的路径:"
-    echo "- 方法1: $PROJECT_ROOT1"
-    echo "- 方法2: $PROJECT_ROOT2"
-    exit 1
-  fi
-
-  # 检查USER环境变量
-  if [ -z "$USER" ]; then
-    echo "警告: USER环境变量未设置，使用当前用户"
-    USER=$(whoami)
-  fi
-  echo "当前用户: $USER"
-  SERVICE_FILE="$PROJECT_ROOT/backend.service"
-  
-  # 使用tee命令创建服务文件，确保权限正确
-  cat << EOF | sudo tee "$SERVICE_FILE" > /dev/null
+echo "创建服务管理脚本..."
+cat > ../backend.service << EOF
 [Unit]
 Description=GlobalLink Backend Service
 After=network.target postgresql.service mongodb.service redis-server.service
 
 [Service]
 Type=simple
-User=${USER}
-Group=${USER}
-WorkingDirectory=${PROJECT_ROOT}/backend
-ExecStart=${PROJECT_ROOT}/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=$USER
+WorkingDirectory=$(pwd)
+ExecStart=$(pwd)/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
-Environment="PATH=${PROJECT_ROOT}/backend/venv/bin"
+Environment="PATH=$(pwd)/venv/bin"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
- # 确保文件归当前用户所有
- sudo chown \$USER:\$USER "\$SERVICE_FILE"
-
-# 检查文件是否成功创建
-if [ -f "\$SERVICE_FILE" ]; then
- echo "服务文件已成功创建: \$SERVICE_FILE"
-
- # 自动复制服务文件到系统目录
- echo "正在将服务文件复制到系统目录..."
- sudo cp "\$SERVICE_FILE" /etc/systemd/system/globallink-backend.service
-
- # 重新加载systemd配置
- sudo systemctl daemon-reload
-
- # 设置服务开机自启
- sudo systemctl enable globallink-backend
-
- echo "服务已配置完成，可以使用以下命令启动："
-echo "sudo systemctl start globallink-backend"
-else
- echo "错误: 无法创建服务文件"
- exit 1
-fi
+echo "将服务文件复制到系统目录需要root权限"
+echo "请手动执行以下命令安装服务："
+echo "sudo cp $(pwd)/../backend.service /etc/systemd/system/globallink-backend.service"
+echo "sudo systemctl daemon-reload"
 echo "sudo systemctl enable globallink-backend"
 echo "sudo systemctl start globallink-backend"
 

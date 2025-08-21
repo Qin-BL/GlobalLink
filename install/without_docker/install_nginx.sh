@@ -15,6 +15,13 @@ echo "启动Nginx服务..."
 sudo systemctl start nginx
 sudo systemctl enable nginx
 
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# 切换到项目根目录
+cd "$PROJECT_ROOT"
+
 # 创建Nginx配置文件
 echo "创建Nginx配置文件..."
 cat > globallink.conf << EOF
