@@ -65,7 +65,7 @@ npm run build
 # 创建前端服务管理脚本
  echo "创建服务管理脚本..."
  # 获取当前用户
- CURRENT_USER=\$(whoami)
+ CURRENT_USER=$(whoami)
  cat > ../frontend.service << EOF
 [Unit]
 Description=GlobalLink Frontend Service
