@@ -1,7 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # GlobalLink安装主脚本（不使用Docker）
 set -e
+
+# 确保使用bash而不是sh
+if [ -z "$BASH_VERSION" ]; then
+  echo "错误：请使用bash而不是sh运行此脚本"
+  exit 1
+fi
 
 echo "===== 开始安装GlobalLink ====="
 
@@ -21,11 +27,18 @@ sudo apt update
 sudo apt install -y git curl wget
 
 # 获取脚本所在目录的绝对路径
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../" && pwd)"
+
+# 输出调试信息
+echo "脚本所在目录: $SCRIPT_DIR"
+echo "项目根目录: $PROJECT_ROOT"
 
 # 切换到项目根目录
-cd "$PROJECT_ROOT"
+cd "$PROJECT_ROOT" || {
+  echo "错误：无法切换到项目根目录 $PROJECT_ROOT"
+  exit 1
+}
 
 # 运行数据库安装脚本
 echo "安装数据库..."

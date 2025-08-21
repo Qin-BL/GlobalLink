@@ -1,13 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 前端安装脚本（不使用Docker）
 set -e
 
+# 确保使用bash而不是sh
+if [ -z "$BASH_VERSION" ]; then
+  echo "错误：请使用bash而不是sh运行此脚本"
+  exit 1
+fi
+
 echo "===== 开始安装GlobalLink前端 ====="
 
 # 获取脚本所在目录的绝对路径
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../" && pwd)"
+
+# 输出调试信息
+echo "脚本所在目录: $SCRIPT_DIR"
+echo "项目根目录: $PROJECT_ROOT"
 
 # 切换到项目根目录
 cd "$PROJECT_ROOT"
@@ -53,19 +63,23 @@ echo "构建生产版本..."
 npm run build
 
 # 创建前端服务管理脚本
-echo "创建服务管理脚本..."
-cat > ../frontend.service << EOF
+ echo "创建服务管理脚本..."
+ # 获取当前用户
+ CURRENT_USER=\$(whoami)
+ cat > ../frontend.service << EOF
 [Unit]
 Description=GlobalLink Frontend Service
 After=network.target
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=$(pwd)
+User=$CURRENT_USER
+Group=$CURRENT_USER
+WorkingDirectory=$PROJECT_ROOT/frontend
 ExecStart=/usr/bin/npm start
 Restart=on-failure
 Environment=PORT=3080
+Environment=NODE_ENV=production
 
 [Install]
 WantedBy=multi-user.target
@@ -73,10 +87,9 @@ EOF
 
 echo "将服务文件复制到系统目录需要root权限"
 echo "请手动执行以下命令安装服务："
-echo "sudo cp $(pwd)/../frontend.service /etc/systemd/system/globallink-frontend.service"
-echo "sudo systemctl daemon-reload"
-echo "sudo systemctl enable globallink-frontend"
-echo "sudo systemctl start globallink-frontend"
+echo "sudo cp $PROJECT_ROOT/frontend.service /etc/systemd/system/globallink-frontend.service"
+echo "sudo update-rc.d globallink-frontend defaults"
+echo "sudo service globallink-frontend start"
 
 cd ..
 

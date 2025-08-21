@@ -1,13 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 后端安装脚本（不使用Docker）
 set -e
 
+# 确保使用bash而不是sh
+if [ -z "$BASH_VERSION" ]; then
+  echo "错误：请使用bash而不是sh运行此脚本"
+  exit 1
+fi
+
 echo "===== 开始安装GlobalLink后端 ====="
 
 # 获取脚本所在目录的绝对路径
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../" && pwd)"
+
+# 输出调试信息
+echo "脚本所在目录: $SCRIPT_DIR"
+echo "项目根目录: $PROJECT_ROOT"
 
 # 切换到项目根目录
 cd "$PROJECT_ROOT"
@@ -34,15 +44,14 @@ echo "安装后端依赖..."
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
-# 创建环境变量文件
-echo "创建环境变量文件..."
-if [ ! -f ".env" ]; then
-  if [ -f ".env.example" ]; then
-    cp .env.example .env
-    echo "已从.env.example创建.env文件，请根据需要修改配置"
-  else
-    echo "警告：未找到.env.example文件，创建默认.env文件"
-    cat > .env << EOF
+# 检查项目根目录下的.env文件
+ echo "检查环境变量文件..."
+ if [ -f "$PROJECT_ROOT/.env" ]; then
+   echo "发现项目根目录下的.env文件，复制到backend目录..."
+   cp "$PROJECT_ROOT/.env" .env
+ else
+   echo "未找到项目根目录下的.env文件，创建默认.env文件"
+   cat > .env << EOF
 POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=password
@@ -54,8 +63,8 @@ REDIS_PORT=6379
 REDIS_DB=0
 REDIS_PASSWORD=
 EOF
-  fi
-fi
+   echo "警告：请务必修改.env文件中的数据库密码"
+ fi
 
 # 修改后端CORS配置
 echo "更新后端CORS配置..."
@@ -73,19 +82,23 @@ EOF
 chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
-echo "创建服务管理脚本..."
-cat > ../backend.service << EOF
+ echo "创建服务管理脚本..."
+ # 获取当前用户
+ CURRENT_USER=\$(whoami)
+ cat > ../backend.service << EOF
 [Unit]
 Description=GlobalLink Backend Service
 After=network.target postgresql.service mongodb.service redis-server.service
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=$(pwd)
-ExecStart=$(pwd)/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=$CURRENT_USER
+Group=$CURRENT_USER
+WorkingDirectory=$PROJECT_ROOT/backend
+ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
-Environment="PATH=$(pwd)/venv/bin"
+Environment="PATH=$PROJECT_ROOT/backend/venv/bin"
+EnvironmentFile=$PROJECT_ROOT/.env
 
 [Install]
 WantedBy=multi-user.target

@@ -1,7 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 数据库安装脚本（不使用Docker）
 set -e
+
+# 确保使用bash而不是sh
+if [ -z "$BASH_VERSION" ]; then
+  echo "错误：请使用bash而不是sh运行此脚本"
+  exit 1
+fi
+
+# 检查是否有权限运行sudo
+if ! sudo -v >/dev/null 2>&1; then
+  echo "错误：需要sudo权限运行此脚本"
+  exit 1
+fi
 
 echo "===== 开始安装GlobalLink数据库 ====="
 
@@ -11,15 +23,36 @@ sudo apt update
 sudo apt install -y postgresql postgresql-contrib
 
 # 启动PostgreSQL服务
-echo "启动PostgreSQL服务..."
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
+ echo "启动PostgreSQL服务..."
+ sudo service postgresql start
+ sudo update-rc.d postgresql enable
 
 # 创建数据库和用户
-echo "创建数据库和用户..."
-sudo -u postgres psql -c "CREATE DATABASE globallink;"
-sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD 'password';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
+ echo "创建数据库和用户..."
+ # 生成随机密码
+ DB_PASSWORD=$(openssl rand -base64 12)
+ echo "数据库密码: $DB_PASSWORD"
+ echo "请保存此密码，稍后配置需要使用"
+
+ sudo -u postgres psql -c "CREATE DATABASE globallink;"
+ sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
+ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
+
+ # 创建环境变量文件
+ echo "创建环境变量文件..."
+ cat > .env << EOF
+# 数据库配置
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=globallink
+POSTGRES_PASSWORD=$DB_PASSWORD
+POSTGRES_DB=globallink
+
+MONGODB_URI=mongodb://localhost:27017/
+REDIS_URL=redis://localhost:6379/0
+EOF
+
+echo "环境变量文件已创建: .env"
 
 # 安装MongoDB
 echo "安装MongoDB..."
@@ -29,9 +62,9 @@ sudo apt update
 sudo apt install -y mongodb-org
 
 # 启动MongoDB服务
-echo "启动MongoDB服务..."
-sudo systemctl start mongod
-sudo systemctl enable mongod
+ echo "启动MongoDB服务..."
+ sudo service mongod start
+ sudo update-rc.d mongod enable
 
 # 安装Redis
 echo "安装Redis..."
@@ -42,9 +75,9 @@ echo "配置Redis..."
 sudo sed -i 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis/redis.conf
 
 # 启动Redis服务
-echo "启动Redis服务..."
-sudo systemctl restart redis-server
-sudo systemctl enable redis-server
+ echo "启动Redis服务..."
+ sudo service redis-server restart
+ sudo update-rc.d redis-server enable
 
 echo "===== GlobalLink数据库安装完成 ====="
 echo "PostgreSQL、MongoDB和Redis已安装并配置完成"
