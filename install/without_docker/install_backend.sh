@@ -67,32 +67,56 @@ chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
   echo "创建服务管理脚本..."
-  # 先判断当前目录，确保目录切换的可靠性
+  # 简化的项目根目录计算方式
   echo "当前工作目录: $(pwd)"
   
-  # 获取脚本的绝对路径，处理不同操作系统的路径格式
+  # 获取脚本的绝对路径
   SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-  SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-  echo "脚本所在目录: $SCRIPT_DIR"
+  echo "脚本绝对路径: $SCRIPT_PATH"
   
-  # 计算项目根目录的绝对路径（install/without_docker的上两级目录）
-  PROJECT_ROOT="$(cd "$SCRIPT_DIR" && cd ../.. && pwd 2>/dev/null || echo "")"
+  # 直接计算项目根目录（假设脚本位于install/without_docker目录下）
+  # 方法1: 使用dirname两次获取上两级目录
+  PROJECT_ROOT1="$(dirname "$(dirname "$(dirname "$SCRIPT_PATH")")")"
   
-  # 如果无法通过相对路径获取，尝试使用绝对路径拼接
-  if [ -z "$PROJECT_ROOT" ] || [ ! -d "$PROJECT_ROOT" ]; then
-    # 直接使用脚本目录的绝对路径向上两级
-    PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
-    echo "尝试使用绝对路径拼接: $PROJECT_ROOT"
+  # 方法2: 使用cd命令切换
+  PROJECT_ROOT2="$(cd "$(dirname "$SCRIPT_PATH")" && cd ../.. && pwd 2>/dev/null || echo "")"
+  
+  # 选择有效的项目根目录
+  if [ -d "$PROJECT_ROOT1" ]; then
+    PROJECT_ROOT="$PROJECT_ROOT1"
+    echo "使用方法1计算项目根目录: $PROJECT_ROOT"
+  elif [ -d "$PROJECT_ROOT2" ]; then
+    PROJECT_ROOT="$PROJECT_ROOT2"
+    echo "使用方法2计算项目根目录: $PROJECT_ROOT"
+  else
+    # 如果以上方法都失败，尝试手动指定常见路径
+    COMMON_PATHS=("/home/admin/test/GlobalLink" "/root/GlobalLink" "./../../..")
+    for path in "${COMMON_PATHS[@]}"; do
+      if [ -d "$path" ] && [ -d "$path/backend" ]; then
+        PROJECT_ROOT="$path"
+        echo "使用备选路径: $PROJECT_ROOT"
+        break
+      fi
+    done
   fi
   
-  # 最终检查项目根目录是否存在
-  if [ -d "$PROJECT_ROOT" ]; then
-    echo "项目根目录: $PROJECT_ROOT"
+  # 最终检查
+  if [ -d "$PROJECT_ROOT" ] && [ -d "$PROJECT_ROOT/backend" ]; then
+    echo "项目根目录确认: $PROJECT_ROOT"
   else
-    echo "错误: 无法找到项目根目录，请确认脚本位置是否正确"
-    echo "脚本绝对路径: $SCRIPT_PATH"
+    echo "错误: 无法找到有效的项目根目录"
+    echo "尝试过的路径:"
+    echo "- 方法1: $PROJECT_ROOT1"
+    echo "- 方法2: $PROJECT_ROOT2"
     exit 1
   fi
+
+  # 检查USER环境变量
+  if [ -z "$USER" ]; then
+    echo "警告: USER环境变量未设置，使用当前用户"
+    USER=$(whoami)
+  fi
+  echo "当前用户: $USER"
   SERVICE_FILE="$PROJECT_ROOT/backend.service"
   
   # 使用tee命令创建服务文件，确保权限正确
