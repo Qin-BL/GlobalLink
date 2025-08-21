@@ -29,13 +29,41 @@ sudo apt install -y postgresql postgresql-contrib
 
 # 创建数据库和用户
  echo "创建数据库和用户..."
- # 生成随机密码
- DB_PASSWORD=$(openssl rand -base64 12)
- echo "数据库密码: $DB_PASSWORD"
- echo "请保存此密码，稍后配置需要使用"
 
- sudo -u postgres psql -c "CREATE DATABASE globallink;"
- sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
+ # 检查数据库是否已存在
+ DB_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='globallink'")
+ if [ "$DB_EXISTS" = '1' ]; then
+   echo "数据库 'globallink' 已存在，跳过创建"
+   # 获取现有用户密码
+   DB_PASSWORD=$(grep 'POSTGRES_PASSWORD=' .env 2>/dev/null | cut -d '=' -f 2)
+   if [ -z "$DB_PASSWORD" ]; then
+     # 如果.env文件中没有密码，生成新密码
+     DB_PASSWORD=$(openssl rand -base64 12)
+     echo "数据库密码: $DB_PASSWORD"
+     echo "请保存此密码，稍后配置需要使用"
+   else
+     echo "使用现有数据库密码"
+   fi
+ else
+   # 生成随机密码
+   DB_PASSWORD=$(openssl rand -base64 12)
+   echo "数据库密码: $DB_PASSWORD"
+   echo "请保存此密码，稍后配置需要使用"
+
+   sudo -u postgres psql -c "CREATE DATABASE globallink;"
+ fi
+
+ # 检查用户是否已存在
+ USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='globallink'")
+ if [ "$USER_EXISTS" = '1' ]; then
+   echo "用户 'globallink' 已存在，更新密码"
+   sudo -u postgres psql -c "ALTER USER globallink WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
+ else
+   echo "创建用户 'globallink'"
+   sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
+ fi
+
+ # 确保用户有数据库权限
  sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
 
  # 创建环境变量文件
