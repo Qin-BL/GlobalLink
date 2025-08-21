@@ -66,8 +66,10 @@ EOF
 chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
-echo "创建服务管理脚本..."
-cat > ../backend.service << EOF
+ echo "创建服务管理脚本..."
+ # 确保使用绝对路径
+ SERVICE_FILE="$(pwd)/../backend.service"
+ cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=GlobalLink Backend Service
 After=network.target postgresql.service mongodb.service redis-server.service
@@ -83,6 +85,14 @@ Environment="PATH=$(pwd)/venv/bin"
 [Install]
 WantedBy=multi-user.target
 EOF
+
+# 检查文件是否成功创建
+if [ -f "$SERVICE_FILE" ]; then
+ echo "服务文件已成功创建: $SERVICE_FILE"
+else
+ echo "错误: 无法创建服务文件"
+ exit 1
+fi
 
 echo "将服务文件复制到系统目录需要root权限"
 echo "请手动执行以下命令安装服务："
