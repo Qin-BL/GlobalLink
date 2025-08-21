@@ -91,8 +91,22 @@ sudo apt install -y mongodb-org
 
 # 启动MongoDB服务
  echo "启动MongoDB服务..."
- sudo service mongod start
- sudo update-rc.d mongod enable
+
+ # 尝试启动MongoDB服务
+ if sudo service mongod start; then
+   echo "MongoDB服务启动成功"
+ else
+   echo "尝试使用systemctl启动MongoDB服务..."
+   sudo systemctl start mongod
+ fi
+
+ # 尝试配置MongoDB服务开机自启
+ if sudo update-rc.d mongod enable 2>/dev/null; then
+   echo "MongoDB服务已设置为开机自启"
+ else
+   echo "尝试使用systemctl配置MongoDB服务开机自启..."
+   sudo systemctl enable mongod
+ fi
 
 # 安装Redis
 echo "安装Redis..."
