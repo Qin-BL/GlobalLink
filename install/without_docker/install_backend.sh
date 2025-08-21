@@ -67,9 +67,19 @@ chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
   echo "创建服务管理脚本..."
-  # 获取项目根目录的绝对路径
-  # 获取项目根目录的绝对路径（更可靠的方式）
-  PROJECT_ROOT="$(cd "$(dirname "$0")" && cd ../.. && pwd)"
+  # 先判断当前目录，确保目录切换的可靠性
+  echo "当前工作目录: $(pwd)"
+  SCRIPT_DIR="$(dirname "$0")"
+  echo "脚本所在目录: $SCRIPT_DIR"
+  
+  # 检查上级目录是否存在，然后切换
+  if [ -d "$SCRIPT_DIR/../.." ]; then
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR" && cd ../.. && pwd)"
+    echo "项目根目录: $PROJECT_ROOT"
+  else
+    echo "错误: 无法找到项目根目录，请确认脚本位置是否正确"
+    exit 1
+  fi
   SERVICE_FILE="$PROJECT_ROOT/backend.service"
   
   # 使用tee命令创建服务文件，确保权限正确
