@@ -104,12 +104,11 @@ EnvironmentFile=$PROJECT_ROOT/.env
 WantedBy=multi-user.target
 EOF
 
-echo "将服务文件复制到系统目录需要root权限"
-echo "请手动执行以下命令安装服务："
-echo "sudo cp $(pwd)/../backend.service /etc/systemd/system/globallink-backend.service"
-echo "sudo systemctl daemon-reload"
-echo "sudo systemctl enable globallink-backend"
-echo "sudo systemctl start globallink-backend"
+echo "服务文件已创建：$(pwd)/../backend.service"
+echo ""
+echo "要安装并启动服务，请执行："
+echo "cd $(dirname $(pwd))"
+echo "bash install_service_ubuntu20.sh"
 
 cd ..
 

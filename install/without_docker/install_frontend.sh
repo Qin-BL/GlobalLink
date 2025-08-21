@@ -85,11 +85,11 @@ Environment=NODE_ENV=production
 WantedBy=multi-user.target
 EOF
 
-echo "将服务文件复制到系统目录需要root权限"
-echo "请手动执行以下命令安装服务："
-echo "sudo cp $PROJECT_ROOT/frontend.service /etc/systemd/system/globallink-frontend.service"
-echo "sudo update-rc.d globallink-frontend defaults"
-echo "sudo service globallink-frontend start"
+echo "服务文件已创建：$PROJECT_ROOT/frontend.service"
+echo ""
+echo "要安装并启动服务，请执行："
+echo "cd $(dirname $0)"
+echo "bash install_service_ubuntu20.sh"
 
 cd ..
 
