@@ -66,25 +66,25 @@ EOF
 chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
- echo "创建服务管理脚本..."
- # 获取项目根目录的绝对路径
- PROJECT_ROOT=\$(cd "\$(dirname "\$0")/../.." && pwd)
- SERVICE_FILE="\$PROJECT_ROOT/backend.service"
- 
- # 使用tee命令创建服务文件，确保权限正确
- cat << EOF | sudo tee "\$SERVICE_FILE" > /dev/null
+  echo "创建服务管理脚本..."
+  # 获取项目根目录的绝对路径
+  PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+  SERVICE_FILE="$PROJECT_ROOT/backend.service"
+  
+  # 使用tee命令创建服务文件，确保权限正确
+  cat << EOF | sudo tee "$SERVICE_FILE" > /dev/null
 [Unit]
 Description=GlobalLink Backend Service
 After=network.target postgresql.service mongodb.service redis-server.service
 
 [Service]
 Type=simple
-User=$USER
-Group=$USER
-WorkingDirectory=$PROJECT_ROOT/backend
-ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=${USER}
+Group=${USER}
+WorkingDirectory=${PROJECT_ROOT}/backend
+ExecStart=${PROJECT_ROOT}/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
-Environment="PATH=$PROJECT_ROOT/backend/venv/bin"
+Environment="PATH=${PROJECT_ROOT}/backend/venv/bin"
 
 [Install]
 WantedBy=multi-user.target
