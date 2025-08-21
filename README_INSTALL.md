@@ -1,94 +1,142 @@
 # GlobalLink项目安装指南
 
 ## 项目简介
-GlobalLink是一个英语学习平台，包含前端React应用和后端FastAPI服务，使用PostgreSQL数据库。
+GlobalLink是一个英语学习平台，包含前端React应用和后端FastAPI服务，使用PostgreSQL、MongoDB和Redis数据库。
 
 ## 安装脚本说明
-本项目提供了Linux和Windows两种系统的安装脚本，可以一键安装所有依赖并配置运行环境。
+本项目提供了两种安装方式：
+1. 使用Docker安装（推荐）
+2. 不使用Docker直接安装
+
+所有安装脚本都针对Ubuntu 20.04系统进行了优化。
 
 ## 前提条件
 - 网络连接正常
-- 对于Linux: Ubuntu/Debian系统
-- 对于Windows: Windows 10及以上版本
+- Ubuntu 20.04系统
+- 足够的磁盘空间（至少5GB）
+- 对于Docker安装：需要安装Docker和Docker Compose
+- 对于非Docker安装：需要安装Python 3.8+、Node.js 16+
 
-## Linux安装步骤
+## 使用Docker安装（推荐）
+
+### 安装步骤
 1. 打开终端，进入项目根目录
 2. 运行安装脚本:
    ```bash
-   sudo ./install_linux.sh
+   sudo chmod +x ./install/with_docker/install.sh
+   sudo ./install/with_docker/install.sh
    ```
-3. 脚本会自动安装所有依赖、配置数据库并创建启动脚本
-4. 安装完成后，运行以下命令启动项目:
+3. 脚本会自动安装Docker、Docker Compose、配置数据库并启动所有服务
+
+### 单独安装组件
+如果需要单独安装某个组件，可以使用以下脚本：
+
+```bash
+# 安装数据库（PostgreSQL、MongoDB、Redis）
+sudo ./install/with_docker/install_database.sh
+
+# 安装后端
+sudo ./install/with_docker/install_backend.sh
+
+# 安装前端
+sudo ./install/with_docker/install_frontend.sh
+
+# 安装Nginx
+sudo ./install/with_docker/install_nginx.sh
+```
+
+### 启动服务
+```bash
+# 启动所有服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看服务日志
+docker-compose logs -f
+```
+
+## 不使用Docker安装
+
+### 安装步骤
+1. 打开终端，进入项目根目录
+2. 运行安装脚本:
    ```bash
-   ./start.sh
+   sudo chmod +x ./install/without_docker/install.sh
+   sudo ./install/without_docker/install.sh
    ```
+3. 脚本会自动安装所有依赖、配置数据库并启动所有服务
 
-## Windows安装步骤
-1. 以管理员身份打开命令提示符(cmd)
-2. 进入项目根目录
-3. 运行安装脚本:
-   ```batch
-   install_windows.bat
-   ```
-4. 脚本会自动安装所有依赖、配置数据库并创建启动脚本
-5. 安装完成后，双击运行`start.bat`启动项目
+### 单独安装组件
+如果需要单独安装某个组件，可以使用以下脚本：
 
-## 手动配置环境变量(可选)
-如果脚本自动配置失败，可能需要手动设置以下环境变量:
-
-### Linux
 ```bash
-# PostgreSQL环境变量
-export PATH=$PATH:/usr/lib/postgresql/14/bin
+# 安装数据库（PostgreSQL、MongoDB、Redis）
+sudo ./install/without_docker/install_database.sh
 
-# Python虚拟环境
-source /path/to/backend/venv/bin/activate
+# 安装后端
+sudo ./install/without_docker/install_backend.sh
+
+# 安装前端
+sudo ./install/without_docker/install_frontend.sh
+
+# 安装Nginx
+sudo ./install/without_docker/install_nginx.sh
 ```
 
-### Windows
-```batch
-# PostgreSQL环境变量
-set PATH=%PATH%;C:\Program Files\PostgreSQL\14\bin
+### 启动服务
+```bash
+# 启动后端
+sudo systemctl start globallink-backend
+# 或者开发模式
+./start_backend.sh
 
-# Python虚拟环境
-call C:\path\to\backend\venv\Scripts\activate.bat
+# 启动前端
+sudo systemctl start globallink-frontend
+# 或者开发模式
+./start_frontend.sh
 ```
 
-## 启动项目
-### 后端
-```bash
-# Linux
-source backend/venv/bin/activate
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
+## 环境变量配置
+后端服务需要配置环境变量，主要在`.env`文件中设置。如果使用安装脚本，会自动创建此文件。主要配置项包括：
 
-# Windows
-call backend\venv\Scripts\activate.bat
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
-
-### 前端
-```bash
-# Linux/Windows
-cd frontend
-npm start
+POSTGRES_SERVER=localhost
+POSTGRES_USER=globallink
+POSTGRES_PASSWORD=password
+POSTGRES_DB=globallink
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DB=globallink
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=
 ```
 
 ## 访问项目
 安装并启动成功后，在浏览器中访问:
-- 前端应用: http://localhost:3000
+- 前端应用: http://localhost:3080
 - 后端API文档: http://localhost:8000/docs
+- Nginx代理: http://localhost
 
 ## 故障排除
 1. **数据库连接失败**:
-   - 检查PostgreSQL服务是否正常运行
+   - 检查PostgreSQL/MongoDB/Redis服务是否正常运行
    - 确认.env文件中的数据库配置正确
+   - Docker环境：`docker-compose logs db`查看数据库日志
 
 2. **依赖安装失败**:
    - 检查网络连接
-   - 尝试手动安装失败的依赖包
+   - 尝试使用国内镜像源（如pip使用清华源）
+   - Docker环境：确保Docker服务正常运行
 
 3. **端口冲突**:
-   - 确保8000和3000端口未被其他服务占用
-   - 可以在启动命令中指定其他端口
+   - 确保8000和3080端口未被其他服务占用
+   - 可以修改`docker-compose.yml`或前端配置中的端口
+
+4. **服务无法启动**:
+   - 检查日志：`sudo journalctl -u globallink-backend`
+   - Docker环境：`docker-compose logs backend`或`docker-compose logs frontend`
 
 如果遇到其他问题，请查看安装日志或联系技术支持。
