@@ -68,7 +68,8 @@ chmod +x ../start_backend.sh
 # 创建后端服务管理脚本
   echo "创建服务管理脚本..."
   # 获取项目根目录的绝对路径
-  PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+  # 获取项目根目录的绝对路径（更可靠的方式）
+  PROJECT_ROOT="$(cd "$(dirname "$0")" && cd ../.. && pwd)"
   SERVICE_FILE="$PROJECT_ROOT/backend.service"
   
   # 使用tee命令创建服务文件，确保权限正确
