@@ -1,0 +1,16 @@
+[Unit]
+Description=GlobalLink Frontend Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/GlobalLink/frontend
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+Environment=PORT=3080
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
