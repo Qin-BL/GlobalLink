@@ -12,11 +12,12 @@ if [ ! -d "frontend" ]; then
 fi
 
 # 安装Node.js和npm
-echo "安装Node.js和npm..."
-sudo apt update
-sudo apt install -y curl
-curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-sudo apt install -y nodejs
+ echo "安装Node.js和npm..."
+ sudo apt update
+ sudo apt install -y curl
+ # 安装Node.js 20.x (当前LTS版本)
+ curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+ sudo apt install -y nodejs
 
 # 验证安装
 node --version
