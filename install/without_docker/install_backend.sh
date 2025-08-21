@@ -79,11 +79,12 @@ After=network.target postgresql.service mongodb.service redis-server.service
 
 [Service]
 Type=simple
-User=\$USER
-WorkingDirectory=\$(pwd)
-ExecStart=\$(pwd)/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=$USER
+Group=$USER
+WorkingDirectory=$PROJECT_ROOT/backend
+ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
-Environment="PATH=\$(pwd)/venv/bin"
+Environment="PATH=$PROJECT_ROOT/backend/venv/bin"
 
 [Install]
 WantedBy=multi-user.target
