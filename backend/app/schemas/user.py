@@ -15,6 +15,7 @@ class UserCreate(UserBase):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     referral_code: Optional[str] = None  # 推广人的推广码
+    email_verification_code: Optional[str] = None  # 邮箱验证码
     
     @validator('password')
     def password_min_length(cls, v):

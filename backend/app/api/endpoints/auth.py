@@ -1,9 +1,11 @@
 from datetime import timedelta
 from typing import Any
+import logging
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from pydantic import EmailStr
 
 from app import models, schemas
 from app.api import deps
@@ -14,32 +16,51 @@ from app.utils.utils import (
     generate_password_reset_token,
     verify_password_reset_token,
 )
+from app.utils.email import send_verification_code, verify_email_code
+from app.utils.redis_cache import set_redis_cache, get_redis_cache
+from app.utils.activity_logger import log_user_activity
+from app.utils.token_cache import revoke_token
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
 @router.post("/login", response_model=schemas.Token)
-def login_access_token(
+async def login_access_token(
     db: Session = Depends(deps.get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request = None,
 ) -> Any:
     """OAuth2 兼容的令牌登录，获取访问令牌"""
     # 尝试通过用户名查找用户
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    login_method = "username"
     
     # 如果用户名未找到，尝试通过邮箱查找
     if not user:
         user = db.query(models.User).filter(models.User.email == form_data.username).first()
+        login_method = "email"
     
     # 如果邮箱未找到，尝试通过手机号查找
     if not user:
         user = db.query(models.User).filter(models.User.phone == form_data.username).first()
+        login_method = "phone"
     
-    # 如果用户不存在或密码不正确
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+    # 如果用户不存在
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码不正确",
+            detail="用户不存在",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 如果密码不正确
+    if not security.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="密码不正确",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -54,40 +75,70 @@ def login_access_token(
     
     # 生成访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = await security.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
+    
+    # 记录用户登录活动
+    try:
+        client_ip = request.client.host if request and request.client else None
+        user_agent = request.headers.get("user-agent", "") if request else ""
+        
+        await log_user_activity(
+            user_id=user.id,
+            activity_type="login",
+            details={
+                "login_method": login_method,
+                "oauth2_login": True,
+                "ip": client_ip,
+                "user_agent": user_agent
+            }
+        )
+    except Exception as e:
+        logger.error(f"记录用户登录活动失败: {e}")
+    
     return {
-        "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        ),
+        "access_token": token,
         "token_type": "bearer",
     }
 
 
 @router.post("/login/custom", response_model=schemas.Token)
-def login_custom(
+async def login_custom(
     *,
     db: Session = Depends(deps.get_db),
-    login_in: schemas.UserLogin,
+    username: str = Body(...),
+    password: str = Body(...),
+    request: Request = None,
 ) -> Any:
-    """自定义登录，支持用户名、邮箱或手机号登录"""
-    user = None
-    
+    """自定义登录端点，支持用户名/邮箱/手机号登录"""
     # 尝试通过用户名查找用户
-    if login_in.username:
-        user = db.query(models.User).filter(models.User.username == login_in.username).first()
+    user = db.query(models.User).filter(models.User.username == username).first()
+    login_method = "username"
     
     # 如果用户名未找到，尝试通过邮箱查找
-    if not user and login_in.email:
-        user = db.query(models.User).filter(models.User.email == login_in.email).first()
+    if not user:
+        user = db.query(models.User).filter(models.User.email == username).first()
+        login_method = "email"
     
     # 如果邮箱未找到，尝试通过手机号查找
-    if not user and login_in.phone:
-        user = db.query(models.User).filter(models.User.phone == login_in.phone).first()
+    if not user:
+        user = db.query(models.User).filter(models.User.phone == username).first()
+        login_method = "phone"
     
-    # 如果用户不存在或密码不正确
-    if not user or not security.verify_password(login_in.password, user.hashed_password):
+    # 如果用户不存在
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名、邮箱、手机号或密码不正确",
+            detail="用户不存在",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 如果密码不正确
+    if not security.verify_password(password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="密码不正确",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -102,19 +153,40 @@ def login_custom(
     
     # 生成访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = await security.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
+    
+    # 记录用户登录活动
+    try:
+        client_ip = request.client.host if request and request.client else None
+        user_agent = request.headers.get("user-agent", "") if request else ""
+        
+        await log_user_activity(
+            user_id=user.id,
+            activity_type="login",
+            details={
+                "login_method": login_method,
+                "custom_login": True,
+                "ip": client_ip,
+                "user_agent": user_agent
+            }
+        )
+    except Exception as e:
+        logger.error(f"记录用户登录活动失败: {e}")
+    
     return {
-        "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        ),
+        "access_token": token,
         "token_type": "bearer",
     }
 
 
 @router.post("/register", response_model=schemas.User)
-def register(
+async def register(
     *,
     db: Session = Depends(deps.get_db),
     user_in: schemas.UserCreate,
+    request: Request = None,
 ) -> Any:
     """注册新用户"""
     # 检查用户名是否已存在
@@ -132,6 +204,13 @@ def register(
             raise HTTPException(
                 status_code=400,
                 detail="邮箱已存在",
+            )
+        
+        # 验证邮箱验证码
+        if not await verify_email_code(user_in.email, user_in.email_verification_code):
+            raise HTTPException(
+                status_code=400,
+                detail="邮箱验证码不正确或已过期",
             )
     
     # 检查手机号是否已存在
@@ -170,6 +249,26 @@ def register(
     db.commit()
     db.refresh(user)
     
+    # 记录用户注册活动
+    try:
+        client_ip = request.client.host if request and request.client else None
+        user_agent = request.headers.get("user-agent", "") if request else ""
+        
+        await log_user_activity(
+            user_id=user.id,
+            activity_type="register",
+            details={
+                "username": user.username,
+                "email": user.email,
+                "phone": user.phone,
+                "referral_code": user_in.referral_code,
+                "ip": client_ip,
+                "user_agent": user_agent
+            }
+        )
+    except Exception as e:
+        logger.error(f"记录用户注册活动失败: {e}")
+    
     # 如果是通过推广注册的，为推广人创建一个pending状态的奖励记录
     if referrer_id:
         # 这里暂时不设置奖励金额，等用户开通会员后再根据settings.REFERRAL_RATE计算奖励金额
@@ -184,3 +283,86 @@ def register(
         db.commit()
     
     return user
+
+
+@router.post("/send-verification-code")
+async def send_email_verification_code(
+    *,
+    email: EmailStr,
+    background_tasks: BackgroundTasks,
+) -> Any:
+    """发送邮箱验证码"""
+    # 检查是否在短时间内重复发送
+    cache_key = f"email_verification_cooldown:{email}"
+    cooldown = await get_redis_cache(cache_key)
+    
+    if cooldown:
+        raise HTTPException(
+            status_code=429,
+            detail="请求过于频繁，请稍后再试"
+        )
+    
+    # 发送验证码
+    success, code = await send_verification_code(email)
+    
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail="发送验证码失败，请稍后再试"
+        )
+    
+    # 设置冷却时间（60秒内不能重复发送）
+    await set_redis_cache(cache_key, True, expire_seconds=60)
+    
+    return {"message": "验证码已发送，请查收邮件"}
+
+
+@router.post("/verify-email-code")
+async def verify_email_verification_code(
+    *,
+    email: EmailStr,
+    code: str,
+) -> Any:
+    """验证邮箱验证码"""
+    is_valid = await verify_email_code(email, code)
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=400,
+            detail="验证码不正确或已过期"
+        )
+    
+    return {"message": "验证成功"}
+
+
+@router.post("/logout")
+async def logout(
+    token: str = Body(...),
+    current_user: models.User = Depends(deps.get_current_user_async),
+    request: Request = None,
+) -> Any:
+    """用户登出，撤销令牌"""
+    try:
+        # 撤销当前令牌
+        await security.revoke_user_token(token)
+        
+        # 记录用户登出活动
+        client_ip = request.client.host if request and request.client else None
+        user_agent = request.headers.get("user-agent", "") if request else ""
+        
+        await log_user_activity(
+            user_id=current_user.id,
+            activity_type="logout",
+            details={
+                "ip": client_ip,
+                "user_agent": user_agent
+            }
+        )
+        
+        return {"message": "登出成功"}
+    except Exception as e:
+        logger.error(f"登出失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="登出失败，请稍后再试"
+        )

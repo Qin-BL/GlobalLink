@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Layout, Menu, Button, Avatar, Dropdown, Space, Badge } from 'antd';
+import { Layout, Menu, Button, Avatar, Dropdown, Space, Badge, message } from 'antd';
 import { UserOutlined, BellOutlined, LogoutOutlined, GlobalOutlined, BookOutlined, CrownOutlined, TeamOutlined, GiftOutlined } from '@ant-design/icons';
 import { logout } from '../../redux/authSlice';
 
@@ -11,8 +11,9 @@ const AppHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector(state => state.auth);
+  const { isAuthenticated, user, loading } = useSelector(state => state.auth);
   const [current, setCurrent] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     // 根据当前路径设置活动菜单项
@@ -20,9 +21,21 @@ const AppHeader = () => {
     setCurrent(path);
   }, [location]);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      const result = await dispatch(logout());
+      if (result.error) {
+        message.error(result.error.message || '登出失败');
+      } else {
+        message.success('登出成功');
+        navigate('/login');
+      }
+    } catch (error) {
+      message.error('登出过程中发生错误');
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const userMenuItems = [
@@ -47,8 +60,9 @@ const AppHeader = () => {
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: '退出登录',
-      onClick: handleLogout
+      label: loggingOut ? '登出中...' : '退出登录',
+      onClick: handleLogout,
+      disabled: loggingOut
     }
   ];
 

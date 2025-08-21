@@ -87,9 +87,25 @@ export const register = createAsyncThunk(
 // 异步操作：用户登出
 export const logout = createAsyncThunk(
   'auth/logout',
-  async () => {
-    localStorage.removeItem('token');
-    return null;
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        // 调用后端登出API
+        await axios.post('/api/v1/auth/logout', { token }, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+      }
+      // 无论API调用是否成功，都移除本地令牌
+      localStorage.removeItem('token');
+      return null;
+    } catch (error) {
+      // 即使API调用失败，也移除本地令牌
+      localStorage.removeItem('token');
+      return rejectWithValue(error.response?.data?.detail || '登出失败');
+    }
   }
 );
 

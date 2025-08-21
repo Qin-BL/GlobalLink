@@ -1,7 +1,7 @@
 import secrets
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import AnyHttpUrl, PostgresDsn, validator
+from pydantic import AnyHttpUrl, PostgresDsn, validator, EmailStr
 from pydantic_settings import BaseSettings
 
 
@@ -28,11 +28,44 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "GlobalLink"
     
+    # 数据库配置
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "password"
     POSTGRES_DB: str = "globallink"
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
+    
+    # 数据库连接池配置
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
+    DB_MAX_CONNECTIONS: int = 100
+    
+    # MongoDB配置
+    MONGODB_URI: str = "mongodb://localhost:27017"
+    MONGODB_DB: str = "globallink"
+    
+    # Redis配置
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+    REDIS_MAX_CONNECTIONS: int = 100
+    REDIS_CACHE_EXPIRE_SECONDS: int = 3600  # 默认缓存过期时间
+    
+    # 邮件服务配置
+    MAIL_SERVER: str = "smtp.example.com"
+    MAIL_PORT: int = 587
+    MAIL_USE_TLS: bool = True
+    MAIL_USERNAME: str = "your_email@example.com"
+    MAIL_PASSWORD: str = "your_email_password"
+    MAIL_FROM: EmailStr = "your_email@example.com"
+    MAIL_FROM_NAME: str = "GlobalLink"
+    
+    # 验证码配置
+    VERIFICATION_CODE_EXPIRE_MINUTES: int = 10  # 验证码有效期（分钟）
+    VERIFICATION_CODE_LENGTH: int = 6  # 验证码长度
 
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
@@ -56,6 +89,12 @@ class Settings(BaseSettings):
     # 会员价格
     MONTHLY_MEMBERSHIP_PRICE: float = 29.9
     YEARLY_MEMBERSHIP_PRICE: float = 299.0
+    
+    # 高可用配置
+    RATE_LIMIT_REQUESTS: int = 100  # 每分钟请求限制
+    RATE_LIMIT_WINDOW: int = 60  # 限流窗口（秒）
+    JWT_ALGORITHM: str = "HS256"  # JWT算法
+    TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 7  # Token缓存过期时间（7天）
 
     class Config:
         case_sensitive = True

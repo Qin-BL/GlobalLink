@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Card, Typography, message } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, message, Row, Col } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { register } from '../../redux/authSlice';
+import axios from 'axios';
 
 const { Title } = Typography;
 
@@ -15,6 +16,15 @@ const Register = () => {
   const { loading, isAuthenticated } = useSelector(state => state.auth);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [referralCode, setReferralCode] = useState('');
+  const [sendingCode, setSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  
+  // 从登录页面传递过来的邮箱
+  useEffect(() => {
+    if (location.state?.email) {
+      form.setFieldsValue({ email: location.state.email });
+    }
+  }, [location.state, form]);
 
   // 从URL中获取推广码
   useEffect(() => {
@@ -33,9 +43,46 @@ const Register = () => {
     }
   }, [isAuthenticated, navigate, formSubmitted]);
 
+  // 倒计时逻辑
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  // 发送验证码
+  const sendVerificationCode = async () => {
+    try {
+      const email = form.getFieldValue('email');
+      if (!email) {
+        message.error('请先输入邮箱');
+        return;
+      }
+      
+      setSendingCode(true);
+      const response = await axios.post('/api/v1/auth/send-verification-code', { email });
+      
+      if (response.status === 200) {
+        message.success('验证码已发送，请查收邮件');
+        setCountdown(60); // 60秒倒计时
+      }
+    } catch (error) {
+      message.error(error.response?.data?.detail || '发送验证码失败，请稍后再试');
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
   const onFinish = async (values) => {
     if (values.password !== values.confirmPassword) {
       message.error('两次输入的密码不一致');
+      return;
+    }
+    
+    if (!values.email_verification_code) {
+      message.error('请输入邮箱验证码');
       return;
     }
     
@@ -88,6 +135,32 @@ const Register = () => {
               placeholder="邮箱" 
               size="large" 
             />
+          </Form.Item>
+          
+          <Form.Item
+            name="email_verification_code"
+            rules={[{ required: true, message: '请输入邮箱验证码' }]}
+          >
+            <Row gutter={8}>
+              <Col span={16}>
+                <Input
+                  prefix={<SafetyOutlined />}
+                  placeholder="邮箱验证码"
+                  size="large"
+                />
+              </Col>
+              <Col span={8}>
+                <Button
+                  size="large"
+                  onClick={sendVerificationCode}
+                  disabled={countdown > 0}
+                  loading={sendingCode}
+                  block
+                >
+                  {countdown > 0 ? `${countdown}秒后重发` : '获取验证码'}
+                </Button>
+              </Col>
+            </Row>
           </Form.Item>
 
           <Form.Item
