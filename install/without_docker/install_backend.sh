@@ -67,37 +67,51 @@ chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
  echo "创建服务管理脚本..."
- # 确保使用绝对路径
- SERVICE_FILE="$(pwd)/../backend.service"
- cat > "$SERVICE_FILE" << EOF
+ # 获取项目根目录的绝对路径
+ PROJECT_ROOT=\$(cd "\$(dirname "\$0")/../.." && pwd)
+ SERVICE_FILE="\$PROJECT_ROOT/backend.service"
+ 
+ # 使用tee命令创建服务文件，确保权限正确
+ cat << EOF | sudo tee "\$SERVICE_FILE" > /dev/null
 [Unit]
 Description=GlobalLink Backend Service
 After=network.target postgresql.service mongodb.service redis-server.service
 
 [Service]
 Type=simple
-User=$USER
-WorkingDirectory=$(pwd)
-ExecStart=$(pwd)/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=\$USER
+WorkingDirectory=\$(pwd)
+ExecStart=\$(pwd)/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
-Environment="PATH=$(pwd)/venv/bin"
+Environment="PATH=\$(pwd)/venv/bin"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+ # 确保文件归当前用户所有
+ sudo chown \$USER:\$USER "\$SERVICE_FILE"
+
 # 检查文件是否成功创建
-if [ -f "$SERVICE_FILE" ]; then
- echo "服务文件已成功创建: $SERVICE_FILE"
+if [ -f "\$SERVICE_FILE" ]; then
+ echo "服务文件已成功创建: \$SERVICE_FILE"
+
+ # 自动复制服务文件到系统目录
+ echo "正在将服务文件复制到系统目录..."
+ sudo cp "\$SERVICE_FILE" /etc/systemd/system/globallink-backend.service
+
+ # 重新加载systemd配置
+ sudo systemctl daemon-reload
+
+ # 设置服务开机自启
+ sudo systemctl enable globallink-backend
+
+ echo "服务已配置完成，可以使用以下命令启动："
+echo "sudo systemctl start globallink-backend"
 else
  echo "错误: 无法创建服务文件"
  exit 1
 fi
-
-echo "将服务文件复制到系统目录需要root权限"
-echo "请手动执行以下命令安装服务："
-echo "sudo cp $(pwd)/../backend.service /etc/systemd/system/globallink-backend.service"
-echo "sudo systemctl daemon-reload"
 echo "sudo systemctl enable globallink-backend"
 echo "sudo systemctl start globallink-backend"
 
