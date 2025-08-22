@@ -1,9 +1,0 @@
-{
-  "/api/analytics/heartbeat/route": "app/api/analytics/heartbeat/route.js",
-  "/api/play/next/route": "app/api/play/next/route.js",
-  "/api/courses/[id]/route": "app/api/courses/[id]/route.js",
-  "/api/courses/route": "app/api/courses/route.js",
-  "/(dashboard)/learn/sentence-builder/page": "app/(dashboard)/learn/sentence-builder/page.js",
-  "/(dashboard)/play/word-blitz/page": "app/(dashboard)/play/word-blitz/page.js",
-  "/(dashboard)/play/chinese-english/page": "app/(dashboard)/play/chinese-english/page.js"
-}
