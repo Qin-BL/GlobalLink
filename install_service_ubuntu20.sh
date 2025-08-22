@@ -20,6 +20,16 @@ if [ ! -f "$PROJECT_ROOT/frontend.service" ]; then
     exit 1
 fi
 
+# 运行路径修复脚本
+if [ -f "$PROJECT_ROOT/fix_service_paths.sh" ]; then
+    echo "运行服务文件路径修复脚本..."
+    chmod +x "$PROJECT_ROOT/fix_service_paths.sh"
+    bash "$PROJECT_ROOT/fix_service_paths.sh"
+else
+    echo "错误：fix_service_paths.sh文件不存在"
+    exit 1
+fi
+
 # 检查系统是否使用systemd
 if ! command -v systemctl &> /dev/null; then
     echo "错误：systemctl命令未找到，请确认系统支持systemd"

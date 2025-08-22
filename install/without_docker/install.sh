@@ -56,9 +56,18 @@ bash "$SCRIPT_DIR/install_frontend.sh"
 echo "安装Nginx..."
 bash "$SCRIPT_DIR/install_nginx.sh"
 
-# 启动所有服务
-echo "启动所有服务..."
-sudo systemctl start globallink-backend
+# 安装并启动服务
+ echo "安装服务..."
+ if [ -f "$PROJECT_ROOT/install_service_ubuntu20.sh" ]; then
+   bash "$PROJECT_ROOT/install_service_ubuntu20.sh"
+ else
+   echo "错误：服务安装脚本不存在，请确保$PROJECT_ROOT/install_service_ubuntu20.sh已创建"
+   exit 1
+ fi
+
+ # 启动所有服务
+ echo "启动所有服务..."
+ sudo systemctl start globallink-backend
 sudo systemctl start globallink-frontend
 
 echo "===== GlobalLink安装完成 ====="
