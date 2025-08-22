@@ -28,3 +28,4 @@ asyncio==3.4.3
 backoff==2.2.1
 motor==3.1.2
 async-timeout==4.0.2
+pydantic-settings==2.0.3
