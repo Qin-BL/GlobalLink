@@ -19,6 +19,8 @@ qrcode==7.4.2
 pillow==9.5.0
 pytz==2023.3
 tenacity==8.2.2
+# 数据库依赖
+psycopg2-binary==2.9.6
 # 高可用相关依赖
 redis==4.5.5
 pymongo==4.3.3
