@@ -28,7 +28,7 @@ const Login = () => {
     
     if (result.error) {
       // 如果登录失败且错误信息包含"用户不存在"，则跳转到注册页面
-      if (result.error.includes('用户不存在')) {
+      if (typeof result.error === 'string' && result.error.includes('用户不存在')) {
         navigate('/register', { state: { email: values.username } });
       } else {
         // 显示其他错误
