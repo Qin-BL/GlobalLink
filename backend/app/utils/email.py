@@ -2,10 +2,11 @@ import logging
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from pydantic import EmailStr
+from fastapi import BackgroundTasks
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from pydantic import EmailStr, BaseModel
 
 from app.core.config import settings
 from app.utils.redis_cache import get_redis_cache, set_redis_cache
@@ -21,11 +22,17 @@ conf = ConnectionConfig(
     MAIL_PORT=settings.MAIL_PORT,
     MAIL_SERVER=settings.MAIL_SERVER,
     MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
-    MAIL_TLS=settings.MAIL_USE_TLS,
-    MAIL_SSL=False,
+    MAIL_STARTTLS=settings.MAIL_USE_TLS,
+    MAIL_SSL_TLS=settings.MAIL_USE_TLS if settings.MAIL_PORT == 465 else False,
     USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True
+    VALIDATE_CERTS=True,
+    TIMEOUT=10  # 添加超时设置，单位为秒
 )
+
+# 验证邮件配置
+if not all([settings.MAIL_USERNAME, settings.MAIL_PASSWORD, settings.MAIL_FROM, settings.MAIL_PORT, settings.MAIL_SERVER]):
+    logger.warning("邮件服务配置不完整，可能导致邮件发送失败")
+
 
 
 def generate_verification_code(length: int = None) -> str:
@@ -37,29 +44,69 @@ def generate_verification_code(length: int = None) -> str:
     return ''.join(random.choices(string.digits, k=length))
 
 
+class EmailSchema(BaseModel):
+    email: List[EmailStr]
+
 async def send_email(
     email_to: str,
     subject: str,
     body: str,
+    max_retries: int = 3,
+    retry_delay: int = 2
 ) -> bool:
     """
-    发送邮件的通用函数
+    发送邮件的通用函数，包含重试机制
+
+    参数:
+        email_to: 收件人邮箱
+        subject: 邮件主题
+        body: 邮件内容
+        max_retries: 最大重试次数
+        retry_delay: 重试间隔(秒)
+
+    返回:
+        bool: 是否发送成功
     """
-    try:
-        message = MessageSchema(
-            subject=subject,
-            recipients=[email_to],
-            body=body,
-            subtype="html"
-        )
-        
-        fm = FastMail(conf)
-        await fm.send_message(message)
-        logger.info(f"邮件已发送至 {email_to}")
-        return True
-    except Exception as e:
-        logger.error(f"发送邮件失败: {str(e)}")
-        return False
+    retries = 0
+    while retries <= max_retries:
+        try:
+            message = MessageSchema(
+                subject=subject,
+                recipients=[email_to],
+                body=body,
+                subtype=MessageType.html
+            )
+            
+            fm = FastMail(conf)
+            await fm.send_message(message)
+            logger.info(f"邮件已发送至 {email_to}")
+            return True
+        except Exception as e:
+            retries += 1
+            logger.error(f"发送邮件失败 (尝试 {retries}/{max_retries}): {str(e)}")
+            if retries <= max_retries:
+                await asyncio.sleep(retry_delay)
+    return False
+
+
+def send_email_background(
+    background_tasks: BackgroundTasks,
+    email_to: str,
+    subject: str,
+    body: str
+) -> None:
+    """
+    使用背景任务发送邮件
+
+    参数:
+        background_tasks: FastAPI背景任务对象
+        email_to: 收件人邮箱
+        subject: 邮件主题
+        body: 邮件内容
+    """
+    background_tasks.add_task(send_email, email_to, subject, body)
+
+import asyncio
 
 
 async def send_verification_code(email_to: EmailStr) -> tuple[bool, Optional[str]]:
