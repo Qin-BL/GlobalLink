@@ -60,21 +60,23 @@ def create_access_token_sync(
     return encoded_jwt
 
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码（支持前端加密密码）"""
     # 检查是否是前端加密的密码
     if is_frontend_encrypted(plain_password):
         # 解密前端加密的密码
-        decrypted_password = decrypt_frontend_password(plain_password)
+        decrypted_password = decrypt_frontend_password(plain_password, settings.EXPECTED_DOMAIN)
         if decrypted_password is None:
             logger.warning("前端密码解密失败，使用原始密码验证")
             return pwd_context.verify(plain_password, hashed_password)
         
-        # 使用解密后的密码进行验证
+        # 使用解密后的密码哈希进行验证
         return pwd_context.verify(decrypted_password, hashed_password)
     
     # 普通密码验证
     return pwd_context.verify(plain_password, hashed_password)
+
 
 
 def get_password_hash(password: str) -> str:

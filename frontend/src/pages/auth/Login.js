@@ -32,6 +32,7 @@ const Login = () => {
       
       // 如果登录失败且HTTP状态码为401且错误信息包含"用户不存在"，则跳转到注册页面
       if (result.error.status === 401 && errorMessage.includes('用户不存在')) {
+        console.log('用户不存在，跳转到注册页面');
         navigate('/register', { state: { email: values.username } });
       } else {
         // 显示其他错误

@@ -24,7 +24,7 @@ def decrypt_frontend_password(encrypted_data: str, expected_domain: Optional[str
         expected_domain: 预期的域名（用于验证）
         
     Returns:
-        str: 原始密码，如果解密失败返回None
+        str: 原始密码哈希，如果解密失败返回None
     """
     try:
         # 解析前端加密数据
@@ -47,15 +47,13 @@ def decrypt_frontend_password(encrypted_data: str, expected_domain: Optional[str
             return data['hash']
         
         # 验证域名（如果提供）
-        if expected_domain and 'domain' in data:
-            if data['domain'] != expected_domain:
+        if expected_domain:
+            if 'domain' not in data or data['domain'] != expected_domain:
                 logger.warning(f"域名不匹配: 预期 {expected_domain}, 实际 {data.get('domain')}")
                 return None
         
-        # 返回原始哈希值（前端已经做了哈希，我们只需要验证时间戳）
-        # 在实际应用中，这里可以添加额外的验证逻辑
+        # 返回原始哈希值
         return data['hash']
-        
     except json.JSONDecodeError:
         logger.warning("前端加密数据不是有效的JSON")
         # 可能是原始密码（降级模式）
@@ -63,6 +61,7 @@ def decrypt_frontend_password(encrypted_data: str, expected_domain: Optional[str
     except Exception as e:
         logger.error(f"解密前端密码失败: {e}")
         return None
+
 
 
 def _validate_timestamp(timestamp: int) -> bool:
@@ -97,6 +96,7 @@ def _validate_timestamp(timestamp: int) -> bool:
         return False
 
 
+
 def is_frontend_encrypted(password_data: str) -> bool:
     """
     检查密码数据是否是前端加密的格式
@@ -112,6 +112,7 @@ def is_frontend_encrypted(password_data: str) -> bool:
         return all(key in data for key in ['hash', 'timestamp', 'salt'])
     except (json.JSONDecodeError, TypeError):
         return False
+
 
 
 def extract_password_hash(encrypted_data: str) -> Optional[Tuple[str, int]]:
@@ -133,7 +134,8 @@ def extract_password_hash(encrypted_data: str) -> Optional[Tuple[str, int]]:
         return None
 
 
-def create_backend_hash(password: str, timestamp: int, salt: str = "") -> str:
+
+def create_backend_hash(password: str, timestamp: int, salt: str, domain: str) -> str:
     """
     在后端创建密码哈希（用于验证前端哈希）
     
@@ -141,12 +143,13 @@ def create_backend_hash(password: str, timestamp: int, salt: str = "") -> str:
         password: 原始密码
         timestamp: 时间戳
         salt: 盐值
+        domain: 域名
         
     Returns:
         str: 哈希值
     """
     # 组合字符串（与前端相同的逻辑）
-    combined_string = f"{password}:{timestamp}:{salt}:{timestamp}"
+    combined_string = f"{password}:{timestamp}:{salt}:{domain}"
     
     # 使用SHA-256哈希
     return hashlib.sha256(combined_string.encode()).hexdigest()

@@ -14,9 +14,10 @@ export const encryptPassword = async (password) => {
     // 添加时间戳和随机盐值防止重放攻击
     const timestamp = Date.now();
     const randomSalt = Math.random().toString(36).substring(2, 15);
+    const domain = window.location.origin;
     
     // 组合密码、时间戳、盐值和域名（增加唯一性）
-    const combinedString = `${password}:${timestamp}:${randomSalt}:${window.location.origin}`;
+    const combinedString = `${password}:${timestamp}:${randomSalt}:${domain}`;
     
     // 使用 TextEncoder 转换为字节数组
     const encoder = new TextEncoder();
@@ -29,18 +30,17 @@ export const encryptPassword = async (password) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     
-    // 返回哈希值和时间戳（后端需要验证时间戳）
+    // 返回哈希值、时间戳、盐值和域名
     return JSON.stringify({
       hash: hashHex,
       timestamp: timestamp,
-      salt: randomSalt
+      salt: randomSalt,
+      domain: domain
     });
-    
   } catch (error) {
     console.error('密码加密失败:', error);
     
     // 如果加密失败，返回原始密码（降级处理）
-    // 在实际生产环境中应该抛出错误或使用备用方案
     return JSON.stringify({
       hash: password,
       timestamp: Date.now(),

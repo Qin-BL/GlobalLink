@@ -240,7 +240,7 @@ async def register(
     # 处理前端加密的密码
     password_to_hash = user_in.password
     if is_frontend_encrypted(user_in.password):
-        decrypted_password = decrypt_frontend_password(user_in.password)
+        decrypted_password = decrypt_frontend_password(user_in.password, settings.EXPECTED_DOMAIN)
         if decrypted_password is not None:
             password_to_hash = decrypted_password
         else:

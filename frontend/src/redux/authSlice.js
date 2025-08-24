@@ -42,21 +42,28 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
+      console.log('登录请求开始，原始密码:', credentials.password);
       // 加密密码
       let encryptedPassword = credentials.password;
       if (isEncryptionSupported()) {
+        console.log('加密功能可用，开始加密密码');
         encryptedPassword = await encryptPassword(credentials.password);
+        console.log('密码加密成功，加密结果:', encryptedPassword);
+      } else {
+        console.log('加密功能不可用，使用原始密码');
       }
       
-      // 创建表单数据对象
-      const formData = new URLSearchParams();
-      formData.append('username', credentials.username);
-      formData.append('password', encryptedPassword);
+      // 创建请求数据
+      const requestData = {
+        username: credentials.username,
+        password: encryptedPassword
+      };
       
-      // 发送表单格式的请求
-      const response = await axios.post('/api/v1/auth/login', formData, {
+      console.log('发送登录请求，数据:', requestData);
+      // 发送JSON格式的请求
+      const response = await axios.post('/api/v1/auth/login', requestData, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         }
       });
       const { access_token } = response.data;
@@ -73,6 +80,7 @@ export const login = createAsyncThunk(
       
       return userResponse.data;
     } catch (error) {
+      console.error('登录失败:', error);
       return rejectWithValue({
         message: error.response?.data?.detail || '登录失败',
         status: error.response?.status
