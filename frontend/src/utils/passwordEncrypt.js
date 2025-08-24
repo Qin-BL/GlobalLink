@@ -11,31 +11,24 @@
  */
 export const encryptPassword = async (password) => {
   try {
-    console.log('开始加密密码');
     // 添加时间戳和随机盐值防止重放攻击
     const timestamp = Date.now();
     const randomSalt = Math.random().toString(36).substring(2, 15);
     const domain = window.location.origin;
-    console.log('加密参数:', { timestamp, randomSalt, domain });
     
     // 组合密码、时间戳、盐值和域名（增加唯一性）
     const combinedString = `${password}:${timestamp}:${randomSalt}:${domain}`;
-    console.log('组合字符串:', combinedString);
     
     // 使用 TextEncoder 转换为字节数组
     const encoder = new TextEncoder();
     const data = encoder.encode(combinedString);
-    console.log('转换为字节数组成功，长度:', data.length);
     
     // 使用 SHA-256 进行哈希
-    console.log('开始计算 SHA-256 哈希');
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    console.log('哈希计算成功，缓冲区大小:', hashBuffer.byteLength);
     
     // 将哈希结果转换为十六进制字符串
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    console.log('哈希转换为十六进制成功:', hashHex);
     
     // 返回哈希值、时间戳、盐值和域名
     const result = JSON.stringify({
@@ -44,11 +37,8 @@ export const encryptPassword = async (password) => {
       salt: randomSalt,
       domain: domain
     });
-    console.log('加密完成，结果:', result);
     return result;
   } catch (error) {
-    console.error('密码加密失败:', error);
-    
     // 如果加密失败，返回原始密码（降级处理）
     const fallbackResult = JSON.stringify({
       hash: password,
@@ -56,7 +46,6 @@ export const encryptPassword = async (password) => {
       salt: 'fallback',
       error: 'encryption_failed'
     });
-    console.log('使用降级模式，返回原始密码:', fallbackResult);
     return fallbackResult;
   }
 };
@@ -72,7 +61,6 @@ export const isEncryptionSupported = () => {
     window.crypto.subtle &&
     typeof window.crypto.subtle.digest === 'function'
   );
-  console.log('加密功能是否可用:', supported);
   return supported;
 };
 

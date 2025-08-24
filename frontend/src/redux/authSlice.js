@@ -42,25 +42,12 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      console.log('登录请求开始，原始密码:', credentials.password);
       // 检查加密功能是否可用
       const encryptionSupported = isEncryptionSupported();
-      console.log('加密功能是否可用:', encryptionSupported);
       // 加密密码
       let encryptedPassword = credentials.password;
       if (encryptionSupported) {
-        console.log('加密功能可用，开始加密密码');
         encryptedPassword = await encryptPassword(credentials.password);
-        console.log('密码加密成功，加密结果:', encryptedPassword);
-        // 检查加密结果是否是有效的JSON
-        try {
-          const parsed = JSON.parse(encryptedPassword);
-          console.log('加密结果解析成功，包含字段:', Object.keys(parsed));
-        } catch (e) {
-          console.error('加密结果不是有效的JSON:', e);
-        }
-      } else {
-        console.log('加密功能不可用，使用原始密码');
       }
       
       // 创建请求数据
@@ -69,8 +56,6 @@ export const login = createAsyncThunk(
         password: encryptedPassword
       };
       
-      console.log('发送登录请求，数据:', requestData);
-      console.log('发送登录请求到端点:', '/api/v1/auth/login/custom');
       // 发送JSON格式的请求到custom登录端点
       const response = await axios.post('/api/v1/auth/login/custom', requestData, {
         headers: {
@@ -91,11 +76,7 @@ export const login = createAsyncThunk(
       
       return userResponse.data;
     } catch (error) {
-      console.error('登录失败:', error);
-      return rejectWithValue({
-        message: error.response?.data?.detail || '登录失败',
-        status: error.response?.status
-      });
+      return rejectWithValue(error.response?.data?.detail || '登录失败');
     }
   }
 );

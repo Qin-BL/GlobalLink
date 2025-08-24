@@ -2,7 +2,7 @@ import secrets
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import AnyHttpUrl, PostgresDsn, validator, EmailStr
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_WINDOW: int = 60  # 限流窗口（秒）
     JWT_ALGORITHM: str = "HS256"  # JWT算法
     TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 7  # Token缓存过期时间（7天）
+    
+    # 前端密码加密验证配置
+    EXPECTED_DOMAIN: str = "http://localhost:3080"  # 预期域名，用于前端密码加密验证
 
     class Config:
         case_sensitive = True
