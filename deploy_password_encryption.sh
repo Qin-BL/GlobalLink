@@ -149,6 +149,19 @@ run_tests() {
     
     # 运行密码加密测试
     if [[ -f "test/test_password_encryption.py" ]]; then
+        # 确保激活虚拟环境
+        if [[ -d "backend/venv" ]]; then
+            source backend/venv/bin/activate
+            log "已激活虚拟环境"
+        else
+            log "警告: 未找到虚拟环境，使用系统Python"
+        fi
+        
+        # 设置Python路径以找到app模块
+        export PYTHONPATH="$PROJECT_ROOT/backend:$PYTHONPATH"
+        log "设置PYTHONPATH: $PYTHONPATH"
+        
+        # 运行测试
         python test/test_password_encryption.py
         if [[ $? -eq 0 ]]; then
             log "密码加密功能测试通过"
