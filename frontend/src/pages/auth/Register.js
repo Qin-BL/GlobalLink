@@ -70,7 +70,7 @@ const Register = () => {
         setCountdown(60); // 60秒倒计时
       }
     } catch (error) {
-      message.error(error.response?.data?.detail || '发送验证码失败，请稍后再试');
+      message.error(typeof error.response?.data?.detail === 'string' ? error.response?.data?.detail : '发送验证码失败，请稍后再试');
     } finally {
       setSendingCode(false);
     }

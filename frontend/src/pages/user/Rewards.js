@@ -102,7 +102,7 @@ const Rewards = () => {
       setRewards(rewardsResponse.data);
     } catch (error) {
       console.error('提现申请失败:', error);
-      message.error(error.response?.data?.detail || '提现申请失败');
+      message.error(typeof error.response?.data?.detail === 'string' ? error.response?.data?.detail : '提现申请失败');
       setWithdrawalLoading(false);
     }
   };
