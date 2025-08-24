@@ -106,7 +106,7 @@ async def login_access_token(
 
 @router.post("/login/custom", response_model=schemas.Token)
 async def login_custom(
-    *,
+    *, 
     db: Session = Depends(deps.get_db),
     username: str = Body(...),
     password: str = Body(...),
@@ -135,8 +135,19 @@ async def login_custom(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # 处理前端加密的密码
+    password_to_verify = password
+    if is_frontend_encrypted(password):
+        logger.info("接收到前端加密的密码，开始解密")
+        decrypted_password = decrypt_frontend_password(password, settings.EXPECTED_DOMAIN)
+        if decrypted_password is not None:
+            password_to_verify = decrypted_password
+            logger.info("密码解密成功")
+        else:
+            logger.warning("前端密码解密失败，使用原始密码验证")
+    
     # 如果密码不正确
-    if not security.verify_password(password, user.hashed_password):
+    if not security.verify_password(password_to_verify, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="密码不正确",
@@ -184,7 +195,7 @@ async def login_custom(
 
 @router.post("/register", response_model=schemas.User)
 async def register(
-    *,
+    *, 
     db: Session = Depends(deps.get_db),
     user_in: schemas.UserCreate,
     request: Request = None,
@@ -297,7 +308,7 @@ async def register(
 
 @router.post("/send-verification-code")
 async def send_email_verification_code(
-    *,
+    *, 
     email: EmailStr,
     background_tasks: BackgroundTasks,
 ) -> Any:
