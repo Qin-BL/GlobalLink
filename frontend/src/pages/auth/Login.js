@@ -27,9 +27,15 @@ const Login = () => {
     const result = await dispatch(login(values));
     
     if (result.error) {
+      // 确保错误消息是字符串
+      const errorMessage = typeof result.error.message === 'string' ? result.error.message : JSON.stringify(result.error.message);
+      
       // 如果登录失败且HTTP状态码为401且错误信息包含"用户不存在"，则跳转到注册页面
-      if (result.error.status === 401 && result.error.message.includes('用户不存在')) {
+      if (result.error.status === 401 && errorMessage.includes('用户不存在')) {
         navigate('/register', { state: { email: values.username } });
+      } else {
+        // 显示其他错误
+        message.error(errorMessage || '登录失败，请重试');
       }
     }
   };
