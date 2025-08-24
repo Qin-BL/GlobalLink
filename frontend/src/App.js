@@ -32,7 +32,7 @@ function App() {
 
   useEffect(() => {
     if (error) {
-      message.error(error);
+      message.error(typeof error === 'string' ? error : error.message || '发生错误');
     }
   }, [error]);
 
