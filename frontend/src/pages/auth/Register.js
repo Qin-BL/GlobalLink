@@ -23,6 +23,7 @@ const Register = () => {
   useEffect(() => {
     if (location.state?.email) {
       form.setFieldsValue({ email: location.state.email });
+      message.info('检测到您输入的邮箱未注册，请完成注册');
     }
   }, [location.state, form]);
 

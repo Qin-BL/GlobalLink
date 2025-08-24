@@ -27,8 +27,8 @@ const Login = () => {
     const result = await dispatch(login(values));
     
     if (result.error) {
-      // 如果登录失败且错误信息包含"用户不存在"，则跳转到注册页面
-      if (result.error.message.includes('用户不存在')) {
+      // 如果登录失败且HTTP状态码为401且错误信息包含"用户不存在"，则跳转到注册页面
+      if (result.error.status === 401 && result.error.message.includes('用户不存在')) {
         navigate('/register', { state: { email: values.username } });
       }
     }

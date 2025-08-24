@@ -73,7 +73,10 @@ export const login = createAsyncThunk(
       
       return userResponse.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.detail || '登录失败');
+      return rejectWithValue({
+        message: error.response?.data?.detail || '登录失败',
+        status: error.response?.status
+      });
     }
   }
 );
