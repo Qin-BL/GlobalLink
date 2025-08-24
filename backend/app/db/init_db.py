@@ -61,12 +61,13 @@ async def init_courses(db: Session) -> None:
         return
     
     # 获取课程文件夹路径
-    courses_dir = Path(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "courses"))
-    if not courses_dir.exists():
-        courses_dir = Path("courses")  # 尝试相对路径
+    # 从项目根目录获取courses目录（位于backend目录同级）
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    project_root = os.path.dirname(backend_dir)
+    courses_dir = Path(os.path.join(project_root, "courses"))
     
     if not courses_dir.exists():
-        print(f"警告: 课程目录 {courses_dir} 不存在")
+        logger.error(f"课程目录 {courses_dir} 不存在")
         return
     
     # 遍历课程文件

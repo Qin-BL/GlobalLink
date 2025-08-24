@@ -7,6 +7,7 @@ import logging
 
 from app.core.config import settings
 from app.utils.token_cache import cache_user_token, get_cached_user_id, revoke_token
+from app.utils.password_decrypt import decrypt_frontend_password, is_frontend_encrypted
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -60,6 +61,19 @@ def create_access_token_sync(
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证密码（支持前端加密密码）"""
+    # 检查是否是前端加密的密码
+    if is_frontend_encrypted(plain_password):
+        # 解密前端加密的密码
+        decrypted_password = decrypt_frontend_password(plain_password)
+        if decrypted_password is None:
+            logger.warning("前端密码解密失败，使用原始密码验证")
+            return pwd_context.verify(plain_password, hashed_password)
+        
+        # 使用解密后的密码进行验证
+        return pwd_context.verify(decrypted_password, hashed_password)
+    
+    # 普通密码验证
     return pwd_context.verify(plain_password, hashed_password)
 
 

@@ -12,6 +12,7 @@ from app.api import deps
 from app.core import security
 from app.core.config import settings
 from app.core.security import get_password_hash
+from app.utils.password_decrypt import decrypt_frontend_password, is_frontend_encrypted
 from app.utils.utils import (
     generate_password_reset_token,
     verify_password_reset_token,
@@ -236,12 +237,21 @@ async def register(
         if referrer:
             referrer_id = referrer.id
     
+    # 处理前端加密的密码
+    password_to_hash = user_in.password
+    if is_frontend_encrypted(user_in.password):
+        decrypted_password = decrypt_frontend_password(user_in.password)
+        if decrypted_password is not None:
+            password_to_hash = decrypted_password
+        else:
+            logger.warning("注册时前端密码解密失败，使用原始密码")
+    
     # 创建用户
     user = models.User(
         username=user_in.username,
         email=user_in.email,
         phone=user_in.phone,
-        hashed_password=get_password_hash(user_in.password),
+        hashed_password=get_password_hash(password_to_hash),
         referral_code=referral_code,
         referrer_id=referrer_id,
     )

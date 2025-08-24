@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import jwt_decode from 'jwt-decode';
+import { encryptPassword, isEncryptionSupported } from '../utils/passwordEncrypt';
 
 // 异步操作：检查用户认证状态
 export const checkAuth = createAsyncThunk(
@@ -41,10 +42,16 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
+      // 加密密码
+      let encryptedPassword = credentials.password;
+      if (isEncryptionSupported()) {
+        encryptedPassword = await encryptPassword(credentials.password);
+      }
+      
       // 创建表单数据对象
       const formData = new URLSearchParams();
       formData.append('username', credentials.username);
-      formData.append('password', credentials.password);
+      formData.append('password', encryptedPassword);
       
       // 发送表单格式的请求
       const response = await axios.post('/api/v1/auth/login', formData, {
@@ -76,7 +83,19 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post('/api/v1/auth/register', userData);
+      // 加密密码
+      let encryptedPassword = userData.password;
+      if (isEncryptionSupported()) {
+        encryptedPassword = await encryptPassword(userData.password);
+      }
+      
+      // 创建注册数据副本并替换密码
+      const encryptedUserData = {
+        ...userData,
+        password: encryptedPassword
+      };
+      
+      const response = await axios.post('/api/v1/auth/register', encryptedUserData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.detail || '注册失败');
