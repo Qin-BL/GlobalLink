@@ -68,19 +68,6 @@ backup_config() {
     log "配置备份完成: $BACKUP_DIR"
 }
 
-# 拉取最新代码
-update_code() {
-    log "拉取最新代码..."
-    
-    if [[ -d "$PROJECT_ROOT/.git" ]]; then
-        cd "$PROJECT_ROOT"
-        git pull origin main || error_exit "代码拉取失败"
-        log "代码更新完成"
-    else
-        log "未发现Git仓库，跳过代码更新"
-    fi
-}
-
 # 安装后端依赖
 install_backend_deps() {
     log "安装后端依赖..."
@@ -225,7 +212,6 @@ main() {
     # 执行部署步骤
     check_requirements
     backup_config
-    update_code
     install_backend_deps
     install_frontend_deps
     configure_https
