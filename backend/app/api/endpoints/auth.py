@@ -57,8 +57,19 @@ async def login_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # 处理前端加密的密码
+    password_to_verify = form_data.password
+    if is_frontend_encrypted(form_data.password):
+        logger.info("接收到前端加密的密码，开始解密")
+        decrypted_password = decrypt_frontend_password(form_data.password, settings.EXPECTED_DOMAIN)
+        if decrypted_password is not None:
+            password_to_verify = decrypted_password
+            logger.info("密码解密成功")
+        else:
+            logger.warning("前端密码解密失败，使用原始密码验证")
+
     # 如果密码不正确
-    if not security.verify_password(form_data.password, user.hashed_password):
+    if not security.verify_password(password_to_verify, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="密码不正确",
@@ -251,9 +262,11 @@ async def register(
     # 处理前端加密的密码
     password_to_hash = user_in.password
     if is_frontend_encrypted(user_in.password):
+        logger.info("接收到前端加密的注册密码，开始解密")
         decrypted_password = decrypt_frontend_password(user_in.password, settings.EXPECTED_DOMAIN)
         if decrypted_password is not None:
             password_to_hash = decrypted_password
+            logger.info("注册密码解密成功")
         else:
             logger.warning("注册时前端密码解密失败，使用原始密码")
     

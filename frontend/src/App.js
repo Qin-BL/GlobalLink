@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Layout, message } from 'antd';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import './App.css';
 import { checkAuth } from './redux/authSlice';
@@ -44,72 +45,74 @@ function App() {
   };
 
   return (
-    <Layout className="app-layout">
-      <AppHeader />
-      <Content className="app-content">
-        <Routes>
-          {/* 公共路由 */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* 受保护的路由 */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <CourseList />
-            </ProtectedRoute>
-          } />
-          <Route path="/courses" element={
-            <ProtectedRoute>
-              <CourseList />
-            </ProtectedRoute>
-          } />
-          <Route path="/courses/:courseId" element={
-            <ProtectedRoute>
-              <CourseDetail />
-            </ProtectedRoute>
-          } />
-          <Route path="/study/:courseId/mode" element={
-            <ProtectedRoute>
-              <StudyMode />
-            </ProtectedRoute>
-          } />
-          <Route path="/study/:courseId/:mode" element={
-            <ProtectedRoute>
-              <StudySession />
-            </ProtectedRoute>
-          } />
-          <Route path="/membership" element={
-            <ProtectedRoute>
-              <Membership />
-            </ProtectedRoute>
-          } />
-          <Route path="/payment/:type" element={
-            <ProtectedRoute>
-              <Payment />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/referral" element={
-            <ProtectedRoute>
-              <Referral />
-            </ProtectedRoute>
-          } />
-          <Route path="/rewards" element={
-            <ProtectedRoute>
-              <Rewards />
-            </ProtectedRoute>
-          } />
-          
-          {/* 404页面 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Content>
-      <AppFooter />
-    </Layout>
+    <ErrorBoundary>
+      <Layout className="app-layout">
+        <AppHeader />
+        <Content className="app-content">
+          <Routes>
+            {/* 公共路由 */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* 受保护的路由 */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <CourseList />
+              </ProtectedRoute>
+            } />
+            <Route path="/courses" element={
+              <ProtectedRoute>
+                <CourseList />
+              </ProtectedRoute>
+            } />
+            <Route path="/courses/:courseId" element={
+              <ProtectedRoute>
+                <CourseDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/study/:courseId/mode" element={
+              <ProtectedRoute>
+                <StudyMode />
+              </ProtectedRoute>
+            } />
+            <Route path="/study/:courseId/:mode" element={
+              <ProtectedRoute>
+                <StudySession />
+              </ProtectedRoute>
+            } />
+            <Route path="/membership" element={
+              <ProtectedRoute>
+                <Membership />
+              </ProtectedRoute>
+            } />
+            <Route path="/payment/:type" element={
+              <ProtectedRoute>
+                <Payment />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/referral" element={
+              <ProtectedRoute>
+                <Referral />
+              </ProtectedRoute>
+            } />
+            <Route path="/rewards" element={
+              <ProtectedRoute>
+                <Rewards />
+              </ProtectedRoute>
+            } />
+            
+            {/* 404页面 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Content>
+        <AppFooter />
+      </Layout>
+    </ErrorBoundary>
   );
 }
 

@@ -32,7 +32,7 @@ const Login = () => {
         navigate('/register', { state: { email: values.username } });
       } else {
         // 显示其他错误
-        message.error(result.error || '登录失败，请重试');
+        message.error(typeof result.error === 'string' ? result.error : '登录失败，请重试');
       }
     }
   };
