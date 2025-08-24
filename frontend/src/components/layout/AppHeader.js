@@ -26,7 +26,7 @@ const AppHeader = () => {
       setLoggingOut(true);
       const result = await dispatch(logout());
       if (result.error) {
-        message.error(result.error.message || '登出失败');
+        message.error(typeof result.error === 'string' ? result.error : result.error.message || '登出失败');
       } else {
         message.success('登出成功');
         navigate('/login');
