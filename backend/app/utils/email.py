@@ -2,7 +2,7 @@ import logging
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from fastapi import BackgroundTasks
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
@@ -109,7 +109,7 @@ def send_email_background(
 import asyncio
 
 
-async def send_verification_code(email_to: EmailStr) -> tuple[bool, Optional[str]]:
+async def send_verification_code(email_to: EmailStr) -> Tuple[bool, Optional[str]]:
     """
     发送验证码邮件并将验证码存储在Redis中
     
