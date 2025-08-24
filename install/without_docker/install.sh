@@ -294,26 +294,15 @@ install_backend() {
   pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
   pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
-  # 检查项目根目录下的.env文件
+  # 检查并创建.env文件
   log "检查环境变量文件..."
-  if [ -f "$PROJECT_ROOT/.env" ]; then
-    log "发现项目根目录下的.env文件，复制到backend目录..."
-    cp "$PROJECT_ROOT/.env" .env
+  if [ -f ".env.example" ]; then
+    log "发现.env.example文件，复制为.env文件..."
+    cp .env.example .env
+    log "警告：请务必修改.env文件中的配置参数，特别是数据库密码和邮件服务配置"
   else
-    log "未找到项目根目录下的.env文件，创建默认.env文件"
-    cat > .env << EOF
-POSTGRES_SERVER=localhost
-POSTGRES_USER=globallink
-POSTGRES_PASSWORD=password
-POSTGRES_DB=globallink
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DB=globallink
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_DB=0
-REDIS_PASSWORD=
-EOF
-    log "警告：请务必修改.env文件中的数据库密码"
+    log "错误：未找到.env.example文件，请确保项目结构正确"
+    exit 1
   fi
 
   # 修改后端CORS配置
@@ -537,7 +526,12 @@ main() {
   log "访问地址: http://localhost"
   log "后端API文档: http://localhost/docs"
   log "安装日志已保存至: $LOG_FILE"
-  log "请确保已修改.env文件中的数据库密码"
+  log "请确保已修改backend/.env文件中的配置参数，特别是:" 
+  log "  - 数据库密码（POSTGRES_PASSWORD）"
+  log "  - 邮件服务配置（MAIL_SERVER、MAIL_PORT、MAIL_USERNAME、MAIL_PASSWORD等）"
+  log "  - 其他服务的配置参数"
+  log "修改完成后，重启服务使配置生效:" 
+  log "  sudo systemctl restart globallink-backend"
   log "可以使用以下命令启动/停止服务:" 
   log "  sudo systemctl start/stop/restart globallink-backend"
   log "  sudo systemctl start/stop/restart globallink-frontend"

@@ -27,6 +27,12 @@ GlobalLink是一个英语学习平台，包含前端React应用和后端FastAPI�
    sudo ./install/with_docker/install.sh
    ```
 3. 脚本会自动安装Docker、Docker Compose、配置数据库并启动所有服务
+4. **重要**：安装完成后，如果需要自定义配置，请修改项目根目录下的`.env`文件，特别是数据库密码和邮件服务配置
+5. 修改完成后，重启容器使配置生效:
+   ```bash
+   docker-compose down
+   docker-compose up -d
+   ```
 
 ### 单独安装组件
 如果需要单独安装某个组件，可以使用以下脚本：
@@ -66,7 +72,15 @@ docker-compose logs -f
    sudo chmod +x ./install/without_docker/install.sh
    sudo ./install/without_docker/install.sh
    ```
-3. 脚本会自动安装所有依赖、配置数据库并启动所有服务
+3. 脚本会自动安装所有依赖、从.env.example复制创建.env文件并启动所有服务
+4. **重要**：安装完成后，请务必修改`backend/.env`文件中的配置参数，特别是：
+   - 数据库密码（POSTGRES_PASSWORD）
+   - 邮件服务配置（MAIL_SERVER、MAIL_PORT、MAIL_USERNAME、MAIL_PASSWORD等）
+   - 其他服务的配置参数
+5. 修改完成后，重启服务使配置生效:
+   ```bash
+   sudo systemctl restart globallink-backend
+   ```
 
 ### 单独安装组件
 如果需要单独安装某个组件，可以使用以下脚本：
