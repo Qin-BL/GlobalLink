@@ -60,8 +60,8 @@ export const login = createAsyncThunk(
       };
       
       console.log('发送登录请求，数据:', requestData);
-      // 发送JSON格式的请求
-      const response = await axios.post('/api/v1/auth/login', requestData, {
+      // 发送JSON格式的请求到custom登录端点
+      const response = await axios.post('/api/v1/auth/login/custom', requestData, {
         headers: {
           'Content-Type': 'application/json'
         }
