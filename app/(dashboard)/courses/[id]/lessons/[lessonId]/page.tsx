@@ -222,7 +222,7 @@ export default function LessonDetailPage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '课程中心', href: '/courses' },
       { label: `课程包 ${courseId}`, href: `/courses/${courseId}` },
       { label: `第${getLessonNumber(lessonId)}课`, href: `/courses/${courseId}/lessons/${lessonId}` }
@@ -267,8 +267,8 @@ export default function LessonDetailPage() {
   const handleStartGame = (modeId: string, lessonId: string) => {
     const mode = gameModes.find(m => m.id === modeId);
     if (mode) {
-      // 根据游戏模式跳转到对应页面，并传递课时ID参数
-      const url = `${mode.href}?courseId=${lessonId}`;
+      // 根据游戏模式跳转到对应页面，并传递课时ID参数和from=course标识
+      const url = `${mode.href}?courseId=${lessonId}&from=course`;
       router.push(url);
       toast.success(`开始 ${mode.title} 练习！`);
     }

@@ -3,6 +3,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { ReactNode } from 'react'
+import { 
+  Trophy, BookOpen, Flame, Clock, PartyPopper, CheckCircle, XCircle
+} from 'lucide-react'
 import { 
   getFreeUserId, 
   getLearningStats, 
@@ -122,28 +126,28 @@ export default function DashboardPage() {
           title="学习等级"
           value={userStats.currentLevel}
           unit="级"
-          icon="🏆"
+          icon={<Trophy className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-yellow-400 to-orange-500"
         />
         <StatCard
           title="已学单词"
           value={userStats.totalWordsLearned}
           unit="个"
-          icon="📚"
+          icon={<BookOpen className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-blue-500 to-purple-600"
         />
         <StatCard
           title="学习天数"
           value={userStats.streakDays}
           unit="天"
-          icon="🔥"
+          icon={<Flame className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-red-500 to-pink-500"
         />
         <StatCard
           title="总学习时长"
           value={Math.round(userStats.totalStudyTime / 60)}
           unit="小时"
-          icon="⏰"
+          icon={<Clock className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-green-500 to-teal-500"
         />
       </div>
@@ -167,7 +171,9 @@ export default function DashboardPage() {
         </div>
         {todayProgress >= userStats.dailyGoal && (
           <div className="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
-            <p className="font-medium text-green-600 dark:text-green-400">🎉 恭喜！今日目标已完成！</p>
+            <p className="font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
+              <PartyPopper className="w-4 h-4" /> 恭喜！今日目标已完成！
+            </p>
           </div>
         )}
       </div>
@@ -181,7 +187,7 @@ export default function DashboardPage() {
             <ActionCard
               title="单词闪卡"
               description="经典单词学习模式"
-              icon="📚"
+              icon={<BookOpen className="w-5 h-5" />}
               href="/play/word-blitz"
               color="rgba(59, 130, 246, 0.1)"
             />
@@ -247,8 +253,12 @@ export default function DashboardPage() {
                   ></span>
                   <div>
                     <span className="font-medium text-gray-900 dark:text-white">{activity.word}</span>
-                    <span className="text-sm ml-2 text-gray-600 dark:text-gray-300">
-                      {activity.isCorrect ? '✅ 正确' : '❌ 错误'}
+                    <span className="text-sm ml-2 text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                      {activity.isCorrect ? (
+                        <><CheckCircle className="w-3 h-3 text-green-500" /> 正确</>
+                      ) : (
+                        <><XCircle className="w-3 h-3 text-red-500" /> 错误</>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -282,7 +292,7 @@ interface StatCardProps {
   title: string
   value: number
   unit: string
-  icon: string
+  icon: ReactNode
   color: string
 }
 
@@ -308,7 +318,7 @@ function StatCard({ title, value, unit, icon, color }: StatCardProps) {
 interface ActionCardProps {
   title: string
   description: string
-  icon: string
+  icon: ReactNode
   href: string
   color: string
 }

@@ -776,7 +776,7 @@ export default function HomePage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' }
+      { label: '首页', href: '/dashboard' }
     ]);
   }, [setBreadcrumbs]);
 

@@ -102,7 +102,7 @@ function LessonCard({ lesson, courseId, index }: LessonCardProps) {
         </span>
         <span className="flex items-center gap-1">
           <BookOpen size={14} />
-          {lesson.items} 个项目
+          真实内容
         </span>
         <span className={`px-2 py-1 rounded-full text-xs ${difficultyColors[lesson.difficulty]}`}>
           {lesson.difficulty}
@@ -145,9 +145,9 @@ export default function CourseDetailPage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '课程中心', href: '/courses' },
-      { label: `课程包 ${courseId}`, href: `/courses/${courseId}` }
+      { label: '基础英语课程', href: `/courses/${courseId}` }
     ]);
   }, [setBreadcrumbs, courseId]);
 
@@ -178,69 +178,32 @@ export default function CourseDetailPage() {
     }
   }, [courseId]);
 
-  // 生成课时列表
+  // 生成课时列表 - 基于55个真实课程文件
   const generateLessons = (courseId: string, totalLessons: number): Lesson[] => {
     const lessons: Lesson[] = [];
-    const courseNum = parseInt(courseId);
     
-    // 根据课程类型生成不同的课时
+    // 生成所有55个课时
     for (let i = 1; i <= totalLessons; i++) {
-      const lessonId = ((courseNum - 1) * 10 + i).toString().padStart(2, '0');
-      
-      // 检查课时文件是否存在
-      const fileExists = parseInt(lessonId) <= 55; // 我们有55个课时文件
+      const lessonId = i.toString().padStart(2, '0');
       
       lessons.push({
         id: lessonId,
         title: `第${i}课`,
-        description: getLessonDescription(courseNum, i),
+        description: getLessonDescription(i),
         duration: '15-20分钟',
         difficulty: getDifficultyByLesson(i),
-        items: Math.floor(Math.random() * 15) + 10,
-        unlocked: fileExists && i <= 3 || i === 1 // 前3课或第1课解锁
+        items: 1, // 每个课时包含一个真实的学习项目
+        unlocked: i === 1 // 只有第一课默认解锁，其他课时需要按顺序完成
       });
     }
     
     return lessons;
   };
 
-  // 获取课时描述
-  const getLessonDescription = (courseNum: number, lessonNum: number): string => {
-    const descriptions = {
-      1: [ // 基础英语入门
-        '基本问候和自我介绍',
-        '数字和时间表达',
-        '家庭成员和称谓',
-        '日常活动描述',
-        '颜色和形状词汇',
-        '食物和饮料名称',
-        '购物和价格询问',
-        '天气和季节表达'
-      ],
-      2: [ // 日常对话进阶
-        '在餐厅点餐对话',
-        '问路和方向指引',
-        '电话交流技巧',
-        '约会和时间安排',
-        '兴趣爱好交流',
-        '工作和职业介绍',
-        '健康和身体状况',
-        '旅行和交通工具'
-      ],
-      3: [ // 商务英语基础
-        '商务会议基础',
-        '邮件写作技巧',
-        '产品介绍和展示',
-        '客户服务对话',
-        '合同和协议用语',
-        '财务和预算讨论',
-        '项目管理沟通',
-        '商务礼仪和文化'
-      ]
-    };
-    
-    const courseDescriptions = descriptions[courseNum as keyof typeof descriptions] || descriptions[1];
-    return courseDescriptions[(lessonNum - 1) % courseDescriptions.length];
+  // 获取课时描述 - 基于真实课程数据
+  const getLessonDescription = (lessonNum: number): string => {
+    // 简化描述，基于55个真实课程文件的内容
+    return `第${lessonNum}课时 - 基础英语学习内容，包含词汇、发音和语法练习`;
   };
 
   // 根据课时获取难度
@@ -325,7 +288,7 @@ export default function CourseDetailPage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock size={16} />
-                    约 {Math.ceil(courseInfo.totalLessons * 15 / 60)} 小时
+                    约 {Math.ceil(courseInfo.totalLessons * 20 / 60)} 小时
                   </span>
                   <span className="flex items-center gap-1">
                     <Target size={16} />
@@ -333,7 +296,7 @@ export default function CourseDetailPage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Users size={16} />
-                    {courseInfo.students}+ 学员
+                    真实课程内容
                   </span>
                 </div>
               </div>

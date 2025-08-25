@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, Lightbulb, RotateCcw, CheckCircle, XCircle, MessageSquare, Trophy, Settings } from 'lucide-react';
+import { Volume2, Lightbulb, RotateCcw, CheckCircle, XCircle, MessageSquare, Trophy, Settings, Maximize } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageContainer, CardContainer } from '@/components/layout/MainContent';
 import { useLayoutStore } from '@/store/layout';
 import { useSearchParams } from 'next/navigation';
 import { loadGameDataForCourse, SentenceBuilderItem, saveGameSession, GameSession } from '@/lib/gameData';
 import { getFreeUserId } from '@/lib/localStorage';
+import FullscreenGameMode from '@/components/games/FullscreenGameMode';
 
 // 游戏配置选择组件
 interface GameSetupProps {
@@ -153,7 +156,14 @@ function SentenceArea({ tokens, onRemoveToken, isCorrect, isWrong }: SentenceAre
 }
 
 // 主游戏组件
-export default function ChineseEnglishGame() {
+export default function ChineseEnglishGamePageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">加载中...</div>}>
+      <ChineseEnglishGame />
+    </Suspense>
+  );
+}
+function ChineseEnglishGame() {
   const { setBreadcrumbs } = useLayoutStore();
   const searchParams = useSearchParams();
   
@@ -167,6 +177,7 @@ export default function ChineseEnglishGame() {
   const [showHint, setShowHint] = useState(false);
   const [validationState, setValidationState] = useState<'none' | 'correct' | 'wrong'>('none');
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // 游戏统计
   const [gameStats, setGameStats] = useState({
@@ -180,19 +191,27 @@ export default function ChineseEnglishGame() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '游戏模式', href: '/play' },
       { label: '中译英模式', href: '/play/chinese-english' }
     ]);
   }, [setBreadcrumbs]);
 
-  // 检查URL参数，如果有课程ID则直接开始游戏
+  // 检查URL参数，从课程进入时自动启动全屏游戏
   useEffect(() => {
     const courseIdFromUrl = searchParams.get('courseId');
-    if (courseIdFromUrl) {
+    const fromCourse = searchParams.get('from') === 'course';
+    
+    if (fromCourse && courseIdFromUrl) {
+      // 从课程页面进入时直接启动全屏游戏
+      setIsFullscreen(true);
+      handleStartGame(courseIdFromUrl);
+    } else if (courseIdFromUrl) {
+      // 有课程ID但不是从课程页面进入
       setShowSetup(false);
       handleStartGame(courseIdFromUrl);
     } else {
+      // 没有课程ID，显示选择界面
       setShowSetup(true);
       setLoading(false);
     }
@@ -349,6 +368,28 @@ export default function ChineseEnglishGame() {
     }
   };
 
+  // 启动全屏模式
+  const startFullscreenMode = () => {
+    setIsFullscreen(true);
+  };
+
+  // 退出全屏模式
+  const exitFullscreenMode = () => {
+    setIsFullscreen(false);
+  };
+
+  // 处理全屏游戏完成
+  const handleFullscreenGameComplete = (results: any) => {
+    setGameStats(prev => ({
+      ...prev,
+      score: results.score,
+      correctAnswers: results.correctAnswers,
+      totalAnswers: results.totalQuestions
+    }));
+    setIsFullscreen(false);
+    toast.success(`游戏完成！得分: ${results.score}`);
+  };
+
   if (showSetup) {
     return (
       <>
@@ -394,6 +435,16 @@ export default function ChineseEnglishGame() {
     );
   }
 
+  if (isFullscreen) {
+    return (
+      <FullscreenGameMode
+        gameType="chinese-english"
+        onExit={exitFullscreenMode}
+        onGameComplete={handleFullscreenGameComplete}
+      />
+    );
+  }
+
   return (
     <PageContainer>
       {/* 游戏头部 */}
@@ -401,6 +452,14 @@ export default function ChineseEnglishGame() {
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">中译英练习</h1>
           <div className="flex items-center gap-4">
+            <button
+              onClick={startFullscreenMode}
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+              title="全屏模式"
+            >
+              <Maximize size={16} />
+              全屏
+            </button>
             <button
               onClick={() => setShowSetup(true)}
               className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"

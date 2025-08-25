@@ -155,12 +155,12 @@ export const PageContainer: React.FC<PageContainerProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               {title && (
-                <h1 className="text-3xl font-bold text-text-primary mb-2">
+                <h1 className="text-3xl font-bold mb-2">
                   {title}
                 </h1>
               )}
               {subtitle && (
-                <p className="text-lg text-text-secondary">
+                <p className="text-lg font-bold">
                   {subtitle}
                 </p>
               )}

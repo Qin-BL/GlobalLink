@@ -22,49 +22,90 @@ interface GameStore extends GameState {
   decrementTimer: () => void;
 }
 
-// 模拟句子数据
-const sampleSentences: GameSentence[] = [
-  {
-    id: '1',
-    chinese: '我喜欢学习英语。',
-    english: 'I like learning English.',
-    tokens: ['I', 'like', 'learning', 'English', '.'],
-    difficulty: 1,
-    hints: ['主语是 "I"', '动词是 "like"', '宾语是 "learning English"'],
-  },
-  {
-    id: '2',
-    chinese: '她每天早上都会喝咖啡。',
-    english: 'She drinks coffee every morning.',
-    tokens: ['She', 'drinks', 'coffee', 'every', 'morning', '.'],
-    difficulty: 2,
-    hints: ['主语是 "She"', '动词是 "drinks"', '时间状语在最后'],
-  },
-  {
-    id: '3',
-    chinese: '我们正在计划明年的旅行。',
-    english: 'We are planning our trip next year.',
-    tokens: ['We', 'are', 'planning', 'our', 'trip', 'next', 'year', '.'],
-    difficulty: 3,
-    hints: ['现在进行时结构', '主语是 "We"', '时间状语是 "next year"'],
-  },
-  {
-    id: '4',
-    chinese: '如果明天下雨，我们就待在家里。',
-    english: 'If it rains tomorrow, we will stay at home.',
-    tokens: ['If', 'it', 'rains', 'tomorrow', ',', 'we', 'will', 'stay', 'at', 'home', '.'],
-    difficulty: 4,
-    hints: ['条件句结构', '从句用一般现在时', '主句用将来时'],
-  },
-  {
-    id: '5',
-    chinese: '尽管他很忙，但还是帮助了我。',
-    english: 'Although he was busy, he still helped me.',
-    tokens: ['Although', 'he', 'was', 'busy', ',', 'he', 'still', 'helped', 'me', '.'],
-    difficulty: 5,
-    hints: ['让步状语从句', '连词是 "Although"', '注意时态一致性'],
-  },
-];
+// 从packages数据生成句子数据
+let cachedSentences: GameSentence[] = [];
+let currentCourseId: string | null = null;
+
+// 从课程数据生成游戏句子
+async function generateSentencesFromCourse(courseId: string = '01'): Promise<GameSentence[]> {
+  try {
+    // 如果已经缓存了相同课程的数据，直接返回
+    if (currentCourseId === courseId && cachedSentences.length > 0) {
+      return cachedSentences;
+    }
+
+    const response = await fetch(`/api/courses/${courseId.padStart(2, '0')}`);
+    if (!response.ok) {
+      throw new Error('Failed to load course data');
+    }
+
+    const courseItems = await response.json();
+    
+    // 筛选出适合句子构建的数据（包含多个单词的句子）
+    const sentenceItems = courseItems.filter((item: any) => 
+      item.english.split(' ').length >= 3 && item.english.split(' ').length <= 10
+    );
+
+    const sentences: GameSentence[] = sentenceItems.map((item: any, index: number) => {
+      const tokens = item.english.split(' ');
+      const difficulty = Math.min(5, Math.max(1, Math.ceil(tokens.length / 2)));
+      
+      // 生成基于句子结构的提示
+      const hints = generateHints(item.english, item.chinese);
+      
+      return {
+        id: `${courseId}-${index}`,
+        chinese: item.chinese,
+        english: item.english,
+        tokens,
+        difficulty,
+        hints,
+      };
+    });
+
+    // 缓存数据
+    cachedSentences = sentences;
+    currentCourseId = courseId;
+    
+    return sentences;
+  } catch (error) {
+    console.error('Error generating sentences from course:', error);
+    // 返回一个基础的句子作为后备
+    return [{
+      id: 'fallback-1',
+      chinese: '我喜欢学习英语',
+      english: 'I like learning English',
+      tokens: ['I', 'like', 'learning', 'English'],
+      difficulty: 1,
+      hints: ['主语是 "I"', '动词是 "like"', '宾语是 "learning English"'],
+    }];
+  }
+}
+
+// 生成句子提示
+function generateHints(english: string, chinese: string): string[] {
+  const tokens = english.split(' ');
+  const hints: string[] = [];
+  
+  // 基于句子长度和结构生成提示
+  if (tokens.length <= 4) {
+    hints.push('这是一个简单句，注意主谓宾结构');
+  } else if (tokens.length <= 7) {
+    hints.push('注意句子的语序和时态');
+  } else {
+    hints.push('这是一个复杂句，注意从句和主句的关系');
+  }
+  
+  // 添加中文提示
+  hints.push(`中文意思：${chinese}`);
+  
+  // 添加首词提示
+  if (tokens.length > 0) {
+    hints.push(`句子以 "${tokens[0]}" 开头`);
+  }
+  
+  return hints;
+}
 
 // 工具函数：打乱数组
 function shuffleArray<T>(array: T[]): T[] {
@@ -214,8 +255,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    // 获取下一个句子（这里使用模拟数据）
-    const nextSentence = sampleSentences[nextQuestionIndex % sampleSentences.length];
+    // 获取真实课程数据
+    const sentences = await generateSentencesFromCourse('01');
+    const nextSentence = sentences[nextQuestionIndex % sentences.length];
     
     set({ currentQuestion: nextQuestionIndex });
     get().setCurrentSentence(nextSentence);

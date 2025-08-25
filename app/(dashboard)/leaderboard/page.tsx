@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Award, TrendingUp, Users, Star, Crown } from 'lucide-react';
+import { Trophy, Medal, Award, TrendingUp, Users, Star, Crown, BookOpen } from 'lucide-react';
 import { PageContainer, CardContainer, GridContainer } from '@/components/layout/MainContent';
 import { useLayoutStore } from '@/store/layout';
 
@@ -84,11 +84,16 @@ function LeaderboardItem({ entry, rank, isCurrentUser = false }: {
             <Star className="w-4 h-4 text-warning" />
           )}
         </div>
-        <div className="text-sm text-text-secondary">
-          {rank === 1 ? '🏆 传奇学习者' : 
-           rank <= 3 ? '🎖️ 优秀学习者' : 
-           rank <= 10 ? '📚 积极学习者' : 
-           '🌟 努力学习者'}
+        <div className="text-sm text-text-secondary flex items-center gap-1">
+          {rank === 1 ? (
+            <><Trophy className="w-4 h-4" /> 传奇学习者</>
+          ) : rank <= 3 ? (
+            <><Medal className="w-4 h-4" /> 优秀学习者</>
+          ) : rank <= 10 ? (
+            <><BookOpen className="w-4 h-4" /> 积极学习者</>
+          ) : (
+            <><Star className="w-4 h-4" /> 努力学习者</>
+          )}
         </div>
       </div>
       
@@ -145,7 +150,7 @@ export default function Leaderboard() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '排行榜', href: '/leaderboard' }
     ]);
   }, [setBreadcrumbs]);

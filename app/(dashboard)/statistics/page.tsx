@@ -2,6 +2,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ReactNode } from 'react'
+import { 
+  Trophy, BookOpen, Flame, Target
+} from 'lucide-react'
 import { UserAnalytics } from '@/src/lib/analytics'
 
 interface StudyStats {
@@ -153,7 +157,7 @@ export default function StatisticsPage() {
           title="学习等级"
           value={studyStats?.currentLevel || 1}
           unit="级"
-          icon="🏆"
+          icon={<Trophy className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-yellow-400 to-orange-500"
           change="+2"
         />
@@ -161,7 +165,7 @@ export default function StatisticsPage() {
           title="总学词汇"
           value={studyStats?.totalWordsLearned || 0}
           unit="个"
-          icon="📚"
+          icon={<BookOpen className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-blue-500 to-purple-600"
           change="+12"
         />
@@ -169,7 +173,7 @@ export default function StatisticsPage() {
           title="连续天数"
           value={studyStats?.streakDays || 0}
           unit="天"
-          icon="🔥"
+          icon={<Flame className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-red-500 to-pink-500"
           change="+1"
         />
@@ -177,7 +181,7 @@ export default function StatisticsPage() {
           title="正确率"
           value={studyStats?.accuracy || 0}
           unit="%"
-          icon="🎯"
+          icon={<Target className="w-6 h-6 text-white" />}
           color="bg-gradient-to-r from-green-500 to-teal-500"
           change="+3%"
         />
@@ -282,21 +286,21 @@ export default function StatisticsPage() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">学习成就</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <AchievementCard
-            icon="🎯"
+            icon={<Target className="w-8 h-8" />}
             title="神射手"
             description="连续10天保持90%以上正确率"
             progress={85}
             unlocked={false}
           />
           <AchievementCard
-            icon="📚"
+            icon={<BookOpen className="w-8 h-8" />}
             title="词汇大师"
             description="累计学习500个单词"
             progress={60}
             unlocked={false}
           />
           <AchievementCard
-            icon="🔥"
+            icon={<Flame className="w-8 h-8" />}
             title="坚持不懈"
             description="连续学习30天"
             progress={100}
@@ -313,7 +317,7 @@ interface StatCardProps {
   title: string
   value: number
   unit: string
-  icon: string
+  icon: ReactNode
   color: string
   change?: string
 }
@@ -390,7 +394,7 @@ function PieChart({ data }: { data?: {new: number, learning: number, mastered: n
 
 // 成就卡片组件
 interface AchievementCardProps {
-  icon: string
+  icon: ReactNode
   title: string
   description: string
   progress: number

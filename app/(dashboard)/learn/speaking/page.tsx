@@ -414,7 +414,7 @@ export default function SpeakingPracticePage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '学习中心', href: '/learn' },
       { label: '口语练习', href: '/learn/speaking' }
     ]);

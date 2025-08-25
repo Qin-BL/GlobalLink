@@ -124,25 +124,43 @@ function generateMultipleChoiceOptions(correctAnswer: string, allItems: CourseIt
 // 获取课程的游戏数据
 export async function loadGameDataForCourse(courseId: string, gameType: string): Promise<any> {
   try {
-    // 从API加载课程数据
-    const response = await fetch(`/api/courses/${courseId.padStart(2, '0')}`);
-    if (!response.ok) {
-      throw new Error('Failed to load course data');
-    }
-    
-    const courseItems: CourseItem[] = await response.json();
-    
-    // 根据游戏类型生成相应的数据
-    switch (gameType) {
-      case 'chinese-english':
-        return generateSentenceBuilderData(courseItems);
-      case 'word-blitz':
-        return generateFlashCardData(courseItems);
-      case 'listening':
-      case 'speaking':
-        return generateGameWordsFromCourse(courseItems, gameType);
-      default:
-        return generateGameWordsFromCourse(courseItems, gameType);
+    // 优先尝试从packages数据加载
+    if (typeof window === 'undefined') {
+      // 服务器端：直接使用packagesData
+      const { loadCourseData, generateGameQuestions } = await import('./packagesData');
+      const courseIdNum = parseInt(courseId) || 1;
+      
+      switch (gameType) {
+        case 'chinese-english':
+          return generateGameQuestions(courseIdNum, 'translation', 20);
+        case 'word-blitz':
+          return generateGameQuestions(courseIdNum, 'word-blitz', 15);
+        case 'sentence-builder':
+          return generateGameQuestions(courseIdNum, 'sentence-builder', 10);
+        default:
+          return generateGameQuestions(courseIdNum, 'translation', 10);
+      }
+    } else {
+      // 客户端：通过API加载
+      const response = await fetch(`/api/courses/${courseId.padStart(2, '0')}`);
+      if (!response.ok) {
+        throw new Error('Failed to load course data');
+      }
+      
+      const courseItems: CourseItem[] = await response.json();
+      
+      // 根据游戏类型生成相应的数据
+      switch (gameType) {
+        case 'chinese-english':
+          return generateSentenceBuilderData(courseItems);
+        case 'word-blitz':
+          return generateFlashCardData(courseItems);
+        case 'listening':
+        case 'speaking':
+          return generateGameWordsFromCourse(courseItems, gameType);
+        default:
+          return generateGameWordsFromCourse(courseItems, gameType);
+      }
     }
   } catch (error) {
     console.error('Error loading game data:', error);

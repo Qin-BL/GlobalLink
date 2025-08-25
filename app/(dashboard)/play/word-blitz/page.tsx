@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { Suspense, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -15,7 +17,11 @@ import {
   Settings,
   Home,
   Trophy,
-  TrendingUp
+  TrendingUp,
+  Maximize,
+  PartyPopper,
+  Flame,
+  Frown
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -34,6 +40,7 @@ import {
   saveGameSession, 
   GameSession 
 } from '@/lib/gameData';
+import FullscreenGameMode from '@/components/games/FullscreenGameMode';
 
 // 游戏配置选择组件
 interface GameSetupProps {
@@ -231,7 +238,14 @@ function generateUserId(): string {
   return id;
 }
 
-export default function WordBlitz() {
+export default function WordBlitzWrapper() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">加载中...</div>}>
+      <WordBlitz />
+    </Suspense>
+  );
+}
+function WordBlitz() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setBreadcrumbs } = useLayoutStore();
@@ -246,6 +260,7 @@ export default function WordBlitz() {
   const [loading, setLoading] = useState(true);
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [gameResult, setGameResult] = useState<'correct' | 'wrong' | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
     streak: 0,
@@ -261,20 +276,30 @@ export default function WordBlitz() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
-      { label: '游戏模式', href: '/play' },
-      { label: '百词斩', href: '/play/word-blitz' }
-    ]);
+        { label: '首页', href: '/dashboard' },
+        { label: '游戏模式', href: '/play' },
+        { label: '百词斩', href: '/play/word-blitz' }
+      ]);
   }, [setBreadcrumbs]);
 
-  // 检查URL参数，如果有课程ID则直接开始游戏
+  // 检查URL参数，从课程进入时自动启动全屏游戏
   useEffect(() => {
     const courseIdFromUrl = searchParams.get('courseId');
+    const fromCourse = searchParams.get('from') === 'course';
+    
     if (courseIdFromUrl) {
-      setShowSetup(false);
-      handleStartGame(courseIdFromUrl);
+      setSelectedCourse(courseIdFromUrl);
+      if (fromCourse) {
+        // 从课程页面进入时直接启动全屏游戏
+        setIsFullscreen(true);
+        handleStartGame(courseIdFromUrl);
+      } else {
+        // 从侧边导航进入时显示课程选择
+        handleStartGame(courseIdFromUrl);
+      }
     } else {
-      // 如果没有courseId，自动开始使用默认课程01
+      // 如果没有courseId，使用默认课程01，但不启动全屏模式
+      setSelectedCourse('01');
       handleStartGame('01');
     }
   }, [searchParams]);
@@ -316,7 +341,7 @@ export default function WordBlitz() {
           setGameResult(null);
           setGameData([{ ...word, options: fallbackData.choices }] as any);
           
-          toast.success('开始练习单词！');
+          // toast.success('开始练习单词！');
           return;
         } else {
           throw new Error('无法加载单词数据');
@@ -341,7 +366,10 @@ export default function WordBlitz() {
         // 为了维持现有的游戏状态管理，我们仍然设置 gameData
         setGameData([{ ...word, options: apiData.choices }] as any);
         
-        toast.success('课程加载成功！开始游戏吧！');
+        // 只在非默认课程时显示成功消息
+        if (courseId !== '01') {
+          toast.success('课程加载成功！开始游戏吧！');
+        }
       } else {
         // console.log('Unexpected API response format:', apiData);
         throw new Error('无效的API响应格式');
@@ -369,7 +397,7 @@ export default function WordBlitz() {
           setGameResult(null);
           setGameData([{ ...word, options: fallbackData.choices }] as any);
           
-          toast.success('使用默认单词库开始游戏！');
+          // toast.success('使用默认单词库开始游戏！');
         } else {
           setShowSetup(true);
         }
@@ -621,12 +649,42 @@ export default function WordBlitz() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [choices, selectedChoice, playWordAudio]);
 
+  // 启动全屏模式
+  const startFullscreenMode = () => {
+    setIsFullscreen(true);
+  };
+
+  // 退出全屏模式
+  const exitFullscreenMode = () => {
+    setIsFullscreen(false);
+  };
+
+  // 处理全屏游戏完成
+  const handleFullscreenGameComplete = (results: any) => {
+    setGameStats(prev => ({
+      ...prev,
+      score: results.score,
+      correctAnswers: results.correctAnswers,
+      totalAnswers: results.totalQuestions
+    }));
+    setIsFullscreen(false);
+    toast.success(`游戏完成！得分: ${results.score}`);
+  };
+
   const accuracyRate = gameStats.totalAnswers > 0 
     ? Math.round((gameStats.correctAnswers / gameStats.totalAnswers) * 100) 
     : 0;
 
   const headerActions = (
     <div className="flex items-center gap-3">
+      <button
+        onClick={startFullscreenMode}
+        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+        title="全屏模式"
+      >
+        <Maximize className="w-4 h-4" />
+        全屏
+      </button>
       <button
         onClick={playWordAudio}
         className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
@@ -689,6 +747,17 @@ export default function WordBlitz() {
     );
   }
 
+  if (isFullscreen) {
+    return (
+      <FullscreenGameMode
+        gameType="word-blitz"
+        onExit={exitFullscreenMode}
+        onGameComplete={handleFullscreenGameComplete}
+        courseId={selectedCourse}
+      />
+    );
+  }
+
   return (
     <PageContainer
       title="百词斩"
@@ -703,7 +772,10 @@ export default function WordBlitz() {
         </div>
         
         <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
-          <div className="text-2xl font-bold text-orange-500 mb-1">🔥 {gameStats.streak}</div>
+          <div className="text-2xl font-bold text-orange-500 mb-1 flex items-center justify-center gap-1">
+            <Flame className="w-6 h-6" />
+            {gameStats.streak}
+          </div>
           <div className="text-sm text-gray-600 dark:text-gray-300">连击</div>
         </div>
         

@@ -383,7 +383,7 @@ export default function CourseUploadPage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '课程上传', href: '/upload' }
     ]);
   }, [setBreadcrumbs]);

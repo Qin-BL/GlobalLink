@@ -195,7 +195,19 @@ async function getWordAnalysis(userId: string) {
     });
 
     // 按难度分组
-    const difficultyGroups = {
+    type WordGroupEntry = {
+      word: any;
+      mastery: number;
+      repetitions: number;
+      interval: number;
+      nextDue: Date;
+      easeFactor: number;
+    };
+    const difficultyGroups: {
+      1: { words: WordGroupEntry[]; avgMastery: number };
+      2: { words: WordGroupEntry[]; avgMastery: number };
+      3: { words: WordGroupEntry[]; avgMastery: number };
+    } = {
       1: { words: [], avgMastery: 0 },
       2: { words: [], avgMastery: 0 },
       3: { words: [], avgMastery: 0 }
@@ -205,8 +217,8 @@ async function getWordAnalysis(userId: string) {
       const level = progress.word?.level || 1;
       const mastery = calculateMasteryLevel(progress.repetitions, progress.efactor);
       
-      if (difficultyGroups[level as keyof typeof difficultyGroups]) {
-        difficultyGroups[level as keyof typeof difficultyGroups].words.push({
+      if (level === 1 || level === 2 || level === 3) {
+        difficultyGroups[level].words.push({
           word: progress.word,
           mastery,
           repetitions: progress.repetitions,
@@ -218,12 +230,12 @@ async function getWordAnalysis(userId: string) {
     });
 
     // 计算每个难度的平均掌握度
-    Object.keys(difficultyGroups).forEach(level => {
-      const group = difficultyGroups[level as keyof typeof difficultyGroups];
-      if (group.words.length > 0) {
-        group.avgMastery = group.words.reduce((sum, w) => sum + w.mastery, 0) / group.words.length;
-      }
-    });
+    ([1, 2, 3] as const).forEach((key) => {
+       const group = difficultyGroups[key];
+       if (group.words.length > 0) {
+         group.avgMastery = group.words.reduce((sum, w) => sum + w.mastery, 0) / group.words.length;
+       }
+     });
 
     // 最困难的词汇
     const difficultWords = wordProgress
@@ -276,7 +288,18 @@ async function getSentenceAnalysis(userId: string) {
     });
 
     // 按难度分组
-    const difficultyGroups = {
+    type SentenceGroupEntry = {
+      sentence: any;
+      masteryLevel: number;
+      repetitions: number;
+      easeFactor: number;
+      nextReviewDate: Date;
+    };
+    const difficultyGroups: {
+      1: { sentences: SentenceGroupEntry[]; avgMastery: number };
+      2: { sentences: SentenceGroupEntry[]; avgMastery: number };
+      3: { sentences: SentenceGroupEntry[]; avgMastery: number };
+    } = {
       1: { sentences: [], avgMastery: 0 },
       2: { sentences: [], avgMastery: 0 },
       3: { sentences: [], avgMastery: 0 }
@@ -284,8 +307,8 @@ async function getSentenceAnalysis(userId: string) {
 
     sentenceProgress.forEach(progress => {
       const difficulty = progress.sentence.difficulty;
-      if (difficultyGroups[difficulty as keyof typeof difficultyGroups]) {
-        difficultyGroups[difficulty as keyof typeof difficultyGroups].sentences.push({
+      if (difficulty === 1 || difficulty === 2 || difficulty === 3) {
+        difficultyGroups[difficulty].sentences.push({
           sentence: progress.sentence,
           masteryLevel: progress.masteryLevel,
           repetitions: progress.repetitions,
@@ -296,12 +319,12 @@ async function getSentenceAnalysis(userId: string) {
     });
 
     // 计算平均掌握度
-    Object.keys(difficultyGroups).forEach(level => {
-      const group = difficultyGroups[level as keyof typeof difficultyGroups];
-      if (group.sentences.length > 0) {
-        group.avgMastery = group.sentences.reduce((sum, s) => sum + s.masteryLevel, 0) / group.sentences.length;
-      }
-    });
+    ([1, 2, 3] as const).forEach((key) => {
+       const group = difficultyGroups[key];
+       if (group.sentences.length > 0) {
+         group.avgMastery = group.sentences.reduce((sum, s) => sum + s.masteryLevel, 0) / group.sentences.length;
+       }
+     });
 
     // 按语法点分析
     const grammarAnalysis: { [key: string]: any } = {};

@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Progress } from '../ui/Progress';
+import { Mic, Volume2, Lightbulb, Square, RotateCcw, ArrowRight, BarChart3, Sparkles, Target, Trophy, TrendingUp, Star, ThumbsUp, Dumbbell, Clock } from 'lucide-react';
+import { loadGameDataForCourse, SentenceBuilderItem } from '@/lib/gameData';
 
 interface SpeakingExercise {
   id: string;
@@ -38,54 +40,135 @@ interface SpeechResult {
   feedback: string[];
 }
 
-// 示例练习数据
-const SAMPLE_EXERCISES: SpeakingExercise[] = [
-  {
-    id: '1',
-    chineseText: '你好，很高兴见到你',
-    englishText: 'Hello, nice to meet you',
-    category: 'daily',
-    difficulty: 1,
-    keywords: ['hello', 'nice', 'meet', 'you'],
-    hints: ['打招呼的基本用语', '记住要用 "nice to meet you"']
-  },
-  {
-    id: '2',
-    chineseText: '请问洗手间在哪里？',
-    englishText: 'Excuse me, where is the restroom?',
-    category: 'daily',
-    difficulty: 1,
-    keywords: ['excuse', 'me', 'where', 'restroom'],
-    hints: ['礼貌用语 "excuse me"', '"restroom" 或 "bathroom"']
-  },
-  {
-    id: '3',
-    chineseText: '我想预订一张明天的机票',
-    englishText: 'I would like to book a flight ticket for tomorrow',
-    category: 'travel',
-    difficulty: 2,
-    keywords: ['would', 'like', 'book', 'flight', 'ticket', 'tomorrow'],
-    hints: ['使用 "would like" 更礼貌', '"book" 表示预订']
-  },
-  {
-    id: '4',
-    chineseText: '这个项目的截止日期是什么时候？',
-    englishText: 'When is the deadline for this project?',
-    category: 'business',
-    difficulty: 2,
-    keywords: ['when', 'deadline', 'project'],
-    hints: ['"deadline" 表示截止日期', '注意时态和语序']
-  },
-  {
-    id: '5',
-    chineseText: '我认为我们需要重新考虑这个策略',
-    englishText: 'I think we need to reconsider this strategy',
-    category: 'business',
-    difficulty: 3,
-    keywords: ['think', 'need', 'reconsider', 'strategy'],
-    hints: ['"reconsider" 表示重新考虑', '表达个人观点用 "I think"']
+// 从packages数据加载练习
+let cachedExercises: SpeakingExercise[] = [];
+let currentCourseId: string | null = null;
+
+// 从课程数据生成练习数据
+async function loadExercisesFromCourse(courseId: string = '01'): Promise<SpeakingExercise[]> {
+  try {
+    // 如果已经缓存了相同课程的数据，直接返回
+    if (currentCourseId === courseId && cachedExercises.length > 0) {
+      return cachedExercises;
+    }
+
+    // 使用统一的数据加载器：底层从 packages/data 读取
+    const items = (await loadGameDataForCourse(courseId, 'sentence-builder')) as SentenceBuilderItem[];
+
+    // 筛选出适合口语练习的数据（完整句子）并映射为口语练习结构
+    const exercises: SpeakingExercise[] = items
+      .filter((item) => {
+        const wordCount = item.english.split(' ').length;
+        return wordCount >= 3 && wordCount <= 15 && item.chinese.length >= 3;
+      })
+      .map((item, index) => {
+        const keywords = extractKeywords(item.english);
+        const difficulty = determineExerciseDifficulty(item.english, item.chinese);
+        const category = determineCategory(item.english, item.chinese);
+        return {
+          id: item.id || `exercise-${index + 1}`,
+          chineseText: item.chinese,
+          englishText: item.english,
+          category,
+          difficulty,
+          keywords,
+          hints: generateHints(item.english, item.chinese)
+        };
+      });
+
+    // 缓存数据
+    cachedExercises = exercises;
+    currentCourseId = courseId;
+    return exercises;
+  } catch (error) {
+    console.error('Error loading exercises from course:', error);
+    // 出错时返回空数组（不再使用硬编码示例数据）
+    return [];
   }
-];
+}
+
+// 提取关键词
+function extractKeywords(english: string): string[] {
+  const words = english.toLowerCase().split(' ');
+  // 过滤掉常见的停用词
+  const stopWords = ['a', 'an', 'the', 'is', 'are', 'am', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'to', 'of', 'in', 'on', 'at', 'by', 'for', 'with', 'from'];
+  
+  return words.filter(word => 
+    word.length > 2 && 
+    !stopWords.includes(word) && 
+    /^[a-zA-Z]+$/.test(word)
+  ).slice(0, 6); // 最多6个关键词
+}
+
+// 确定练习难度
+function determineExerciseDifficulty(english: string, chinese: string): number {
+  const wordCount = english.split(' ').length;
+  const hasComplexWords = english.split(' ').some(word => word.length > 8);
+  const hasComplexGrammar = english.includes(',') || english.includes('that') || english.includes('which');
+  
+  if (wordCount <= 5 && !hasComplexWords && !hasComplexGrammar) {
+    return 1; // 简单
+  } else if (wordCount <= 10 && !hasComplexGrammar) {
+    return 2; // 中等
+  } else {
+    return 3; // 困难
+  }
+}
+
+// 确定练习类别
+function determineCategory(english: string, chinese: string): string {
+  const lowerEnglish = english.toLowerCase();
+  const lowerChinese = chinese.toLowerCase();
+  
+  // 商务相关
+  if (lowerEnglish.includes('project') || lowerEnglish.includes('meeting') || lowerEnglish.includes('business') || lowerEnglish.includes('work') ||
+      lowerChinese.includes('项目') || lowerChinese.includes('会议') || lowerChinese.includes('工作') || lowerChinese.includes('商务')) {
+    return 'business';
+  }
+  
+  // 旅行相关
+  if (lowerEnglish.includes('travel') || lowerEnglish.includes('hotel') || lowerEnglish.includes('flight') || lowerEnglish.includes('ticket') ||
+      lowerChinese.includes('旅行') || lowerChinese.includes('酒店') || lowerChinese.includes('机票') || lowerChinese.includes('旅游')) {
+    return 'travel';
+  }
+  
+  // 学术相关
+  if (lowerEnglish.includes('study') || lowerEnglish.includes('research') || lowerEnglish.includes('university') || lowerEnglish.includes('academic') ||
+      lowerChinese.includes('学习') || lowerChinese.includes('研究') || lowerChinese.includes('大学') || lowerChinese.includes('学术')) {
+    return 'academic';
+  }
+  
+  // 默认为日常
+  return 'daily';
+}
+
+// 生成提示
+function generateHints(english: string, chinese: string): string[] {
+  const hints: string[] = [];
+  const lowerEnglish = english.toLowerCase();
+  
+  // 根据句子特点生成提示
+  if (lowerEnglish.includes('would like')) {
+    hints.push('使用 "would like" 更礼貌');
+  }
+  if (lowerEnglish.includes('excuse me')) {
+    hints.push('"excuse me" 是礼貌用语');
+  }
+  if (lowerEnglish.includes('please')) {
+    hints.push('"please" 表示请求');
+  }
+  if (lowerEnglish.includes('thank you')) {
+    hints.push('表达感谢很重要');
+  }
+  
+  // 如果没有特定提示，添加通用提示
+  if (hints.length === 0) {
+    hints.push('注意发音和语调');
+    hints.push('保持自然的语速');
+  }
+  
+  return hints;
+}
 
 export default function ChineseEnglishGame({ 
   difficulty = 'beginner', 
@@ -130,22 +213,23 @@ export default function ChineseEnglishGame({
   }, []);
 
   // 根据难度和类别筛选练习
-  const getExercisesByFilter = useCallback(() => {
+  const getExercisesByFilter = useCallback(async () => {
     const levelMap = {
       'beginner': [1],
       'intermediate': [1, 2],
       'advanced': [2, 3]
     };
     
-    return SAMPLE_EXERCISES.filter(exercise => 
+    const allExercises = await loadExercisesFromCourse('default-course');
+    return allExercises.filter(exercise => 
       levelMap[difficulty].includes(exercise.difficulty) &&
       (category === 'daily' || exercise.category === category)
     );
   }, [difficulty, category]);
 
   // 开始游戏
-  const startGame = () => {
-    const filteredExercises = getExercisesByFilter();
+  const startGame = async () => {
+    const filteredExercises = await getExercisesByFilter();
     const shuffledExercises = filteredExercises.sort(() => Math.random() - 0.5);
     
     setExercises(shuffledExercises);
@@ -430,7 +514,7 @@ export default function ChineseEnglishGame({
         <Card className="p-8 text-center">
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-primary-400 mb-4">
-              🎤 Chinese-English
+              <Mic className="inline w-8 h-8 mr-2 align-[-0.2em]" /> Chinese-English
             </h1>
             <p className="text-gray-300 text-lg">
               中英文对照口语练习
@@ -542,7 +626,7 @@ export default function ChineseEnglishGame({
           {gameState === 'recording' && (
             <div className="text-center mb-6">
               <div className="w-24 h-24 mx-auto mb-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                <div className="text-white text-3xl">🎤</div>
+                <Mic className="text-white w-10 h-10" />
               </div>
               <div className="text-red-400 font-semibold text-lg">
                 录音中... {currentRecordingTime}s
@@ -573,21 +657,24 @@ export default function ChineseEnglishGame({
                   onClick={startRecording}
                   className="px-8 py-4 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
                 >
-                  🎤 开始录音
+                  <Mic className="w-5 h-5 inline mr-2" />
+                  开始录音
                 </Button>
                 <Button
                   onClick={playStandardAudio}
-                  variant="outline"
+                  variant="secondary"
                   className="px-6 py-4"
                 >
-                  🔊 听标准发音
+                  <Volume2 className="w-5 h-5 inline mr-2" />
+                  听标准发音
                 </Button>
                 <Button
                   onClick={() => setShowHints(!showHints)}
-                  variant="outline"
+                  variant="secondary"
                   className="px-6 py-4"
                 >
-                  💡 {showHints ? '隐藏' : '显示'}提示
+                  <Lightbulb className="w-5 h-5 inline mr-2" />
+                  {showHints ? '隐藏' : '显示'}提示
                 </Button>
               </>
             )}
@@ -597,7 +684,8 @@ export default function ChineseEnglishGame({
                 onClick={stopRecording}
                 className="px-8 py-4 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700"
               >
-                ⏹️ 停止录音
+                <Square className="w-5 h-5 inline mr-2" />
+                停止录音
               </Button>
             )}
           </div>
@@ -605,7 +693,7 @@ export default function ChineseEnglishGame({
           {/* 提示内容 */}
           {showHints && currentExercise.hints && (
             <div className="mt-6 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg">
-              <h4 className="text-yellow-400 font-semibold mb-2">💡 提示</h4>
+              <h4 className="text-yellow-400 font-semibold mb-2"><Lightbulb className="inline w-4 h-4 mr-2" /> 提示</h4>
               <ul className="text-yellow-300 text-sm space-y-1">
                 {currentExercise.hints.map((hint, index) => (
                   <li key={index}>• {hint}</li>
@@ -618,7 +706,7 @@ export default function ChineseEnglishGame({
         {/* 语音分析结果 */}
         {speechResult && (
           <Card className="p-6 mb-6">
-            <h3 className="text-xl font-bold text-white mb-4">📊 语音分析结果</h3>
+            <h3 className="text-xl font-bold text-white mb-4"><BarChart3 className="inline w-5 h-5 mr-2" /> 语音分析结果</h3>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-3 bg-gray-800 rounded">
@@ -641,14 +729,14 @@ export default function ChineseEnglishGame({
 
             <div className="space-y-4">
               <div>
-                <h4 className="text-gray-300 font-semibold mb-2">🎯 你的表达</h4>
+                <h4 className="text-gray-300 font-semibold mb-2"><Target className="inline w-4 h-4 mr-2" /> 你的表达</h4>
                 <div className="p-3 bg-gray-800 rounded text-white">
                   "{speechResult.transcript}"
                 </div>
               </div>
 
               <div>
-                <h4 className="text-gray-300 font-semibold mb-2">✨ 改进建议</h4>
+                <h4 className="text-gray-300 font-semibold mb-2"><Sparkles className="inline w-4 h-4 mr-2" /> 改进建议</h4>
                 <ul className="space-y-1">
                   {speechResult.feedback.map((item, index) => (
                     <li key={index} className="text-gray-300 text-sm">
@@ -661,7 +749,7 @@ export default function ChineseEnglishGame({
               {/* 录音回放 */}
               {audioURL && (
                 <div>
-                  <h4 className="text-gray-300 font-semibold mb-2">🔊 录音回放</h4>
+                  <h4 className="text-gray-300 font-semibold mb-2"><Volume2 className="inline w-4 h-4 mr-2" /> 录音回放</h4>
                   <audio controls src={audioURL} className="w-full">
                     您的浏览器不支持音频播放。
                   </audio>
@@ -671,16 +759,18 @@ export default function ChineseEnglishGame({
               <div className="flex gap-3 justify-center">
                 <Button
                   onClick={retryRecording}
-                  variant="outline"
+                  variant="secondary"
                   className="px-6 py-2"
                 >
-                  🔄 重新录音
+                  <RotateCcw className="w-4 h-4 inline mr-2" />
+                  重新录音
                 </Button>
                 <Button
                   onClick={nextExercise}
                   className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600"
                 >
-                  ➡️ 下一题
+                  <ArrowRight className="w-4 h-4 inline mr-2" />
+                  下一题
                 </Button>
               </div>
             </div>
@@ -699,7 +789,7 @@ export default function ChineseEnglishGame({
         <Card className="p-8 text-center">
           <div className="mb-6">
             <h2 className="text-3xl font-bold text-primary-400 mb-2">
-              🏆 练习完成！
+              <Trophy className="inline w-8 h-8 mr-2 align-[-0.2em]" /> 练习完成！
             </h2>
             <p className="text-gray-300">
               恭喜你完成了口语练习
@@ -728,23 +818,23 @@ export default function ChineseEnglishGame({
 
           {/* 改进建议 */}
           <div className="mb-8 p-4 bg-gray-700 rounded-lg">
-            <h3 className="font-semibold text-white mb-3">📈 改进建议</h3>
+            <h3 className="font-semibold text-white mb-3"><TrendingUp className="inline w-4 h-4 mr-2" /> 改进建议</h3>
             <ul className="text-gray-300 text-sm space-y-2">
               {onGameEnd && (
                 <>
                   {averageAccuracy >= 80 ? (
-                    <li>🌟 口语表达很棒！可以尝试更高难度的练习</li>
+                    <li className="flex items-center gap-2"><Star className="w-4 h-4 text-yellow-400" /> 口语表达很棒！可以尝试更高难度的练习</li>
                   ) : averageAccuracy >= 60 ? (
-                    <li>👍 表现不错！继续练习提高准确度</li>
+                    <li className="flex items-center gap-2"><ThumbsUp className="w-4 h-4 text-green-400" /> 表现不错！继续练习提高准确度</li>
                   ) : (
-                    <li>💪 多听多练，重点关注发音准确性</li>
+                    <li className="flex items-center gap-2"><Dumbbell className="w-4 h-4 text-purple-400" /> 多听多练，重点关注发音准确性</li>
                   )}
                   
                   {totalSpeakingTime < 300 && (
-                    <li>⏰ 建议增加练习时间，提高口语流利度</li>
+                    <li className="flex items-center gap-2"><Clock className="w-4 h-4 text-blue-400" /> 建议增加练习时间，提高口语流利度</li>
                   )}
                   
-                  <li>🎯 每天坚持练习15-30分钟，效果最佳</li>
+                  <li className="flex items-center gap-2"><Target className="w-4 h-4 text-orange-400" /> 每天坚持练习15-30分钟，效果最佳</li>
                 </>
               )}
             </ul>
@@ -759,7 +849,7 @@ export default function ChineseEnglishGame({
             </Button>
             <Button 
               onClick={() => setGameState('menu')}
-              variant="outline"
+              variant="secondary"
               className="w-full py-3"
             >
               返回菜单

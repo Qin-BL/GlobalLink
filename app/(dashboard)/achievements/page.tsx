@@ -373,7 +373,7 @@ export default function AchievementsPage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '成就系统', href: '/achievements' }
     ]);
   }, [setBreadcrumbs]);

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Progress } from '../ui/Progress';
+import { Flame, CheckCircle, XCircle, PartyPopper, Star, ThumbsUp, Dumbbell, BookOpen } from 'lucide-react';
 
 interface Word {
   id: number;
@@ -36,19 +37,74 @@ interface Question {
   type: 'english-to-chinese' | 'chinese-to-english';
 }
 
-// 示例词汇数据
-const SAMPLE_WORDS: Word[] = [
-  { id: 1, term: 'apple', meaning: '苹果', level: 1 },
-  { id: 2, term: 'book', meaning: '书', level: 1 },
-  { id: 3, term: 'computer', meaning: '电脑', level: 2 },
-  { id: 4, term: 'important', meaning: '重要的', level: 2 },
-  { id: 5, term: 'beautiful', meaning: '美丽的', level: 2 },
-  { id: 6, term: 'environment', meaning: '环境', level: 3 },
-  { id: 7, term: 'opportunity', meaning: '机会', level: 3 },
-  { id: 8, term: 'responsibility', meaning: '责任', level: 3 },
-  { id: 9, term: 'communication', meaning: '沟通', level: 3 },
-  { id: 10, term: 'development', meaning: '发展', level: 3 },
-];
+// 从packages数据加载词汇
+let cachedWords: Word[] = [];
+let currentCourseId: string | null = null;
+
+// 从课程数据生成词汇数据
+async function loadWordsFromCourse(courseId: string = '01'): Promise<Word[]> {
+  try {
+    // 如果已经缓存了相同课程的数据，直接返回
+    if (currentCourseId === courseId && cachedWords.length > 0) {
+      return cachedWords;
+    }
+
+    const response = await fetch(`/api/courses/${courseId.padStart(2, '0')}`);
+    if (!response.ok) {
+      throw new Error('Failed to load course data');
+    }
+
+    const courseItems = await response.json();
+    
+    // 筛选出适合单词练习的数据（单个单词或短语）
+    const wordItems = courseItems.filter((item: any) => 
+      item.english.split(' ').length <= 3 && item.chinese.length <= 10
+    );
+
+    const words: Word[] = wordItems.map((item: any, index: number) => {
+      // 根据单词长度和复杂度确定等级
+      const level = determineWordLevel(item.english, item.chinese);
+      
+      return {
+        id: index + 1,
+        term: item.english,
+        meaning: item.chinese,
+        level,
+      };
+    });
+
+    // 缓存数据
+    cachedWords = words;
+    currentCourseId = courseId;
+    
+    return words;
+  } catch (error) {
+    console.error('Error loading words from course:', error);
+    // 返回基础词汇作为后备
+    return [
+      { id: 1, term: 'I', meaning: '我', level: 1 },
+      { id: 2, term: 'like', meaning: '喜欢', level: 1 },
+      { id: 3, term: 'good', meaning: '好的', level: 1 },
+      { id: 4, term: 'important', meaning: '重要的', level: 2 },
+      { id: 5, term: 'beautiful', meaning: '美丽的', level: 2 },
+    ];
+  }
+}
+
+// 确定单词等级
+function determineWordLevel(english: string, chinese: string): number {
+  const englishLength = english.length;
+  const wordCount = english.split(' ').length;
+  
+  // 基于单词长度和复杂度确定等级
+  if (wordCount === 1 && englishLength <= 5) {
+    return 1; // 简单单词
+  } else if (wordCount <= 2 && englishLength <= 10) {
+    return 2; // 中等单词或短语
+  } else {
+    return 3; // 复杂单词或长短语
+  }
+}
 
 export default function WordBlitzGame({ 
   difficulty = 'beginner', 
@@ -70,14 +126,15 @@ export default function WordBlitzGame({
   const [gameStartTime, setGameStartTime] = useState<number>(0);
 
   // 根据难度等级筛选词汇
-  const getWordsByDifficulty = useCallback(() => {
+  const getWordsByDifficulty = useCallback(async () => {
     const levelMap = {
       'beginner': [1],
       'intermediate': [1, 2],
       'advanced': [2, 3]
     };
     
-    return SAMPLE_WORDS.filter(word => 
+    const words = await loadWordsFromCourse('01');
+    return words.filter(word => 
       levelMap[difficulty].includes(word.level)
     );
   }, [difficulty]);
@@ -97,8 +154,8 @@ export default function WordBlitzGame({
   }, []);
 
   // 生成问题
-  const generateQuestions = useCallback(() => {
-    const words = getWordsByDifficulty();
+  const generateQuestions = useCallback(async () => {
+    const words = await getWordsByDifficulty();
     const shuffledWords = words.sort(() => Math.random() - 0.5);
     
     const newQuestions: Question[] = shuffledWords.map(word => {
@@ -118,8 +175,8 @@ export default function WordBlitzGame({
   }, [difficulty, getWordsByDifficulty, generateDistractors]);
 
   // 开始游戏
-  const startGame = () => {
-    const newQuestions = generateQuestions();
+  const startGame = async () => {
+    const newQuestions = await generateQuestions();
     setQuestions(newQuestions);
     setCurrentQuestion(newQuestions[0]);
     setGameState('playing');
@@ -321,8 +378,8 @@ export default function WordBlitzGame({
                 : currentQuestion.word.meaning}
             </div>
             {streakCount > 0 && (
-              <div className="text-orange-400 font-semibold">
-                🔥 连击 {streakCount}
+              <div className="text-orange-400 font-semibold flex items-center justify-center gap-1">
+                <Flame className="w-4 h-4" /> 连击 {streakCount}
               </div>
             )}
           </div>
@@ -361,12 +418,12 @@ export default function WordBlitzGame({
           {showResult && (
             <div className="mt-6 text-center">
               {selectedAnswer === currentQuestion.correctAnswer ? (
-                <div className="text-green-400 font-semibold text-lg">
-                  ✅ 正确！+{10 + (streakCount - 1) * 2}分
+                <div className="text-green-400 font-semibold text-lg flex items-center justify-center gap-1">
+                  <CheckCircle className="w-5 h-5" /> 正确！+{10 + (streakCount - 1) * 2}分
                 </div>
               ) : (
-                <div className="text-red-400 font-semibold text-lg">
-                  ❌ 错误！正确答案是：{currentQuestion.correctAnswer}
+                <div className="text-red-400 font-semibold text-lg flex items-center justify-center gap-1">
+                  <XCircle className="w-5 h-5" /> 错误！正确答案是：{currentQuestion.correctAnswer}
                 </div>
               )}
             </div>
@@ -385,7 +442,7 @@ export default function WordBlitzGame({
         <Card className="p-8 text-center">
           <div className="mb-6">
             <h2 className="text-3xl font-bold text-primary-400 mb-2">
-              🎉 挑战完成！
+              <PartyPopper className="inline w-8 h-8 mr-2 align-[-0.2em]" /> 挑战完成！
             </h2>
             <p className="text-gray-300">
               恭喜你完成了Word Blitz挑战
@@ -416,10 +473,23 @@ export default function WordBlitzGame({
           <div className="mb-8 p-4 bg-gray-700 rounded-lg">
             <h3 className="font-semibold text-white mb-2">表现评价</h3>
             <p className="text-gray-300">
-              {accuracy >= 90 ? "🌟 卓越表现！你的词汇掌握能力很强！" :
-               accuracy >= 70 ? "👍 良好表现！继续保持练习！" :
-               accuracy >= 50 ? "💪 不错的开始！多加练习会更好！" :
-               "📚 继续努力！建议先学习基础词汇。"}
+              {accuracy >= 90 ? (
+                <>
+                  <Star className="w-4 h-4 text-yellow-400" /> 卓越表现！你的词汇掌握能力很强！
+                </>
+              ) : accuracy >= 70 ? (
+                <>
+                  <ThumbsUp className="w-4 h-4 text-green-400" /> 良好表现！继续保持练习！
+                </>
+              ) : accuracy >= 50 ? (
+                <>
+                  <Dumbbell className="w-4 h-4 text-purple-400" /> 不错的开始！多加练习会更好！
+                </>
+              ) : (
+                <>
+                  <BookOpen className="w-4 h-4 text-blue-400" /> 继续努力！建议先学习基础词汇。
+                </>
+              )}
             </p>
           </div>
 
@@ -432,7 +502,7 @@ export default function WordBlitzGame({
             </Button>
             <Button 
               onClick={() => setGameState('menu')}
-              variant="outline"
+              variant="secondary"
               className="w-full py-3"
             >
               返回菜单

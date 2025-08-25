@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { Suspense, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   RotateCcw, 
@@ -12,11 +14,14 @@ import {
   Target,
   Clock,
   Star,
-  Puzzle
+  Puzzle,
+  Maximize
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageContainer, CardContainer } from '@/components/layout/MainContent';
 import { useLayoutStore } from '@/store/layout';
+import { useSearchParams } from 'next/navigation';
+import FullscreenGameMode from '@/components/games/FullscreenGameMode';
 
 interface Item {
   id: number;
@@ -135,10 +140,19 @@ function shuffle<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export default function SentenceBuilder() {
+export default function SentenceBuilderPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">加载中...</div>}>
+      <SentenceBuilder />
+    </Suspense>
+  );
+}
+function SentenceBuilder() {
   const { setBreadcrumbs } = useLayoutStore();
+  const searchParams = useSearchParams();
   
   const [item, setItem] = useState<Item | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [wordPool, setWordPool] = useState<string[]>([]);
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [result, setResult] = useState<'idle' | 'correct' | 'incorrect'>('idle');
@@ -160,11 +174,26 @@ export default function SentenceBuilder() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
-      { label: '学习模式', href: '/learn' },
+      { label: '首页', href: '/dashboard' },
+      { label: '学习中心', href: '/learn' },
       { label: '连词造句', href: '/learn/sentence-builder' }
     ]);
   }, [setBreadcrumbs]);
+
+  // 检查URL参数，从课程进入时自动启动全屏游戏
+  useEffect(() => {
+    const courseIdFromUrl = searchParams.get('courseId');
+    const fromCourse = searchParams.get('from') === 'course';
+    
+    if (courseIdFromUrl) {
+      setSelectedCourseId(parseInt(courseIdFromUrl));
+    }
+    
+    if (fromCourse && courseIdFromUrl) {
+      setIsFullscreen(true); // 从课程页面进入时直接启动全屏游戏
+      setTimeout(() => loadNextItem(), 100); // 延迟加载以确保courseId已设置
+    }
+  }, [searchParams]);
 
   // 加载课程列表
   useEffect(() => {
@@ -194,8 +223,8 @@ export default function SentenceBuilder() {
     setLoading(true);
     try {
       const query = selectedCourseId 
-        ? `?courseId=${selectedCourseId}&userId=${userId}` 
-        : `?userId=${userId}`;
+        ? `?courseId=${selectedCourseId}&gameType=sentence-builder&userId=${userId}` 
+        : `?gameType=sentence-builder&userId=${userId}`;
       
       // console.log('Loading sentence builder item with query:', query);
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
@@ -235,7 +264,7 @@ export default function SentenceBuilder() {
     if (selectedCourseId !== null) {
       loadNextItem();
     }
-  }, [selectedCourseId]);
+  }, [selectedCourseId, userId]);
 
   // 选择单词
   const selectWord = (word: string, index: number) => {
@@ -354,12 +383,42 @@ export default function SentenceBuilder() {
     }
   };
 
+  // 启动全屏模式
+  const startFullscreenMode = () => {
+    setIsFullscreen(true);
+  };
+
+  // 退出全屏模式
+  const exitFullscreenMode = () => {
+    setIsFullscreen(false);
+  };
+
+  // 处理全屏游戏完成
+  const handleFullscreenGameComplete = (results: any) => {
+    setGameStats(prev => ({
+      ...prev,
+      score: results.score,
+      correctAnswers: results.correctAnswers,
+      totalAnswers: results.totalQuestions
+    }));
+    setIsFullscreen(false);
+    toast.success(`游戏完成！得分: ${results.score}`);
+  };
+
   const accuracyRate = gameStats.totalAnswers > 0 
     ? Math.round((gameStats.correctAnswers / gameStats.totalAnswers) * 100) 
     : 0;
 
   const headerActions = (
     <div className="flex items-center gap-3">
+      <button
+        onClick={startFullscreenMode}
+        className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+        title="全屏模式"
+      >
+        <Maximize className="w-4 h-4" />
+        全屏
+      </button>
       <button
         onClick={() => setShowHint(!showHint)}
         className="btn btn-secondary"
@@ -383,6 +442,17 @@ export default function SentenceBuilder() {
       </button>
     </div>
   );
+
+  if (isFullscreen) {
+    return (
+      <FullscreenGameMode
+        gameType="sentence-builder"
+        onExit={exitFullscreenMode}
+        onGameComplete={handleFullscreenGameComplete}
+        courseId={selectedCourseId?.toString()}
+      />
+    );
+  }
 
   return (
     <PageContainer

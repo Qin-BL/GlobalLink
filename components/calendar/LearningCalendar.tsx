@@ -81,7 +81,7 @@ const LearningCalendar: React.FC<LearningCalendarProps> = ({ className = '' }) =
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
 
-    const days = [];
+    const days: (Date | null)[] = [];
     
     // 添加上个月的空白日期
     for (let i = 0; i < startingDayOfWeek; i++) {

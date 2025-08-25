@@ -57,15 +57,15 @@ type LayoutStore = LayoutState & LayoutActions;
 
 // 默认状态
 const defaultState: LayoutState = {
-  sidebarCollapsed: false,
-  sidebarWidth: 280,
+  sidebarCollapsed: true,
+  sidebarWidth: 64,
   mobileMenuOpen: false,
   topNavHeight: 64,
   searchQuery: '',
   searchFocused: false,
   isDarkMode: true, // 默认深色模式
   currentPage: '首页',
-  breadcrumbs: [{ label: '首页', href: '/' }],
+  breadcrumbs: [{ label: '首页', href: '/dashboard' }],
 };
 
 // 创建布局状态存储
@@ -78,7 +78,7 @@ export const useLayoutStore = create<LayoutStore>()(
       toggleSidebar: () => {
         set((state) => ({ 
           sidebarCollapsed: !state.sidebarCollapsed,
-          sidebarWidth: !state.sidebarCollapsed ? 64 : 280
+          sidebarWidth: state.sidebarCollapsed ? 280 : 64
         }));
       },
       
@@ -136,6 +136,7 @@ export const useLayoutStore = create<LayoutStore>()(
     }),
     {
       name: 'layout-storage', // 本地存储key
+      version: 1, // 增加版本号，当版本变化时会重置存储
       partialize: (state) => ({ 
         sidebarCollapsed: state.sidebarCollapsed,
         isDarkMode: state.isDarkMode,

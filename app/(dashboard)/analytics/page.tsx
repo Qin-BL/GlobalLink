@@ -340,7 +340,7 @@ export default function AnalyticsPage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '学习统计', href: '/analytics' }
     ]);
   }, [setBreadcrumbs]);

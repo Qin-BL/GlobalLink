@@ -24,6 +24,9 @@ import {
   GridContainer 
 } from '@/components/layout/MainContent';
 import { useLayoutStore } from '@/store/layout';
+import { useGameFlow } from '@/hooks/useGameFlow';
+import CourseSelectionModal from '@/components/ui/CourseSelectionModal';
+import LessonSelectionModal from '@/components/ui/LessonSelectionModal';
 
 // 学习模式数据
 const learningModes = [
@@ -39,7 +42,7 @@ const learningModes = [
     duration: '5-10分钟',
     popularity: 95,
     features: ['图片记忆', '快速刷题', '词汇测试'],
-    users: 3421
+    users: '基于真实数据'
   },
   {
     id: 'chinese-english',
@@ -53,7 +56,7 @@ const learningModes = [
     duration: '10-15分钟',
     popularity: 88,
     features: ['语言转换', '句子翻译', '语法应用'],
-    users: 2847
+    users: '基于真实数据'
   },
   {
     id: 'sentence-builder',
@@ -67,7 +70,7 @@ const learningModes = [
     duration: '8-12分钟',
     popularity: 92,
     features: ['拖拽操作', '语法练习', '句型训练'],
-    users: 1876
+    users: '基于真实数据'
   },
   {
     id: 'speaking-practice',
@@ -81,7 +84,7 @@ const learningModes = [
     duration: '15-20分钟',
     popularity: 85,
     features: ['语音识别', '发音纠正', 'AI对话'],
-    users: 1543,
+    users: '敬请期待',
     badge: 'NEW'
   },
   {
@@ -96,7 +99,7 @@ const learningModes = [
     duration: '15-20分钟',
     popularity: 76,
     features: ['打字训练', '速度测试', '准确性练习'],
-    users: 892,
+    users: '敬请期待',
     badge: 'NEW'
   },
   {
@@ -111,58 +114,75 @@ const learningModes = [
     duration: '10-15分钟',
     popularity: 91,
     features: ['多场景练习', '语速调节', '字幕辅助'],
-    users: 2156
+    users: '敬请期待'
   }
 ];
 
-// 学习统计数据
+// 学习统计数据 - 基于真实课程数据
 const stats = [
   {
-    id: 'total-time',
-    label: '累计学习时长',
-    value: '145h',
-    icon: Clock,
-    color: 'from-blue-500 to-purple-600',
-    change: '+12h'
-  },
-  {
-    id: 'completed-lessons',
-    label: '完成课程',
-    value: '23',
+    id: 'total-lessons',
+    label: '总课时数',
+    value: '55',
     icon: BookOpen,
+    color: 'from-blue-500 to-purple-600',
+    change: '完整课程'
+  },
+  {
+    id: 'course-type',
+    label: '课程类型',
+    value: '基础英语',
+    icon: Target,
     color: 'from-green-500 to-teal-600',
-    change: '+3'
+    change: 'A1-B2'
   },
   {
-    id: 'streak',
-    label: '连续学习',
-    value: '7天',
-    icon: Zap,
+    id: 'learning-modes',
+    label: '学习模式',
+    value: '6种',
+    icon: Brain,
     color: 'from-orange-500 to-red-600',
-    change: '+1天'
+    change: '多样化'
   },
   {
-    id: 'rank',
-    label: '排名',
-    value: '#156',
+    id: 'progress',
+    label: '当前进度',
+    value: '0%',
     icon: Trophy,
     color: 'from-purple-500 to-pink-600',
-    change: '+12'
+    change: '开始学习'
   }
 ];
 
 // 学习模式卡片组件
-const LearningModeCard: React.FC<{ mode: typeof learningModes[0]; index: number }> = ({ mode, index }) => {
+const LearningModeCard: React.FC<{ 
+  mode: typeof learningModes[0]; 
+  index: number;
+  onModeClick: (mode: any) => void;
+}> = ({ mode, index, onModeClick }) => {
   const Icon = mode.icon;
   
   return (
-    <motion.a
-      href={mode.href}
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       whileHover={{ y: -8, scale: 1.02 }}
-      className="block bg-card-dark border border-border-color rounded-xl overflow-hidden hover:border-info hover:shadow-xl transition-all duration-300 group"
+      className="bg-card-dark border border-border-color rounded-xl overflow-hidden hover:border-info hover:shadow-xl transition-all duration-300 group cursor-pointer"
+      onClick={() => onModeClick({
+        id: mode.id,
+        title: mode.title,
+        subtitle: mode.subtitle,
+        description: mode.description,
+        icon: <Icon size={24} className="text-white" />,
+        difficulty: mode.difficulty,
+        duration: mode.duration,
+        popularity: mode.popularity,
+        features: mode.features,
+        gradient: mode.gradient,
+        badge: mode.badge,
+        href: mode.href
+      })}
     >
       <div className="p-6">
         {/* 头部 */}
@@ -178,11 +198,11 @@ const LearningModeCard: React.FC<{ mode: typeof learningModes[0]; index: number 
         </div>
         
         {/* 内容 */}
-        <h3 className="text-lg font-semibold text-text-primary mb-1 group-hover:text-white transition-colors">
+        <h3 className="text-lg font-semibold mb-1 group-hover: transition-colors">
           {mode.title}
         </h3>
         <p className="text-sm text-text-muted mb-2">{mode.subtitle}</p>
-        <p className="text-sm text-text-secondary mb-4 group-hover:text-gray-300 transition-colors">
+        <p className="text-sm text-text-secondary mb-4 transition-colors">
           {mode.description}
         </p>
         
@@ -203,7 +223,7 @@ const LearningModeCard: React.FC<{ mode: typeof learningModes[0]; index: number 
           </div>
           <div className="flex items-center gap-1">
             <Users size={12} />
-            <span>{mode.users}人</span>
+            <span>{mode.users}</span>
           </div>
         </div>
         
@@ -221,7 +241,7 @@ const LearningModeCard: React.FC<{ mode: typeof learningModes[0]; index: number 
           <ArrowRight size={16} className="text-text-muted group-hover:text-white transition-colors" />
         </div>
       </div>
-    </motion.a>
+    </motion.div>
   );
 };
 
@@ -246,7 +266,7 @@ const StatCard: React.FC<{ stat: typeof stats[0]; index: number }> = ({ stat, in
       </div>
       
       <div>
-        <h3 className="text-2xl font-bold text-text-primary mb-1">{stat.value}</h3>
+        <h3 className="text-2xl font-bold mb-1">{stat.value}</h3>
         <p className="text-sm text-text-secondary">{stat.label}</p>
       </div>
     </motion.div>
@@ -256,11 +276,24 @@ const StatCard: React.FC<{ stat: typeof stats[0]; index: number }> = ({ stat, in
 // 主组件
 export default function LearnPage() {
   const { setBreadcrumbs } = useLayoutStore();
+  const {
+    currentGameMode,
+    selectedCourse,
+    selectedLesson,
+    showCourseSelectionModal,
+    showLessonSelectionModal,
+    hasHistorySelection,
+    startGameFlow,
+    handleCourseSelect,
+    handleLessonSelect,
+    backToCourseSelection,
+    closeAllModals
+  } = useGameFlow();
   
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '学习中心', href: '/learn' }
     ]);
   }, [setBreadcrumbs]);
@@ -272,7 +305,7 @@ export default function LearnPage() {
     >
       {/* 学习统计 */}
       <section className="mb-12">
-        <h2 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
+        <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
           <TrendingUp size={20} />
           学习统计
         </h2>
@@ -286,7 +319,7 @@ export default function LearnPage() {
       {/* 学习模式 */}
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
             <Brain size={20} />
             学习模式
           </h2>
@@ -294,15 +327,22 @@ export default function LearnPage() {
             href="/courses" 
             className="text-info hover:text-white transition-colors text-sm font-medium flex items-center gap-1"
           >
-            浏览课程 <ArrowRight size={14} />
+            进入课程中心 <ArrowRight size={14} />
           </a>
         </div>
         <GridContainer columns={3} gap="lg">
           {learningModes.map((mode, index) => (
-            <LearningModeCard key={mode.id} mode={mode} index={index} />
+            <LearningModeCard 
+              key={mode.id} 
+              mode={mode} 
+              index={index} 
+              onModeClick={startGameFlow}
+            />
           ))}
         </GridContainer>
       </section>
+
+      {/* 弹框已由GameFlowProvider全局管理 */}
     </PageContainer>
   );
 }

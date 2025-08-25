@@ -30,11 +30,11 @@ const config: Config = {
           secondary: '#1e293b',  // --secondary-dark 
           tertiary: '#334155',   // --card-dark
         },
-        // 文本色彩
+        // 文本色彩 - 使用CSS变量以支持主题切换
         text: {
-          primary: '#f0f6fc',
-          secondary: '#8b949e',
-          muted: '#6e7681',
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
         },
         // 功能色彩
         border: '#30363d',

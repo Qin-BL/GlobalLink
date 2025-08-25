@@ -224,7 +224,7 @@ export default function CoursesPage() {
   // 设置面包屑
   useEffect(() => {
     setBreadcrumbs([
-      { label: '首页', href: '/' },
+      { label: '首页', href: '/dashboard' },
       { label: '课程中心', href: '/courses' }
     ]);
   }, [setBreadcrumbs]);
@@ -294,19 +294,19 @@ export default function CoursesPage() {
       <div className="mb-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            课程包商城
+            课程中心
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            精选优质英语学习课程，从基础入门到高级应用，总有适合您的学习内容
+            基础英语学习课程，55个系统性课时，每个课时包含真实的学习内容
           </p>
           <div className="flex items-center justify-center gap-4 mt-6">
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-              共 {courses.length} 个课程包
+              55个真实课时
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
-              {courses.filter(c => c.featured).length} 个推荐课程
+              基于真实数据
             </div>
           </div>
         </div>

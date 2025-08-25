@@ -20,6 +20,7 @@ import {
   Star
 } from 'lucide-react';
 import { useLayoutStore } from '@/store/layout';
+import { useTheme } from '@/components/theme-provider';
 
 // 搜索建议数据
 const searchSuggestions = [
@@ -253,7 +254,6 @@ const TopNav: React.FC = () => {
     sidebarWidth, 
     searchQuery, 
     searchFocused,
-    isDarkMode,
     currentPage,
     breadcrumbs,
     mobileMenuOpen 
@@ -263,9 +263,10 @@ const TopNav: React.FC = () => {
     toggleSidebar, 
     setSearchQuery, 
     setSearchFocused,
-    toggleDarkMode,
     toggleMobileMenu 
   } = useLayoutStore();
+  
+  const { theme, toggleTheme } = useTheme();
 
   // 本地状态
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -306,18 +307,14 @@ const TopNav: React.FC = () => {
 
   return (
     <header 
-      className="fixed top-0 left-0 right-0 z-50 h-16 backdrop-blur"
+      className="fixed top-0 right-0 z-50 h-16 backdrop-blur transition-all duration-300"
       style={{
+        left: isDesktop ? `${sidebarWidth}px` : '0',
         background: 'var(--secondary-dark)',
         borderBottom: '1px solid var(--border-color)',
       }}
     >
-      <div 
-        className="h-full flex items-center px-4 transition-all duration-300"
-        style={{ 
-          marginLeft: isDesktop ? sidebarWidth : 0 
-        }}
-      >
+      <div className="h-full flex items-center px-4">
         {/* 移动端菜单按钮 */}
         <button
           onClick={toggleMobileMenu}
@@ -378,12 +375,12 @@ const TopNav: React.FC = () => {
           
           {/* 主题切换 */}
           <motion.button
-            onClick={toggleDarkMode}
+            onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-hover transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            {isDarkMode ? (
+            {theme === 'dark' ? (
               <Sun size={20} className="text-text-secondary" />
             ) : (
               <Moon size={20} className="text-text-secondary" />

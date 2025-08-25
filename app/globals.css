@@ -6,9 +6,9 @@
 /* CSS变量定义 - 深色科技风主题 */
 :root {
   /* 主背景色系 */
-  --primary-dark: #0d1117;
-  --secondary-dark: #161b22;
-  --card-dark: #21262d;
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-card: #21262d;
   --border-color: #30363d;
   --hover-bg: #262c36;
   
@@ -30,23 +30,48 @@
   --gradient-warning: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
-/* 浅色主题变量 */
-[data-theme="light"] {
-  --primary-dark: #ffffff;
-  --secondary-dark: #f6f8fa;
-  --card-dark: #ffffff;
-  --border-color: #d0d7de;
-  --hover-bg: #f3f4f6;
+/* 浅色主题变量 - 增强对比度解决可读性问题 */
+[data-theme="light"], .light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: #ffffff;
+  --border-color: #d1d5db;
+  --hover-bg: #f1f5f9;
   
-  --text-primary: #0d1117;
-  --text-secondary: #424a53;
-  --text-muted: #656d76;
+  /* 大幅增强文字对比度 - 解决看不清问题 */
+  --text-primary: #111827;  /* 从 #0f172a 加深到 #111827 */
+  --text-secondary: #1f2937;  /* 从 #334155 加深到 #1f2937 */
+  --text-muted: #374151;  /* 从 #475569 加深到 #374151 */
   
   /* 功能色彩 - 浅色模式下增强对比度 */
-  --success-color: #1a7f37;
-  --warning-color: #bf8700;
-  --error-color: #cf222e;
-  --info-color: #7c3aed;
+  --success-color: #047857;  /* 更深的绿色 */
+  --warning-color: #b45309;  /* 更深的橙色 */
+  --error-color: #b91c1c;   /* 更深的红色 */
+  --info-color: #6d28d9;    /* 更深的紫色 */
+}
+
+/* 气泡提示动画 */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+/* 简化的气泡提示动画 */
+@keyframes tooltipFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* 基础样式重置 */
@@ -62,7 +87,7 @@
   }
   
   body {
-    background-color: var(--primary-dark);
+    background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -78,7 +103,7 @@
   }
   
   ::-webkit-scrollbar-track {
-    background: var(--secondary-dark);
+    background: var(--bg-secondary);
   }
   
   ::-webkit-scrollbar-thumb {
@@ -95,7 +120,7 @@
 @layer components {
   /* 基础卡片样式 */
   .card {
-    background: var(--card-dark);
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 0.75rem;
     transition: all 0.3s ease;
@@ -109,7 +134,7 @@
   /* 学习模块卡片 */
   .learning-card {
     position: relative;
-    background: linear-gradient(135deg, var(--card-dark), var(--secondary-dark));
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
     border: 1px solid var(--border-color);
     border-radius: 1rem;
     padding: 2rem;
@@ -136,7 +161,7 @@
   
   /* 单词卡片样式 */
   .word-card {
-    background: var(--card-dark);
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 0.75rem;
     padding: 1.5rem;
@@ -151,12 +176,12 @@
   
   .word-card.correct {
     border-color: var(--success-color);
-    background: linear-gradient(135deg, var(--card-dark), rgba(35, 134, 54, 0.1));
+    background: linear-gradient(135deg, var(--bg-card), rgba(35, 134, 54, 0.1));
   }
   
   .word-card.incorrect {
     border-color: var(--error-color);
-    background: linear-gradient(135deg, var(--card-dark), rgba(218, 54, 51, 0.1));
+    background: linear-gradient(135deg, var(--bg-card), rgba(218, 54, 51, 0.1));
   }
   
   /* 按钮样式系统 */
@@ -184,7 +209,7 @@
   }
   
   .btn-secondary {
-    background: var(--card-dark);
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.75rem 1.5rem;
@@ -261,7 +286,7 @@
   
   /* 统计卡片 */
   .stats-card {
-    background: var(--card-dark);
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 0.75rem;
     padding: 1.5rem;
@@ -300,7 +325,7 @@
   .youtube-layout {
     display: flex;
     min-height: 100vh;
-    background: var(--primary-dark);
+    background: var(--bg-primary);
   }
   
   /* 侧边栏样式 */
@@ -338,10 +363,14 @@
     margin-left: 64px;
   }
   
+  .main-content-expanded {
+    margin-left: 280px;
+  }
+  
   /* 顶部导航栏 */
   .top-nav {
     height: 64px;
-    background: var(--secondary-dark);
+    background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
     position: fixed;
@@ -596,6 +625,69 @@
   :root {
     --border-color: #ffffff;
     --text-secondary: #ffffff;
+  }
+}
+
+/* Tailwind组件样式 */
+@layer components {
+  .text-text-primary {
+    color: var(--text-primary);
+  }
+  
+  .text-text-secondary {
+    color: var(--text-secondary);
+  }
+  
+  .text-text-muted {
+    color: var(--text-muted);
+  }
+  
+  .bg-primary {
+    background-color: var(--bg-primary);
+  }
+  
+  .bg-secondary {
+    background-color: var(--bg-secondary);
+  }
+  
+  .bg-card {
+    background-color: var(--bg-card);
+  }
+  
+  .bg-hover {
+    background-color: var(--hover-bg);
+  }
+  
+  .border-border-color {
+    border-color: var(--border-color);
+  }
+  
+  .bg-success {
+    background-color: var(--success-color);
+  }
+  
+  .text-success {
+    color: var(--success-color);
+  }
+  
+  .bg-info {
+    background-color: var(--info-color);
+  }
+  
+  .text-info {
+    color: var(--info-color);
+  }
+  
+  .border-info {
+    border-color: var(--info-color);
+  }
+  
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .bg-gradient-secondary {
+    background: var(--gradient-secondary);
   }
 }
 

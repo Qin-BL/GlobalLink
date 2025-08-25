@@ -10,6 +10,16 @@ import {
   Draggable,
   DropResult 
 } from '@hello-pangea/dnd';
+import { 
+  Lightbulb, 
+  PartyPopper, 
+  XCircle, 
+  Trophy, 
+  Star, 
+  ThumbsUp, 
+  Dumbbell, 
+  BookOpen 
+} from 'lucide-react';
 
 interface Word {
   id: string;
@@ -42,96 +52,167 @@ interface GameResults {
   averageTime: number;
 }
 
-// 示例句子数据
-const SAMPLE_SENTENCES: SentenceData[] = [
-  {
-    id: '1',
-    chineseText: '我喜欢苹果',
-    englishText: 'I like apples',
-    words: [
-      { id: 'word-1', text: 'I', type: 'pronoun' },
-      { id: 'word-2', text: 'like', type: 'verb' },
-      { id: 'word-3', text: 'apples', type: 'noun' }
-    ],
-    correctOrder: ['word-1', 'word-2', 'word-3'],
-    difficulty: 1,
-    grammarPoints: ['主谓宾结构', '一般现在时'],
-    hint: '主语 + 动词 + 宾语'
-  },
-  {
-    id: '2',
-    chineseText: '这是一本好书',
-    englishText: 'This is a good book',
-    words: [
-      { id: 'word-4', text: 'This', type: 'pronoun' },
-      { id: 'word-5', text: 'is', type: 'verb' },
-      { id: 'word-6', text: 'a', type: 'article' },
-      { id: 'word-7', text: 'good', type: 'adjective' },
-      { id: 'word-8', text: 'book', type: 'noun' }
-    ],
-    correctOrder: ['word-4', 'word-5', 'word-6', 'word-7', 'word-8'],
-    difficulty: 2,
-    grammarPoints: ['be动词', '形容词修饰名词', '不定冠词'],
-    hint: '指示代词 + be动词 + 冠词 + 形容词 + 名词'
-  },
-  {
-    id: '3',
-    chineseText: '她在图书馆里学习',
-    englishText: 'She studies in the library',
-    words: [
-      { id: 'word-9', text: 'She', type: 'pronoun' },
-      { id: 'word-10', text: 'studies', type: 'verb' },
-      { id: 'word-11', text: 'in', type: 'preposition' },
-      { id: 'word-12', text: 'the', type: 'article' },
-      { id: 'word-13', text: 'library', type: 'noun' }
-    ],
-    correctOrder: ['word-9', 'word-10', 'word-11', 'word-12', 'word-13'],
-    difficulty: 2,
-    grammarPoints: ['介词短语', '定冠词', '第三人称单数'],
-    hint: '主语 + 动词 + 介词短语'
-  },
-  {
-    id: '4',
-    chineseText: '昨天我去了商店买了一些食物',
-    englishText: 'Yesterday I went to the store and bought some food',
-    words: [
-      { id: 'word-14', text: 'Yesterday', type: 'adverb' },
-      { id: 'word-15', text: 'I', type: 'pronoun' },
-      { id: 'word-16', text: 'went', type: 'verb' },
-      { id: 'word-17', text: 'to', type: 'preposition' },
-      { id: 'word-18', text: 'the', type: 'article' },
-      { id: 'word-19', text: 'store', type: 'noun' },
-      { id: 'word-20', text: 'and', type: 'preposition' },
-      { id: 'word-21', text: 'bought', type: 'verb' },
-      { id: 'word-22', text: 'some', type: 'adjective' },
-      { id: 'word-23', text: 'food', type: 'noun' }
-    ],
-    correctOrder: ['word-14', 'word-15', 'word-16', 'word-17', 'word-18', 'word-19', 'word-20', 'word-21', 'word-22', 'word-23'],
-    difficulty: 3,
-    grammarPoints: ['过去时态', '并列句', '时间副词'],
-    hint: '时间副词 + 主语 + 过去式动词 + 介词短语 + 连词 + 过去式动词 + 宾语'
-  },
-  {
-    id: '5',
-    chineseText: '如果明天下雨，我就呆在家里',
-    englishText: 'If it rains tomorrow, I will stay at home',
-    words: [
-      { id: 'word-24', text: 'If', type: 'preposition' },
-      { id: 'word-25', text: 'it', type: 'pronoun' },
-      { id: 'word-26', text: 'rains', type: 'verb' },
-      { id: 'word-27', text: 'tomorrow', type: 'adverb' },
-      { id: 'word-28', text: 'I', type: 'pronoun' },
-      { id: 'word-29', text: 'will', type: 'verb' },
-      { id: 'word-30', text: 'stay', type: 'verb' },
-      { id: 'word-31', text: 'at', type: 'preposition' },
-      { id: 'word-32', text: 'home', type: 'noun' }
-    ],
-    correctOrder: ['word-24', 'word-25', 'word-26', 'word-27', 'word-28', 'word-29', 'word-30', 'word-31', 'word-32'],
-    difficulty: 3,
-    grammarPoints: ['条件状语从句', '将来时态', '复合句'],
-    hint: 'If + 条件从句(一般现在时) + 主句(一般将来时)'
+// 从packages数据加载句子
+let cachedSentences: SentenceData[] = [];
+let currentCourseId: string | null = null;
+
+// 从课程数据生成句子数据
+async function loadSentencesFromCourse(courseId: string = '01'): Promise<SentenceData[]> {
+  try {
+    // 如果已经缓存了相同课程的数据，直接返回
+    if (currentCourseId === courseId && cachedSentences.length > 0) {
+      return cachedSentences;
+    }
+
+    const response = await fetch(`/api/courses/${courseId.padStart(2, '0')}`);
+    if (!response.ok) {
+      throw new Error('Failed to load course data');
+    }
+
+    const courseItems = await response.json();
+    
+    // 筛选出适合句子构建的数据（完整句子，不超过10个单词）
+    const sentenceItems = courseItems.filter((item: any) => {
+      const wordCount = item.english.split(' ').length;
+      return wordCount >= 3 && wordCount <= 10 && item.english.includes(' ');
+    });
+
+    const sentences: SentenceData[] = sentenceItems.map((item: any, index: number) => {
+      const words = item.english.split(' ');
+      const wordObjects: Word[] = words.map((word: string, wordIndex: number) => ({
+        id: `word-${index}-${wordIndex}`,
+        text: word,
+        type: determineWordType(word, wordIndex, words.length)
+      }));
+      
+      const correctOrder = wordObjects.map(w => w.id);
+      const difficulty = determineSentenceDifficulty(item.english, item.chinese);
+      
+      return {
+        id: `sentence-${index + 1}`,
+        chineseText: item.chinese,
+        englishText: item.english,
+        words: wordObjects,
+        correctOrder,
+        difficulty,
+        grammarPoints: generateGrammarPoints(item.english),
+        hint: generateHint(item.english, item.chinese)
+      };
+    });
+
+    // 缓存数据
+    cachedSentences = sentences;
+    currentCourseId = courseId;
+    
+    return sentences;
+  } catch (error) {
+    console.error('Error loading sentences from course:', error);
+    // 返回基础句子作为后备
+    return [
+      {
+        id: '1',
+        chineseText: '我喜欢苹果',
+        englishText: 'I like apples',
+        words: [
+          { id: 'word-1', text: 'I', type: 'pronoun' },
+          { id: 'word-2', text: 'like', type: 'verb' },
+          { id: 'word-3', text: 'apples', type: 'noun' }
+        ],
+        correctOrder: ['word-1', 'word-2', 'word-3'],
+        difficulty: 1,
+        grammarPoints: ['主谓宾结构'],
+        hint: '主语 + 动词 + 宾语'
+      }
+    ];
   }
-];
+}
+
+// 确定单词类型
+function determineWordType(word: string, position: number, totalWords: number): Word['type'] {
+  const lowerWord = word.toLowerCase();
+  
+  // 代词
+  if (['i', 'you', 'he', 'she', 'it', 'we', 'they', 'this', 'that'].includes(lowerWord)) {
+    return 'pronoun';
+  }
+  
+  // 冠词
+  if (['a', 'an', 'the'].includes(lowerWord)) {
+    return 'article';
+  }
+  
+  // 介词
+  if (['in', 'on', 'at', 'to', 'for', 'with', 'by', 'from', 'of', 'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'up', 'down', 'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once'].includes(lowerWord)) {
+    return 'preposition';
+  }
+  
+  // 动词（常见动词和位置判断）
+  if (['am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'like', 'love', 'want', 'need', 'go', 'come', 'get', 'make', 'take', 'give', 'see', 'know', 'think', 'feel', 'work', 'play', 'study', 'learn'].includes(lowerWord) || 
+      (position === 1 && totalWords > 2)) {
+    return 'verb';
+  }
+  
+  // 副词（以-ly结尾或常见副词）
+  if (word.endsWith('ly') || ['very', 'really', 'quite', 'always', 'never', 'often', 'sometimes', 'usually', 'today', 'tomorrow', 'yesterday', 'now', 'then', 'here', 'there'].includes(lowerWord)) {
+    return 'adverb';
+  }
+  
+  // 形容词（常见形容词或位置判断）
+  if (['good', 'bad', 'big', 'small', 'new', 'old', 'young', 'beautiful', 'nice', 'great', 'important', 'interesting', 'difficult', 'easy', 'happy', 'sad', 'some', 'many', 'much', 'few', 'little'].includes(lowerWord)) {
+    return 'adjective';
+  }
+  
+  // 默认为名词
+  return 'noun';
+}
+
+// 确定句子难度
+function determineSentenceDifficulty(english: string, chinese: string): number {
+  const wordCount = english.split(' ').length;
+  const hasComplexWords = english.split(' ').some(word => word.length > 6);
+  
+  if (wordCount <= 4 && !hasComplexWords) {
+    return 1; // 简单
+  } else if (wordCount <= 7) {
+    return 2; // 中等
+  } else {
+    return 3; // 困难
+  }
+}
+
+// 生成语法要点
+function generateGrammarPoints(english: string): string[] {
+  const points: string[] = [];
+  const lowerEnglish = english.toLowerCase();
+  
+  if (lowerEnglish.includes(' is ') || lowerEnglish.includes(' are ') || lowerEnglish.includes(' am ')) {
+    points.push('be动词');
+  }
+  if (lowerEnglish.includes(' the ')) {
+    points.push('定冠词');
+  }
+  if (lowerEnglish.includes(' a ') || lowerEnglish.includes(' an ')) {
+    points.push('不定冠词');
+  }
+  if (lowerEnglish.includes(' in ') || lowerEnglish.includes(' on ') || lowerEnglish.includes(' at ')) {
+    points.push('介词短语');
+  }
+  
+  return points.length > 0 ? points : ['基础语法'];
+}
+
+// 生成提示
+function generateHint(english: string, chinese: string): string {
+  const wordCount = english.split(' ').length;
+  
+  if (wordCount <= 3) {
+    return '简单句：主语 + 动词 + 宾语';
+  } else if (wordCount <= 5) {
+    return '注意词序和语法结构';
+  } else {
+    return '复杂句：注意从句和修饰语的位置';
+  }
+}
 
 export default function SentenceBuilderGame({ 
   difficulty = 'beginner', 
@@ -154,21 +235,22 @@ export default function SentenceBuilderGame({
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
 
   // 根据难度筛选句子
-  const getSentencesByDifficulty = useCallback(() => {
+  const getSentencesByDifficulty = useCallback(async () => {
     const levelMap = {
       'beginner': [1],
       'intermediate': [1, 2],
       'advanced': [2, 3]
     };
     
-    return SAMPLE_SENTENCES.filter(sentence => 
+    const allSentences = await loadSentencesFromCourse('01');
+    return allSentences.filter(sentence => 
       levelMap[difficulty].includes(sentence.difficulty)
     );
   }, [difficulty]);
 
   // 开始游戏
-  const startGame = () => {
-    const filteredSentences = getSentencesByDifficulty();
+  const startGame = async () => {
+    const filteredSentences = await getSentencesByDifficulty();
     const shuffledSentences = filteredSentences.sort(() => Math.random() - 0.5);
     
     setSentences(shuffledSentences);
@@ -457,14 +539,14 @@ export default function SentenceBuilderGame({
           <div className="flex gap-3 justify-center">
             <Button
               onClick={toggleHint}
-              variant="outline"
+              variant="secondary"
               className="text-sm"
             >
               {showHint ? '隐藏提示' : '显示提示'} ({hintsUsed})
             </Button>
             <Button
               onClick={resetSentence}
-              variant="outline"
+              variant="secondary"
               className="text-sm"
             >
               重置
@@ -475,7 +557,7 @@ export default function SentenceBuilderGame({
           {showHint && currentSentence.hint && (
             <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
               <div className="text-yellow-400 text-sm">
-                💡 语法提示: {currentSentence.hint}
+                <Lightbulb className="inline w-4 h-4 mr-1" /> 语法提示: {currentSentence.hint}
               </div>
             </div>
           )}
@@ -611,12 +693,12 @@ export default function SentenceBuilderGame({
             }`}>
               {JSON.stringify(userOrder) === JSON.stringify(currentSentence.correctOrder) ? (
                 <div className="text-green-400">
-                  <div className="text-2xl mb-2">🎉 正确！</div>
+                  <div className="text-2xl mb-2"><PartyPopper className="inline w-6 h-6 mr-2 align-[-0.2em]" /> 正确！</div>
                   <div className="font-semibold">你的答案: {userSentence}</div>
                 </div>
               ) : (
                 <div className="text-red-400">
-                  <div className="text-2xl mb-2">❌ 错误！</div>
+                  <div className="text-2xl mb-2"><XCircle className="inline w-6 h-6 mr-2 align-[-0.2em]" /> 错误！</div>
                   <div className="space-y-2">
                     <div>你的答案: {userSentence}</div>
                     <div>正确答案: {currentSentence.englishText}</div>
@@ -639,7 +721,7 @@ export default function SentenceBuilderGame({
         <Card className="p-8 text-center">
           <div className="mb-6">
             <h2 className="text-3xl font-bold text-primary-400 mb-2">
-              🏆 练习完成！
+              <Trophy className="inline w-8 h-8 mr-2 align-[-0.2em]" /> 练习完成！
             </h2>
             <p className="text-gray-300">
               恭喜你完成了Sentence Builder练习
@@ -670,10 +752,23 @@ export default function SentenceBuilderGame({
           <div className="mb-8 p-4 bg-gray-700 rounded-lg">
             <h3 className="font-semibold text-white mb-2">语法掌握评价</h3>
             <p className="text-gray-300">
-              {accuracy >= 90 ? "🌟 语法掌握优秀！你对英语句子结构有很好的理解！" :
-               accuracy >= 70 ? "👍 语法掌握良好！多练习复杂句型会更好！" :
-               accuracy >= 50 ? "💪 语法基础可以！建议加强语法规则学习！" :
-               "📚 需要加强语法基础！建议从简单句型开始练习。"}
+              {accuracy >= 90 ? (
+                <>
+                  <Star className="w-4 h-4 text-yellow-400" /> 语法掌握优秀！你对英语句子结构有很好的理解！
+                </>
+              ) : accuracy >= 70 ? (
+                <>
+                  <ThumbsUp className="w-4 h-4 text-green-400" /> 语法掌握良好！多练习复杂句型会更好！
+                </>
+              ) : accuracy >= 50 ? (
+                <>
+                  <Dumbbell className="w-4 h-4 text-purple-400" /> 语法基础可以！建议加强语法规则学习！
+                </>
+              ) : (
+                <>
+                  <BookOpen className="w-4 h-4 text-blue-400" /> 需要加强语法基础！建议从简单句型开始练习。
+                </>
+              )}
             </p>
           </div>
 
@@ -686,7 +781,7 @@ export default function SentenceBuilderGame({
             </Button>
             <Button 
               onClick={() => setGameState('menu')}
-              variant="outline"
+              variant="secondary"
               className="w-full py-3"
             >
               返回菜单

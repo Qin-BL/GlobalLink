@@ -4,3 +4,7 @@ export { Input } from './Input';
 export { Progress } from './Progress';
 export { GameCard } from './GameCard';
 export { Navigation } from './Navigation';
+export { default as TouchOptimizedButton } from './TouchOptimizedButton';
+export { default as GameModeModal } from './GameModeModal';
+export { default as CourseSelectionModal } from './CourseSelectionModal';
+export { default as LessonSelectionModal } from './LessonSelectionModal';

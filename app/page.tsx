@@ -3,7 +3,8 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Github, Play } from 'lucide-react';
+import { ReactNode } from 'react';
+import { Github, Play, BookOpen, Target, Brain, Volume2, Keyboard, BarChart3, Trophy, Users, Star, Zap, RotateCcw } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -14,7 +15,7 @@ export default function HomePage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center mr-3">
-                <span className="text-white font-bold text-sm">📚</span>
+                <BookOpen size={16} className="text-white" />
               </div>
               <h1 className="text-xl font-bold text-white">
                 英语学习平台
@@ -100,7 +101,7 @@ export default function HomePage() {
             {/* 主要学习模块 */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
               <LearningModuleCard
-                icon="🎯"
+                icon={<Zap size={24} className="text-yellow-400" />}
                 title="词汇训练"
                 description="Word Blitz快速单词记忆游戏"
                 href="/dashboard/play/word-blitz"
@@ -108,7 +109,7 @@ export default function HomePage() {
                 variant="primary"
               />
               <LearningModuleCard
-                icon="🧠"
+                icon={<Brain size={24} className="text-purple-400" />}
                 title="语法掌握"
                 description="Sentence Builder句子构建练习"
                 href="/dashboard/learn/sentence-builder"
@@ -116,7 +117,7 @@ export default function HomePage() {
                 variant="primary"
               />
               <LearningModuleCard
-                icon="🔊"
+                icon={<Volume2 size={24} className="text-blue-400" />}
                 title="口语练习"
                 description="Chinese-English对话训练"
                 href="/dashboard/play/chinese-english"
@@ -124,7 +125,7 @@ export default function HomePage() {
                 variant="primary"
               />
               <LearningModuleCard
-                icon="⌨️"
+                icon={<Keyboard size={24} className="text-green-400" />}
                 title="键盘练习"
                 description="英语打字速度训练"
                 href="/dashboard/play/keyboard-practice"
@@ -136,19 +137,19 @@ export default function HomePage() {
             {/* 特色功能 */}
             <div className="grid md:grid-cols-3 gap-8">
               <FeatureCard
-                icon="📊"
+                icon={<BarChart3 size={24} className="text-cyan-400" />}
                 title="智能统计"
                 description="详细的学习数据分析，追踪您的进步轨迹"
                 delay={0.4}
               />
               <FeatureCard
-                icon="🏆"
+                icon={<Trophy size={24} className="text-amber-400" />}
                 title="排行榜"
                 description="与其他学习者比较，激发学习动力"
                 delay={0.5}
               />
               <FeatureCard
-                icon="🔄"
+                icon={<RotateCcw size={24} className="text-indigo-400" />}
                 title="SM-2算法"
                 description="科学的间隔重复，提高记忆效率"
                 delay={0.6}
@@ -208,22 +209,22 @@ export default function HomePage() {
                 <StatsCard
                   number="10,000+"
                   label="注册用户"
-                  icon="👥"
+                  icon={<Users size={24} className="text-blue-400" />}
                 />
                 <StatsCard
                   number="50,000+"
                   label="学习词汇"
-                  icon="📚"
+                  icon={<BookOpen size={24} className="text-green-400" />}
                 />
                 <StatsCard
                   number="1,000,000+"
                   label="练习次数"
-                  icon="🎯"
+                  icon={<Target size={24} className="text-purple-400" />}
                 />
                 <StatsCard
                   number="95%"
                   label="用户满意度"
-                  icon="⭐"
+                  icon={<Star size={24} className="text-yellow-400" />}
                 />
               </div>
             </div>
@@ -236,7 +237,7 @@ export default function HomePage() {
 
 // 学习模块卡片组件
 interface LearningModuleCardProps {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
   href: string;
@@ -293,7 +294,7 @@ function LearningModuleCard({ icon, title, description, href, delay, variant = '
 
 // 特色功能卡片组件
 interface FeatureCardProps {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
   delay: number;
@@ -344,7 +345,7 @@ function LearningPathCard({ step, title, description, color }: LearningPathCardP
 interface StatsCardProps {
   number: string;
   label: string;
-  icon: string;
+  icon: ReactNode;
 }
 
 function StatsCard({ number, label, icon }: StatsCardProps) {
