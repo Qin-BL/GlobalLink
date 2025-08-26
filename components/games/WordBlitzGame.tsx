@@ -5,6 +5,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Progress } from '../ui/Progress';
 import { Flame, CheckCircle, XCircle, PartyPopper, Star, ThumbsUp, Dumbbell, BookOpen } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 interface Word {
   id: number;
@@ -42,7 +43,7 @@ let cachedWords: Word[] = [];
 let currentCourseId: string | null = null;
 
 // 从课程数据生成词汇数据
-async function loadWordsFromCourse(courseId: string = '01'): Promise<Word[]> {
+async function loadWordsFromCourse(courseId: string): Promise<Word[]> {
   try {
     // 如果已经缓存了相同课程的数据，直接返回
     if (currentCourseId === courseId && cachedWords.length > 0) {
@@ -80,14 +81,8 @@ async function loadWordsFromCourse(courseId: string = '01'): Promise<Word[]> {
     return words;
   } catch (error) {
     console.error('Error loading words from course:', error);
-    // 返回基础词汇作为后备
-    return [
-      { id: 1, term: 'I', meaning: '我', level: 1 },
-      { id: 2, term: 'like', meaning: '喜欢', level: 1 },
-      { id: 3, term: 'good', meaning: '好的', level: 1 },
-      { id: 4, term: 'important', meaning: '重要的', level: 2 },
-      { id: 5, term: 'beautiful', meaning: '美丽的', level: 2 },
-    ];
+    // 出错时返回空数组（不再使用硬编码示例数据）
+    return [] as Word[];
   }
 }
 
@@ -124,6 +119,8 @@ export default function WordBlitzGame({
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
+  const [noData, setNoData] = useState(false);
+  const searchParams = useSearchParams();
 
   // 根据难度等级筛选词汇
   const getWordsByDifficulty = useCallback(async () => {
@@ -133,11 +130,14 @@ export default function WordBlitzGame({
       'advanced': [2, 3]
     };
     
-    const words = await loadWordsFromCourse('01');
+    const courseId = (searchParams?.get('courseId') ?? '').toString();
+    if (!courseId) return [] as Word[];
+
+    const words = await loadWordsFromCourse(courseId);
     return words.filter(word => 
       levelMap[difficulty].includes(word.level)
     );
-  }, [difficulty]);
+  }, [difficulty, searchParams]);
 
   // 生成干扰项
   const generateDistractors = useCallback((correctAnswer: string, allWords: Word[], isChineseToEnglish: boolean) => {
@@ -177,6 +177,11 @@ export default function WordBlitzGame({
   // 开始游戏
   const startGame = async () => {
     const newQuestions = await generateQuestions();
+    if (!newQuestions || newQuestions.length === 0) {
+      setNoData(true);
+      setGameState('menu');
+      return;
+    }
     setQuestions(newQuestions);
     setCurrentQuestion(newQuestions[0]);
     setGameState('playing');
@@ -268,7 +273,9 @@ export default function WordBlitzGame({
       streakCount: maxStreak
     };
     
-    onGameEnd?.(results);
+    if (onGameEnd) {
+      onGameEnd(results);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -296,6 +303,11 @@ export default function WordBlitzGame({
               快速词汇记忆挑战
             </p>
           </div>
+          {noData && (
+            <div className="mb-6 p-4 rounded bg-yellow-900/30 text-yellow-300">
+              课程ID缺失或当前课程暂无可用词汇，请更换课程或稍后重试。
+            </div>
+          )}
           
           <div className="mb-8 space-y-4">
             <div className="p-4 bg-gray-700 rounded-lg">

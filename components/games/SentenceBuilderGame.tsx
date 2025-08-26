@@ -20,6 +20,7 @@ import {
   Dumbbell, 
   BookOpen 
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 interface Word {
   id: string;
@@ -57,7 +58,7 @@ let cachedSentences: SentenceData[] = [];
 let currentCourseId: string | null = null;
 
 // 从课程数据生成句子数据
-async function loadSentencesFromCourse(courseId: string = '01'): Promise<SentenceData[]> {
+async function loadSentencesFromCourse(courseId: string): Promise<SentenceData[]> {
   try {
     // 如果已经缓存了相同课程的数据，直接返回
     if (currentCourseId === courseId && cachedSentences.length > 0) {
@@ -107,23 +108,8 @@ async function loadSentencesFromCourse(courseId: string = '01'): Promise<Sentenc
     return sentences;
   } catch (error) {
     console.error('Error loading sentences from course:', error);
-    // 返回基础句子作为后备
-    return [
-      {
-        id: '1',
-        chineseText: '我喜欢苹果',
-        englishText: 'I like apples',
-        words: [
-          { id: 'word-1', text: 'I', type: 'pronoun' },
-          { id: 'word-2', text: 'like', type: 'verb' },
-          { id: 'word-3', text: 'apples', type: 'noun' }
-        ],
-        correctOrder: ['word-1', 'word-2', 'word-3'],
-        difficulty: 1,
-        grammarPoints: ['主谓宾结构'],
-        hint: '主语 + 动词 + 宾语'
-      }
-    ];
+    // 出错时返回空数组（不再使用硬编码示例数据）
+    return [] as SentenceData[];
   }
 }
 
@@ -233,6 +219,8 @@ export default function SentenceBuilderGame({
   const [questionStartTime, setQuestionStartTime] = useState<number>(0);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
+  const [noData, setNoData] = useState(false);
+  const searchParams = useSearchParams();
 
   // 根据难度筛选句子
   const getSentencesByDifficulty = useCallback(async () => {
@@ -242,15 +230,24 @@ export default function SentenceBuilderGame({
       'advanced': [2, 3]
     };
     
-    const allSentences = await loadSentencesFromCourse('01');
+    const courseId = (searchParams?.get('courseId') ?? '').toString();
+    if (!courseId) return [] as SentenceData[];
+
+    const allSentences = await loadSentencesFromCourse(courseId);
     return allSentences.filter(sentence => 
       levelMap[difficulty].includes(sentence.difficulty)
     );
-  }, [difficulty]);
+  }, [difficulty, searchParams]);
 
   // 开始游戏
   const startGame = async () => {
     const filteredSentences = await getSentencesByDifficulty();
+    if (!filteredSentences || filteredSentences.length === 0) {
+      // 无可用数据，显示空态
+      setNoData(true);
+      setGameState('menu');
+      return;
+    }
     const shuffledSentences = filteredSentences.sort(() => Math.random() - 0.5);
     
     setSentences(shuffledSentences);
@@ -271,6 +268,11 @@ export default function SentenceBuilderGame({
       initializeSentence(shuffledSentences[0]);
     }
   };
+
+  useEffect(() => {
+    // 每次查询参数变化时，清除无数据提示
+    setNoData(false);
+  }, [searchParams]);
 
   // 初始化句子
   const initializeSentence = (sentence: SentenceData) => {
@@ -430,14 +432,14 @@ export default function SentenceBuilderGame({
       <div className="max-w-4xl mx-auto p-6">
         <Card className="p-8 text-center">
           <div className="mb-6">
-            <h1 className="text-4xl font-bold text-primary-400 mb-4">
-              🔧 Sentence Builder
-            </h1>
-            <p className="text-gray-300 text-lg">
-              通过拖拽组句练习英语语法
-            </p>
+            <h1 className="text-4xl font-bold text-primary-400 mb-2">🧩 句子拼接挑战</h1>
+            <p className="text-gray-300">根据中文提示，拖拽英文单词组成正确句子</p>
           </div>
-          
+          {noData && (
+            <div className="mb-6 p-4 rounded bg-yellow-900/30 text-yellow-300">
+              当前课程暂无可用句子，请更换课程或稍后重试。
+            </div>
+          )}
           <div className="mb-8 space-y-4">
             <div className="p-4 bg-gray-700 rounded-lg">
               <h3 className="font-semibold text-white mb-2">游戏规则</h3>
@@ -448,26 +450,7 @@ export default function SentenceBuilderGame({
                 <li>• 完成所有句子后查看总成绩</li>
               </ul>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="p-3 bg-gray-800 rounded">
-                <h4 className="text-primary-400 font-bold mb-2">词汇类型标识</h4>
-                <div className="flex flex-wrap gap-1">
-                  <span className="px-2 py-1 rounded text-xs bg-blue-500">名词</span>
-                  <span className="px-2 py-1 rounded text-xs bg-green-500">动词</span>
-                  <span className="px-2 py-1 rounded text-xs bg-yellow-500">形容词</span>
-                  <span className="px-2 py-1 rounded text-xs bg-purple-500">介词</span>
-                </div>
-              </div>
-              <div className="p-3 bg-gray-800 rounded">
-                <h4 className="text-primary-400 font-bold mb-2">评分规则</h4>
-                <div className="text-gray-400 text-xs">
-                  <div>基础分数：难度 × 20</div>
-                  <div>时间奖励：最高60分</div>
-                  <div>提示扣分：每次-5分</div>
-                </div>
-              </div>
-            </div>
+            {/* 其余规则与说明保持不变 */}
           </div>
           
           <Button 

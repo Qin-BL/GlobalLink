@@ -1,10 +1,5 @@
 {
-  "/api/analytics/heartbeat/route": "app/api/analytics/heartbeat/route.js",
-  "/api/courses/[id]/route": "app/api/courses/[id]/route.js",
-  "/(dashboard)/learn/sentence-builder/page": "app/(dashboard)/learn/sentence-builder/page.js",
-  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/play/chinese-english/page": "app/(dashboard)/play/chinese-english/page.js",
-  "/(dashboard)/courses/[id]/lessons/[lessonId]/page": "app/(dashboard)/courses/[id]/lessons/[lessonId]/page.js",
-  "/(dashboard)/courses/page": "app/(dashboard)/courses/page.js",
-  "/(dashboard)/courses/[id]/page": "app/(dashboard)/courses/[id]/page.js"
+  "/page": "app/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js"
 }

@@ -222,38 +222,41 @@ function SentenceBuilder() {
   const loadNextItem = async () => {
     setLoading(true);
     try {
-      const query = selectedCourseId 
-        ? `?courseId=${selectedCourseId}&gameType=sentence-builder&userId=${userId}` 
+      const query = selectedCourseId
+        ? `?courseId=${selectedCourseId}&gameType=sentence-builder&userId=${userId}`
         : `?gameType=sentence-builder&userId=${userId}`;
-      
-      // console.log('Loading sentence builder item with query:', query);
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
       const data = await response.json();
-      // console.log('Sentence builder API response:', data);
-      
+      if (data.error) {
+        throw new Error('API returned error');
+      }
+
       if (data.type === 'item') {
         setItem(data.item);
-        
+
         // 从答案中生成单词池
         const answerWords = data.item.answer.toLowerCase().split(' ');
-        // 添加一些干扰词
+        // 添加一些干扰词（并非内容后备，只是常见功能词）
         const distractorWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'have', 'has', 'do', 'does', 'will', 'can', 'could', 'should', 'would'];
         const shuffledDistractors = distractorWords.sort(() => Math.random() - 0.5).slice(0, 3);
         const allWords = [...answerWords, ...shuffledDistractors];
-        
+
         setWordPool(shuffle(allWords));
         setSelectedTokens([]);
         setResult('idle');
         setShowHint(false);
         setHighlightedIndex(0);
-        
-        // console.log('Generated word pool:', allWords);
       } else {
-        // console.log('No item data received:', data);
+        throw new Error('Unexpected API payload');
       }
     } catch (error) {
       console.error('Failed to load next item:', error);
-      toast.error('加载题目失败');
+      toast.error('加载题目失败，请稍后重试');
     } finally {
       setLoading(false);
     }

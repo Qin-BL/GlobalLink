@@ -45,8 +45,11 @@ let cachedExercises: SpeakingExercise[] = [];
 let currentCourseId: string | null = null;
 
 // 从课程数据生成练习数据
-async function loadExercisesFromCourse(courseId: string = '01'): Promise<SpeakingExercise[]> {
+async function loadExercisesFromCourse(courseId: string): Promise<SpeakingExercise[]> {
   try {
+    if (!courseId || courseId.trim().length === 0) {
+      return [];
+    }
     // 如果已经缓存了相同课程的数据，直接返回
     if (currentCourseId === courseId && cachedExercises.length > 0) {
       return cachedExercises;
@@ -220,7 +223,9 @@ export default function ChineseEnglishGame({
       'advanced': [2, 3]
     };
     
-    const allExercises = await loadExercisesFromCourse('default-course');
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const courseId = params?.get('courseId')?.toString() || '';
+    const allExercises = await loadExercisesFromCourse(courseId);
     return allExercises.filter(exercise => 
       levelMap[difficulty].includes(exercise.difficulty) &&
       (category === 'daily' || exercise.category === category)

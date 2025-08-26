@@ -116,7 +116,10 @@ let questionsCache: { [key: string]: Question[] } = {};
 
 // 从课程数据加载问题（兼容 packages/data/courses/*.json 返回的数组结构）
 async function loadQuestionsFromCourse(courseId: string, gameType: string): Promise<Question[]> {
-  const normalizedId = (courseId || '01').toString().padStart(2, '0');
+  if (!courseId || courseId.trim().length === 0) {
+    return [];
+  }
+  const normalizedId = courseId.toString().padStart(2, '0');
   const cacheKey = `${normalizedId}-${gameType}`;
   
   if (questionsCache[cacheKey]) {
@@ -192,16 +195,13 @@ async function loadQuestionsFromCourse(courseId: string, gameType: string): Prom
       });
     }
     
-    // 如果没有足够的数据，添加一些备用问题
-    if (questions.length < 10) {
-      questions.push(...getBackupQuestions(gameType));
-    }
-    
+    // 不再注入任何备用题目，保持真实数据。
     questionsCache[cacheKey] = questions;
     return questions;
   } catch (error) {
     console.error('Error loading course data:', error);
-    return getBackupQuestions(gameType);
+    // 出错时返回空数组，交由 UI 处理空态
+    return [];
   }
 }
 
@@ -296,43 +296,7 @@ function determineSentenceCategory(sentence: string): string {
   return 'general';
 }
 
-// 获取备用问题
-function getBackupQuestions(gameType: string): Question[] {
-  const backupQuestions: Question[] = [
-    {
-      id: 1,
-      type: 'word',
-      question: 'apple',
-      options: ['苹果', '香蕉', '橙子', '葡萄'],
-      correctAnswer: '苹果',
-      hint: '这是一种常见的红色水果',
-      difficulty: 1,
-      category: 'food'
-    },
-    {
-      id: 2,
-      type: 'word',
-      question: 'beautiful',
-      options: ['丑陋的', '美丽的', '平凡的', '奇怪的'],
-      correctAnswer: '美丽的',
-      hint: '形容外表很好看',
-      difficulty: 2,
-      category: 'adjective'
-    },
-    {
-      id: 3,
-      type: 'word',
-      question: 'opportunity',
-      options: ['困难', '机会', '问题', '挑战'],
-      correctAnswer: '机会',
-      hint: '可以让你成功的时机',
-      difficulty: 3,
-      category: 'abstract'
-    }
-  ];
-  
-  return backupQuestions;
-}
+// 删除未使用的备用题目函数，移除硬编码回退数据
 
 export default function ModernFullscreenGame({ 
   gameType, 
@@ -341,7 +305,7 @@ export default function ModernFullscreenGame({
   difficulty = 'beginner' 
 }: ModernFullscreenGameProps) {
   const searchParams = useSearchParams();
-  const courseIdFromUrl = (searchParams?.get('courseId') || '01').toString();
+  const courseIdFromUrl = (searchParams?.get('courseId') ?? '').toString();
 
   const [gameState, setGameState] = useState<GameState>({
     currentQuestion: 0,
@@ -378,6 +342,59 @@ export default function ModernFullscreenGame({
     initializeGame();
   }, [gameType, courseIdFromUrl]);
 
+  // 结束游戏（上移到前面，避免在其他 Hook 中使用时触发 no-use-before-define）
+  const endGame = useCallback(() => {
+    const totalTime = Math.round((Date.now() - startTime) / 1000);
+    const accuracy = gameState.currentQuestion > 0 ? 
+      (gameState.questions.slice(0, gameState.currentQuestion).filter((_, index) => 
+        gameState.selectedAnswer !== null
+      ).length - (gameState.maxLives - gameState.lives)) / gameState.currentQuestion * 100 : 0;
+
+    const results: GameResults = {
+      score: gameState.score,
+      totalQuestions: gameState.currentQuestion,
+      correctAnswers: gameState.currentQuestion - (gameState.maxLives - gameState.lives),
+      totalTime,
+      streak: gameState.maxStreak,
+      experience: gameState.experience,
+      accuracy,
+      perfectRounds: gameState.perfectRounds
+    };
+
+    // 更新学习统计
+    try {
+      const currentStats = getLearningStats();
+      updateLearningStats({
+        totalStudyTime: currentStats.totalStudyTime + Math.round(totalTime / 60),
+        lastStudyDate: new Date().toISOString().split('T')[0]
+      });
+    } catch (error) {
+      console.warn('更新学习统计失败:', error);
+    }
+
+    setGameState(prev => ({ ...prev, gamePhase: 'complete', isPlaying: false }));
+    onGameComplete(results);
+  }, [startTime, gameState, onGameComplete]);
+
+  // 下一题（上移到前面，避免在 answerQuestion 中使用时报错）
+  const nextQuestion = useCallback(() => {
+    const nextIndex = gameState.currentQuestion + 1;
+    
+    if (nextIndex >= gameState.questions.length) {
+      endGame();
+      return;
+    }
+
+    setGameState(prev => ({
+      ...prev,
+      currentQuestion: nextIndex,
+      selectedAnswer: null,
+      isCorrect: null,
+      showHint: false,
+      gamePhase: 'playing'
+    }));
+  }, [gameState.currentQuestion, gameState.questions.length, endGame]);
+
   // 游戏倒计时
   useEffect(() => {
     if (gameState.isPlaying && !gameState.isPaused && gameState.gamePhase === 'playing') {
@@ -405,6 +422,10 @@ export default function ModernFullscreenGame({
 
   // 开始游戏
   const startGame = useCallback(() => {
+    // 无题目时不允许开始游戏
+    if (!gameState.questions || gameState.questions.length === 0) {
+      return;
+    }
     setStartTime(Date.now());
     setGameState(prev => ({
       ...prev,
@@ -412,7 +433,7 @@ export default function ModernFullscreenGame({
       gamePhase: 'playing',
       timeRemaining: gameConfig.timeLimit
     }));
-  }, [gameConfig.timeLimit]);
+  }, [gameConfig.timeLimit, gameState.questions]);
 
   // 暂停/恢复游戏
   const togglePause = useCallback(() => {
@@ -428,6 +449,7 @@ export default function ModernFullscreenGame({
     if (gameState.selectedAnswer || gameState.gamePhase !== 'playing') return;
 
     const currentQ = gameState.questions[gameState.currentQuestion];
+    if (!currentQ) return;
     const isCorrect = answer === currentQ.correctAnswer;
     
     setGameState(prev => ({
@@ -541,60 +563,62 @@ export default function ModernFullscreenGame({
     setTimeout(() => {
       nextQuestion();
     }, 2500);
-  }, [gameState, gameType, gameConfig]);
+  }, [gameState, gameType, gameConfig, endGame, nextQuestion]);
 
   // 下一题
-  const nextQuestion = useCallback(() => {
-    const nextIndex = gameState.currentQuestion + 1;
-    
-    if (nextIndex >= gameState.questions.length) {
-      endGame();
-      return;
-    }
+  // 原位置定义已上移，避免重复定义
+  // const nextQuestion = useCallback(() => {
+  //   const nextIndex = gameState.currentQuestion + 1;
+  //   
+  //   if (nextIndex >= gameState.questions.length) {
+  //     endGame();
+  //     return;
+  //   }
 
-    setGameState(prev => ({
-      ...prev,
-      currentQuestion: nextIndex,
-      selectedAnswer: null,
-      isCorrect: null,
-      showHint: false,
-      gamePhase: 'playing'
-    }));
-  }, [gameState.currentQuestion, gameState.questions.length]);
+  //   setGameState(prev => ({
+  //     ...prev,
+  //     currentQuestion: nextIndex,
+  //     selectedAnswer: null,
+  //     isCorrect: null,
+  //     showHint: false,
+  //     gamePhase: 'playing'
+  //   }));
+  // }, [gameState.currentQuestion, gameState.questions.length]);
 
   // 结束游戏
-  const endGame = useCallback(() => {
-    const totalTime = Math.round((Date.now() - startTime) / 1000);
-    const accuracy = gameState.currentQuestion > 0 ? 
-      (gameState.questions.slice(0, gameState.currentQuestion).filter((_, index) => 
-        gameState.selectedAnswer !== null
-      ).length - (gameState.maxLives - gameState.lives)) / gameState.currentQuestion * 100 : 0;
+  // 原位置定义已上移，避免重复定义
+  // const endGame = useCallback(() => {
+  //   const totalTime = Math.round((Date.now() - startTime) / 1000);
+  //   const accuracy = gameState.currentQuestion > 0 ? 
+  //     (gameState.questions.slice(0, gameState.currentQuestion).filter((_, index) => 
+  //       gameState.selectedAnswer !== null
+  //     ).length - (gameState.maxLives - gameState.lives)) / gameState.currentQuestion * 100 : 0;
 
-    const results: GameResults = {
-      score: gameState.score,
-      totalQuestions: gameState.currentQuestion,
-      correctAnswers: gameState.currentQuestion - (gameState.maxLives - gameState.lives),
-      totalTime,
-      streak: gameState.maxStreak,
-      experience: gameState.experience,
-      accuracy,
-      perfectRounds: gameState.perfectRounds
-    };
+  //   const results: GameResults = {
+  //     score: gameState.score,
+  //     totalQuestions: gameState.currentQuestion,
+  //     correctAnswers: gameState.currentQuestion - (gameState.maxLives - gameState.lives),
+  //     totalTime,
+  //     streak: gameState.maxStreak,
+  //     experience: gameState.experience,
+  //     accuracy,
+  //     perfectRounds: gameState.perfectRounds
+  //   };
 
-    // 更新学习统计
-    try {
-      const currentStats = getLearningStats();
-      updateLearningStats({
-        totalStudyTime: currentStats.totalStudyTime + Math.round(totalTime / 60),
-        lastStudyDate: new Date().toISOString().split('T')[0]
-      });
-    } catch (error) {
-      console.warn('更新学习统计失败:', error);
-    }
+  //   // 更新学习统计
+  //   try {
+  //     const currentStats = getLearningStats();
+  //     updateLearningStats({
+  //       totalStudyTime: currentStats.totalStudyTime + Math.round(totalTime / 60),
+  //       lastStudyDate: new Date().toISOString().split('T')[0]
+  //     });
+  //   } catch (error) {
+  //     console.warn('更新学习统计失败:', error);
+  //   }
 
-    setGameState(prev => ({ ...prev, gamePhase: 'complete', isPlaying: false }));
-    onGameComplete(results);
-  }, [startTime, gameState, onGameComplete]);
+  //   setGameState(prev => ({ ...prev, gamePhase: 'complete', isPlaying: false }));
+  //   onGameComplete(results);
+  // }, [startTime, gameState, onGameComplete]);
 
   // 显示提示
   const showHint = useCallback(() => {

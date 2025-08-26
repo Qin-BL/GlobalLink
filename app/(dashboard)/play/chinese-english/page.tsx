@@ -20,7 +20,7 @@ interface GameSetupProps {
 }
 
 function GameSetup({ onStartGame, onClose }: GameSetupProps) {
-  const [selectedCourse, setSelectedCourse] = useState('01');
+  const [selectedCourse, setSelectedCourse] = useState('');
   
   const courses = [
     { id: '01', title: '基础英语入门 - 第一课', difficulty: '初级', lessons: 50 },
@@ -69,8 +69,9 @@ function GameSetup({ onStartGame, onClose }: GameSetupProps) {
         </div>
         
         <button
-          onClick={() => onStartGame(selectedCourse)}
-          className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+          onClick={() => selectedCourse && onStartGame(selectedCourse)}
+          disabled={!selectedCourse}
+          className={`w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all ${!selectedCourse ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           开始游戏
         </button>
@@ -323,9 +324,13 @@ function ChineseEnglishGame() {
 
   // 游戏完成
   const handleGameComplete = () => {
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const courseIdParam = params?.get('courseId')?.toString() || '';
+    const derivedCourseId = courseIdParam || (gameData[0]?.id?.split('-')[0] ?? '');
+
     const session: GameSession = {
       id: `session-${Date.now()}`,
-      courseId: gameData[0]?.id.split('-')[0] || '01',
+      courseId: derivedCourseId,
       gameType: 'chinese-english',
       words: [],
       score: gameStats.score,

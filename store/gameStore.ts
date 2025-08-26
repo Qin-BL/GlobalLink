@@ -27,8 +27,11 @@ let cachedSentences: GameSentence[] = [];
 let currentCourseId: string | null = null;
 
 // 从课程数据生成游戏句子
-async function generateSentencesFromCourse(courseId: string = '01'): Promise<GameSentence[]> {
+async function generateSentencesFromCourse(courseId: string): Promise<GameSentence[]> {
   try {
+    if (!courseId || courseId.trim().length === 0) {
+      return [] as GameSentence[];
+    }
     // 如果已经缓存了相同课程的数据，直接返回
     if (currentCourseId === courseId && cachedSentences.length > 0) {
       return cachedSentences;
@@ -70,15 +73,8 @@ async function generateSentencesFromCourse(courseId: string = '01'): Promise<Gam
     return sentences;
   } catch (error) {
     console.error('Error generating sentences from course:', error);
-    // 返回一个基础的句子作为后备
-    return [{
-      id: 'fallback-1',
-      chinese: '我喜欢学习英语',
-      english: 'I like learning English',
-      tokens: ['I', 'like', 'learning', 'English'],
-      difficulty: 1,
-      hints: ['主语是 "I"', '动词是 "like"', '宾语是 "learning English"'],
-    }];
+    // 出错时返回空数组（不再使用硬编码示例数据）
+    return [] as GameSentence[];
   }
 }
 
@@ -255,8 +251,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    // 获取真实课程数据
-    const sentences = await generateSentencesFromCourse('01');
+    // 优先从 URL 获取课程ID；若无则使用 '01'
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const courseId = params?.get('courseId')?.toString() || '';
+    if (!courseId) {
+      set({ gameStatus: 'idle' });
+      return;
+    }
+
+    // 获取课程数据
+    const sentences = await generateSentencesFromCourse(courseId);
+    if (!sentences || sentences.length === 0) {
+      // 无可用数据，恢复为空闲状态
+      set({ gameStatus: 'idle' });
+      return;
+    }
     const nextSentence = sentences[nextQuestionIndex % sentences.length];
     
     set({ currentQuestion: nextQuestionIndex });

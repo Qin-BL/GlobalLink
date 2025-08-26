@@ -49,7 +49,7 @@ interface GameSetupProps {
 }
 
 function GameSetup({ onStartGame, onClose }: GameSetupProps) {
-  const [selectedCourse, setSelectedCourse] = useState('01');
+  const [selectedCourse, setSelectedCourse] = useState('');
   
   const courses = [
     { id: '01', title: '基础英语入门 - 第一课', difficulty: '初级', lessons: 50 },
@@ -98,8 +98,9 @@ function GameSetup({ onStartGame, onClose }: GameSetupProps) {
         </div>
         
         <button
-          onClick={() => onStartGame(selectedCourse)}
-          className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+          onClick={() => selectedCourse && onStartGame(selectedCourse)}
+          disabled={!selectedCourse}
+          className={`w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all ${!selectedCourse ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           开始游戏
         </button>
@@ -298,9 +299,9 @@ function WordBlitz() {
         handleStartGame(courseIdFromUrl);
       }
     } else {
-      // 如果没有courseId，使用默认课程01，但不启动全屏模式
-      setSelectedCourse('01');
-      handleStartGame('01');
+      // 如果没有 courseId，显示课程选择界面，不再使用隐式默认值
+      setShowSetup(true);
+      setSelectedCourse('');
     }
   }, [searchParams]);
 
@@ -324,31 +325,8 @@ function WordBlitz() {
       // 检查是否有错误返回
       if (apiData.error) {
         console.warn('API returned error:', apiData.error);
-        // 如果API返回错误，尝试不带courseId的请求来获取随机单词
-        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
-        const fallbackData = await fallbackResponse.json();
-        
-        if (fallbackData.type === 'word') {
-          const word: Word = {
-            id: fallbackData.word.id.toString(),
-            term: fallbackData.word.term,
-            meaning: fallbackData.word.meaning
-          };
-          
-          setCurrentWord(word);
-          setChoices(fallbackData.choices);
-          setSelectedChoice(null);
-          setGameResult(null);
-          setGameData([{ ...word, options: fallbackData.choices }] as any);
-          
-          // toast.success('开始练习单词！');
-          return;
-        } else {
-          throw new Error('无法加载单词数据');
-        }
+        throw new Error('无法加载单词数据');
       }
-      
-      // console.log('Word blitz API response:', apiData);
       
       if (apiData.type === 'word') {
         // 直接使用API返回的单词数据
@@ -366,45 +344,16 @@ function WordBlitz() {
         // 为了维持现有的游戏状态管理，我们仍然设置 gameData
         setGameData([{ ...word, options: apiData.choices }] as any);
         
-        // 只在非默认课程时显示成功消息
-        if (courseId !== '01') {
-          toast.success('课程加载成功！开始游戏吧！');
-        }
+        // 成功提示
+        toast.success('课程加载成功！开始游戏吧！');
       } else {
-        // console.log('Unexpected API response format:', apiData);
         throw new Error('无效的API响应格式');
       }
       
     } catch (error) {
       console.error('Failed to load game data:', error);
-      toast.error('加载课程失败，将使用默认单词库');
-      
-      // 最后的降级处理：尝试获取随机单词
-      try {
-        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
-        const fallbackData = await fallbackResponse.json();
-        
-        if (fallbackData.type === 'word') {
-          const word: Word = {
-            id: fallbackData.word.id.toString(),
-            term: fallbackData.word.term,
-            meaning: fallbackData.word.meaning
-          };
-          
-          setCurrentWord(word);
-          setChoices(fallbackData.choices);
-          setSelectedChoice(null);
-          setGameResult(null);
-          setGameData([{ ...word, options: fallbackData.choices }] as any);
-          
-          // toast.success('使用默认单词库开始游戏！');
-        } else {
-          setShowSetup(true);
-        }
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        setShowSetup(true);
-      }
+      toast.error('加载课程失败，请稍后重试');
+      setShowSetup(true);
     } finally {
       setLoading(false);
     }
@@ -463,28 +412,7 @@ function WordBlitz() {
       
       // 检查是否有错误返回
       if (apiData.error) {
-        // 如果API返回错误，尝试不带courseId的请求来获取随机单词
-        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
-        const fallbackData = await fallbackResponse.json();
-        
-        if (fallbackData.type === 'word') {
-          const word: Word = {
-            id: fallbackData.word.id.toString(),
-            term: fallbackData.word.term,
-            meaning: fallbackData.word.meaning
-          };
-          
-          setCurrentWord(word);
-          setChoices(fallbackData.choices);
-          setSelectedChoice(null);
-          setGameResult(null);
-          
-          // 自动播放单词发音
-          setTimeout(() => {
-            speakWord(word.term);
-          }, 500);
-          return;
-        }
+        throw new Error('无法加载单词数据');
       }
       
       if (apiData.type === 'word') {
@@ -509,35 +437,9 @@ function WordBlitz() {
       }
     } catch (error) {
       console.error('Failed to load next word:', error);
-      
-      // 降级处理：尝试获取随机单词
-      try {
-        const fallbackResponse = await fetch('/api/play/next?userId=' + userId, { cache: 'no-store' });
-        const fallbackData = await fallbackResponse.json();
-        
-        if (fallbackData.type === 'word') {
-          const word: Word = {
-            id: fallbackData.word.id.toString(),
-            term: fallbackData.word.term,
-            meaning: fallbackData.word.meaning
-          };
-          
-          setCurrentWord(word);
-          setChoices(fallbackData.choices);
-          setSelectedChoice(null);
-          setGameResult(null);
-          
-          // 自动播放单词发音
-          setTimeout(() => {
-            speakWord(word.term);
-          }, 500);
-        } else {
-          handleGameComplete();
-        }
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        handleGameComplete();
-      }
+      // 出错时结束游戏并提示
+      toast.error('加载下一题失败');
+      handleGameComplete();
     }
   };
 

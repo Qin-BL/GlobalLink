@@ -734,15 +734,46 @@ export default function HomePage() {
     saveUserData();
   }, [userStats, userGoals, weeklyProgress]);
   
+  // 智能继续学习功能
+  const getLastLearningState = () => {
+    if (typeof window === 'undefined') return null;
+    
+    const lastLesson = localStorage.getItem('lastLessonId');
+    const lastCourse = localStorage.getItem('lastCourseId');
+    const lastPractice = localStorage.getItem('lastPracticeType');
+    const lastPath = localStorage.getItem('lastLearningPath'); // 'guided' | 'practice'
+    
+    return {
+      lessonId: lastLesson || '01',
+      courseId: lastCourse || '1',
+      practiceType: lastPractice || 'chinese-english',
+      path: lastPath || 'guided'
+    };
+  };
+
+  const handleSmartContinueLearning = () => {
+    const state = getLastLearningState();
+    if (!state) return;
+
+    // 根据上次学习状态，智能跳转到合适的页面
+    if (state.path === 'guided') {
+      // 引导式学习 - 直接到课程大纲，让用户点击"继续本课学习"
+      window.location.href = `/courses/${state.courseId}`;
+    } else {
+      // 自由练习 - 直接到课程大纲，用户可以选择任何练习
+      window.location.href = `/courses/${state.courseId}`;
+    }
+  };
+
   // 构建快速入口数据（包含重新显示引导选项）
   const quickActions = [
     {
-      id: 'continue-learning',
+      id: 'smart-continue',
       title: '继续学习',
-      description: '从上次学习继续',
+      description: '智能恢复上次学习进度',
       icon: Play,
       color: 'from-green-500 to-emerald-500',
-      href: '/learn'
+      onClick: handleSmartContinueLearning
     },
     {
       id: 'daily-challenge',

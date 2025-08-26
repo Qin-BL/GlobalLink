@@ -85,7 +85,10 @@
       "Bash(true)",
       "Bash(wc:*)",
       "Bash(npx tsc:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(cd:*)",
+      "Bash(cp:*)"
     ],
     "deny": [],
     "ask": [],

@@ -113,8 +113,12 @@ export default function FullscreenGameMode({
   // 预加载题目池（从 packages 数据生成）
   const ensurePoolLoaded = useCallback(async () => {
     if (questionsPool.length > 0) return;
-    const cid = courseId && courseId.length > 0 ? courseId : '01';
-    const data = await loadGameDataForCourse(cid, gameType);
+    if (!courseId || courseId.length === 0) {
+      setQuestionsPool([]);
+      setPoolIndex(0);
+      return;
+    }
+    const data = await loadGameDataForCourse(courseId, gameType);
     setQuestionsPool(Array.isArray(data) ? data : []);
     setPoolIndex(0);
   }, [courseId, gameType, questionsPool.length]);
