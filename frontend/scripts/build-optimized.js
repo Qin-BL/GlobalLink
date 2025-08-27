@@ -20,7 +20,9 @@ const buildProcess = spawn('npm', ['run', 'build'], {
     ...process.env,
     NODE_OPTIONS: `--max-old-space-size=${memoryLimit}`,
     GENERATE_SOURCEMAP: 'false',
-    INLINE_RUNTIME_CHUNK: 'false'
+    INLINE_RUNTIME_CHUNK: 'false',
+    FAST_REFRESH: 'false',
+    WDS_SOCKET_ENABLED: 'false'
   },
   stdio: 'inherit'
 });
