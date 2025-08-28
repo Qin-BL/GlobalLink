@@ -199,5 +199,5 @@ async def verify_email_code(email: EmailStr, code: str) -> bool:
         # 验证成功后删除缓存
         await set_redis_cache(cache_key, None, expire_seconds=1)
         return True
-    
+    logger.info(f"验证码验证失败: {email}, code:{code}, stored_code:{stored_code}")
     return False
