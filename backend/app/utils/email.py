@@ -92,8 +92,15 @@ async def send_email(
             return True
         except Exception as e:
             retries += 1
-            logger.error(f"发送邮件失败 (尝试 {retries}/{max_retries}): {str(e)}")
+            error_msg = str(e)
+            logger.error(f"发送邮件失败 (尝试 {retries}/{max_retries}): {error_msg}")
             logger.debug(f"异常类型: {type(e).__name__}")
+            
+            # 特殊处理QQ邮箱SMTP响应格式异常
+            if "Malformed SMTP response line" in error_msg and "\\x00\\x00\\x00\\x1a\\x00\\x00\\x00\\x0a" in error_msg:
+                logger.warning("检测到QQ邮箱SMTP响应格式异常，但邮件可能已发送成功，继续处理...")
+                return True
+                
             if retries <= max_retries:
                 logger.info(f"{retry_delay}秒后重试...")
                 await asyncio.sleep(retry_delay)
@@ -117,9 +124,6 @@ def send_email_background(
         body: 邮件内容
     """
     background_tasks.add_task(send_email, email_to, subject, body)
-
-import asyncio
-
 
 async def send_verification_code(email_to: EmailStr) -> Tuple[bool, Optional[str]]:
     """
