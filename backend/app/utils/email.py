@@ -29,7 +29,6 @@ conf = ConnectionConfig(
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=False,  # 禁用证书验证，解决QQ邮箱证书问题
     TIMEOUT=30,  # 增加超时时间到30秒以适应网络波动
-    DEBUG=True  # 启用调试模式，获取更详细的连接信息
 )
 
 # 记录当前使用的邮件配置
