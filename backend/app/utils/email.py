@@ -2,11 +2,14 @@ import asyncio
 import logging
 import random
 import string
+import ssl
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
+import aiosmtplib
 from fastapi import BackgroundTasks
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr, BaseModel
 
 from app.core.config import settings
@@ -15,24 +18,20 @@ from app.utils.redis_cache import get_redis_cache, set_redis_cache
 # 配置日志
 logger = logging.getLogger(__name__)
 
-# 邮件连接配置 - 针对QQ邮箱优化
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=settings.MAIL_PORT,
-    MAIL_SERVER=settings.MAIL_SERVER,
-    MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
-    # 针对QQ邮箱优化的连接配置
-    MAIL_STARTTLS=settings.MAIL_PORT == 587,  # 端口587使用STARTTLS
-    MAIL_SSL_TLS=settings.MAIL_PORT == 465,  # 端口465使用SSL/TLS
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=False,  # 禁用证书验证，解决QQ邮箱证书问题
-    TIMEOUT=30,  # 增加超时时间到30秒以适应网络波动
-)
+# 邮件连接配置 - 使用aiosmtplib
+mail_config = {
+    "username": settings.MAIL_USERNAME,
+    "password": settings.MAIL_PASSWORD,
+    "from_email": settings.MAIL_FROM,
+    "from_name": settings.MAIL_FROM_NAME,
+    "smtp_server": settings.MAIL_SERVER,
+    "smtp_port": settings.MAIL_PORT,
+    "timeout": 30,
+    "use_tls": False  # 使用STARTTLS而不是直接TLS
+}
 
 # 记录当前使用的邮件配置
-logger.info(f"正在使用邮件服务器配置: {settings.MAIL_SERVER}:{settings.MAIL_PORT}, STARTTLS: {settings.MAIL_PORT == 587}, SSL/TLS: {settings.MAIL_PORT == 465}")
+logger.info(f"正在使用邮件服务器配置: {settings.MAIL_SERVER}:{settings.MAIL_PORT}, STARTTLS: {settings.MAIL_PORT == 587}")
 
 # 验证邮件配置
 if not all([settings.MAIL_USERNAME, settings.MAIL_PASSWORD, settings.MAIL_FROM, settings.MAIL_PORT, settings.MAIL_SERVER]):
@@ -77,17 +76,36 @@ async def send_email(
         try:
             # 添加邮件配置调试信息
             logger.info(f"尝试发送邮件至 {email_to}")
-            logger.debug(f"邮件服务器配置: {settings.MAIL_SERVER}:{settings.MAIL_PORT}, TLS: {settings.MAIL_USE_TLS}")
+            logger.debug(f"邮件服务器配置: {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
             
-            message = MessageSchema(
-                subject=subject,
-                recipients=[email_to],
-                body=body,
-                subtype=MessageType.html
-            )
+            # 创建邮件消息
+            message = MIMEMultipart()
+            message['From'] = f"{mail_config['from_name']} <{mail_config['from_email']}>"
+            message['To'] = email_to
+            message['Subject'] = subject
             
-            fm = FastMail(conf)
-            await fm.send_message(message)
+            # 添加HTML内容
+            message.attach(MIMEText(body, 'html'))
+            
+            # 创建SSL上下文（禁用证书验证以兼容QQ邮箱）
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            # 连接SMTP服务器并发送邮件
+            async with aiosmtplib.SMTP(
+                hostname=mail_config['smtp_server'],
+                port=mail_config['smtp_port'],
+                start_tls=True,  # 使用STARTTLS
+                tls_context=ssl_context,
+                timeout=mail_config['timeout']
+            ) as smtp:
+                await smtp.login(
+                    mail_config['username'],
+                    mail_config['password']
+                )
+                await smtp.send_message(message)
+            
             logger.info(f"邮件已发送至 {email_to}")
             return True
         except Exception as e:
@@ -97,7 +115,7 @@ async def send_email(
             logger.debug(f"异常类型: {type(e).__name__}")
             
             # 特殊处理QQ邮箱SMTP响应格式异常
-            if "Malformed SMTP response line" in error_msg and 'b"\\x00\\x00\\x00\\x1a\\x00\\x00\\x00\\n"' in error_msg:
+            if "Malformed SMTP response line" in error_msg:
                 logger.warning("检测到QQ邮箱SMTP响应格式异常，但邮件可能已发送成功，继续处理...")
                 return True
                 
