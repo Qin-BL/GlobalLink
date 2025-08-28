@@ -15,7 +15,7 @@ from app.utils.redis_cache import get_redis_cache, set_redis_cache
 # 配置日志
 logger = logging.getLogger(__name__)
 
-# 邮件连接配置
+# 邮件连接配置 - 针对QQ邮箱优化
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
     MAIL_PASSWORD=settings.MAIL_PASSWORD,
@@ -23,12 +23,17 @@ conf = ConnectionConfig(
     MAIL_PORT=settings.MAIL_PORT,
     MAIL_SERVER=settings.MAIL_SERVER,
     MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
-    MAIL_STARTTLS=settings.MAIL_USE_TLS,
-    MAIL_SSL_TLS=settings.MAIL_USE_TLS if settings.MAIL_PORT == 465 else False,
+    # 针对QQ邮箱优化的连接配置
+    MAIL_STARTTLS=settings.MAIL_PORT == 587,  # 端口587使用STARTTLS
+    MAIL_SSL_TLS=settings.MAIL_PORT == 465,  # 端口465使用SSL/TLS
     USE_CREDENTIALS=True,
-    VALIDATE_CERTS=False,  # 禁用证书验证，解决某些环境下的证书问题
-    TIMEOUT=15  # 增加超时时间到15秒
+    VALIDATE_CERTS=False,  # 禁用证书验证，解决QQ邮箱证书问题
+    TIMEOUT=30,  # 增加超时时间到30秒以适应网络波动
+    DEBUG=True  # 启用调试模式，获取更详细的连接信息
 )
+
+# 记录当前使用的邮件配置
+logger.info(f"正在使用邮件服务器配置: {settings.MAIL_SERVER}:{settings.MAIL_PORT}, STARTTLS: {settings.MAIL_PORT == 587}, SSL/TLS: {settings.MAIL_PORT == 465}")
 
 # 验证邮件配置
 if not all([settings.MAIL_USERNAME, settings.MAIL_PASSWORD, settings.MAIL_FROM, settings.MAIL_PORT, settings.MAIL_SERVER]):
