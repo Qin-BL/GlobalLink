@@ -81,7 +81,8 @@ async def login_access_token(
         raise HTTPException(status_code=400, detail="用户未激活")
     
     # 更新最后登录时间
-    user.last_login = models.func.now()
+    from sqlalchemy.sql import func
+    user.last_login = func.now()
     db.add(user)
     db.commit()
     
