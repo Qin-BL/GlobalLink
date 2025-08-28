@@ -321,11 +321,18 @@ async def register(
 
 @router.post("/send-verification-code")
 async def send_email_verification_code(
-    *, 
-    email: EmailStr,
-    background_tasks: BackgroundTasks,
+    email_data: dict = Body(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Any:
     """发送邮箱验证码"""
+    # 从请求体中提取email
+    email = email_data.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail="邮箱地址不能为空"
+        )
+    
     # 检查是否在短时间内重复发送
     cache_key = f"email_verification_cooldown:{email}"
     cooldown = await get_redis_cache(cache_key)
