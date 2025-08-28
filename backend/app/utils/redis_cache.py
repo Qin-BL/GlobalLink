@@ -33,8 +33,12 @@ async def set_redis_cache(
             redis_client.delete(key)
             return True
         
-        # 如果值不是字符串，则转换为JSON字符串
-        if not isinstance(value, (str, int, float, bool)):
+        # 如果值不是字符串、整数或浮点数，则转换为字符串
+        if isinstance(value, bool):
+            # 布尔值转换为字符串'true'或'false'
+            value = str(value).lower()
+        elif not isinstance(value, (str, int, float)):
+            # 其他类型转换为JSON字符串
             value = json.dumps(value)
         
         # 设置缓存
