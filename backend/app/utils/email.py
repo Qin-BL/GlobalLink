@@ -97,7 +97,7 @@ async def send_email(
             logger.debug(f"异常类型: {type(e).__name__}")
             
             # 特殊处理QQ邮箱SMTP响应格式异常
-            if "Malformed SMTP response line" in error_msg and "\\x00\\x00\\x00\\x1a\\x00\\x00\\x00\\n" in error_msg:
+            if "Malformed SMTP response line" in error_msg and 'b"\\x00\\x00\\x00\\x1a\\x00\\x00\\x00\\n"' in error_msg:
                 logger.warning("检测到QQ邮箱SMTP响应格式异常，但邮件可能已发送成功，继续处理...")
                 return True
                 
