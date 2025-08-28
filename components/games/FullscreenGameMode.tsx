@@ -19,10 +19,9 @@ import {
   SkipForward
 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { loadGameDataForCourse, FlashCardItem, SentenceBuilderItem } from '@/lib/gameData';
 
 interface FullscreenGameModeProps {
-  gameType: 'chinese-english' | 'word-blitz' | 'sentence-builder';
+  gameType: 'chinese-english' | 'word-blitz' | 'sentence-builder' | 'listening';
   onExit: () => void;
   onGameComplete: (results: GameResults) => void;
   courseId?: string;
@@ -68,8 +67,36 @@ const GAME_CONFIG = {
     color: 'from-green-500 to-teal-600',
     maxLives: 4,
     timePerQuestion: 45,
+  },
+  'listening': {
+    title: '听写模式',
+    icon: '🎧',
+    color: 'from-indigo-500 to-blue-600',
+    maxLives: 4,
+    timePerQuestion: 45,
   }
+} as const;
+
+// API 返回类型（简化）
+type NextApiWord = {
+  id: string;
+  term: string; // 英文
+  meaning: string; // 中文
+  soundmark?: string | null;
 };
+
+type NextApiItem = {
+  id: string;
+  prompt: string; // 中文
+  answer: string; // 英文
+  tokens?: string[];
+  audioUrl?: string | null;
+};
+
+type NextApiResponse =
+  | { type: 'done'; total: number; index: number }
+  | { type: 'word'; word: NextApiWord; choices: string[]; total: number; index: number }
+  | { type: 'item'; item: NextApiItem; total: number; index: number };
 
 export default function FullscreenGameMode({ 
   gameType, 
@@ -95,62 +122,19 @@ export default function FullscreenGameMode({
     isCorrect: boolean;
   } | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<{
-    chinese: string;
-    english: string;
+    chinese: string; // 用于展示（对于 word-blitz 为英文单词）
+    english: string; // 正确英文答案（对于 word-blitz 可不使用）
     hint: string;
-    options?: string[];
-    words?: string[];
+    options?: string[]; // word-blitz 选项（中文）
   } | null>(null);
-  const [questionsPool, setQuestionsPool] = useState<any[]>([]);
-  const [poolIndex, setPoolIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [userInput, setUserInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   
   const config = GAME_CONFIG[gameType];
   const timerRef = useRef<NodeJS.Timeout>();
   const gameContainerRef = useRef<HTMLDivElement>(null);
-
-  // 预加载题目池（从 packages 数据生成）
-  const ensurePoolLoaded = useCallback(async () => {
-    if (questionsPool.length > 0) return;
-    if (!courseId || courseId.length === 0) {
-      setQuestionsPool([]);
-      setPoolIndex(0);
-      return;
-    }
-    const data = await loadGameDataForCourse(courseId, gameType);
-    setQuestionsPool(Array.isArray(data) ? data : []);
-    setPoolIndex(0);
-  }, [courseId, gameType, questionsPool.length]);
-
-  // 将不同数据结构映射为通用题目结构
-  const mapItemToQuestion = (item: any) => {
-    if (gameType === 'word-blitz') {
-      const w = item as FlashCardItem;
-      return {
-        chinese: w.chinese,
-        english: w.english,
-        hint: '选择正确的中文释义',
-        options: w.options || []
-      };
-    }
-    if (gameType === 'sentence-builder') {
-      const s = item as SentenceBuilderItem;
-      return {
-        chinese: s.chinese,
-        english: s.english,
-        hint: '将单词组成正确的英文句子',
-        words: s.words || []
-      };
-    }
-    // chinese-english 默认走句子数据
-    const s = item as SentenceBuilderItem;
-    return {
-      chinese: s.chinese,
-      english: s.english,
-      hint: s.soundmark || '请将中文翻译为英文'
-    };
-  };
 
   // 进入全屏模式
   const enterFullscreen = useCallback(() => {
@@ -202,29 +186,59 @@ export default function FullscreenGameMode({
   }, [gameState.isPlaying, gameState.timeRemaining]);
 
   const startGame = async () => {
-    // 不强制全屏，而是直接开始游戏
-    await ensurePoolLoaded();
     setGameState(prev => ({ ...prev, isPlaying: true }));
-    loadNextQuestion();
+    await loadNextQuestion(0);
   };
 
-  const loadNextQuestion = async () => {
-  if (questionsPool.length === 0) {
-  await ensurePoolLoaded();
-  }
-  if (questionsPool.length === 0) return;
-  
-  const idx = poolIndex % questionsPool.length;
-  const item = questionsPool[idx];
-  const q = mapItemToQuestion(item);
-  setCurrentQuestion(q);
-  setPoolIndex((prev) => (prev + 1) % questionsPool.length);
-  
-  setGameState(prev => ({
-  ...prev,
-  timeRemaining: config.timePerQuestion,
-  showHint: false
-  }));
+  const loadNextQuestion = async (idx?: number) => {
+    const nextIdx = typeof idx === 'number' ? idx : currentIndex + 1;
+    try {
+      const params = new URLSearchParams();
+      if (courseId) params.set('courseId', courseId);
+      params.set('gameType', gameType);
+      params.set('index', String(nextIdx));
+      const res = await fetch(`/api/play/next?${params.toString()}`);
+      if (!res.ok) {
+        // 如果请求失败，结束游戏
+        completeGame();
+        return;
+      }
+      const data: NextApiResponse = await res.json();
+      if (data.type === 'done') {
+        setTotalCount(data.total || totalCount);
+        completeGame();
+        return;
+      }
+
+      if (data.type === 'word') {
+        // 显示英文单词，答案为中文（通过 options 校验）
+        setCurrentQuestion({
+          chinese: data.word.term,
+          english: data.word.meaning,
+          hint: data.word.soundmark || '选择或输入正确的中文释义',
+          options: data.choices || []
+        });
+        setTotalCount(data.total);
+        setCurrentIndex(data.index);
+      } else if (data.type === 'item') {
+        setCurrentQuestion({
+          chinese: data.item.prompt,
+          english: data.item.answer,
+          hint: '请将中文翻译为英文'
+        });
+        setTotalCount(data.total);
+        setCurrentIndex(data.index);
+      }
+
+      setGameState(prev => ({
+        ...prev,
+        timeRemaining: config.timePerQuestion,
+        showHint: false
+      }));
+    } catch (e) {
+      // 出错时结束游戏
+      completeGame();
+    }
   };
 
   const handleAnswer = () => {
@@ -235,11 +249,11 @@ export default function FullscreenGameMode({
     const correctAnswer = currentQuestion.english.toLowerCase();
     
     // 根据游戏类型进行不同的验证
-    if (gameType === 'chinese-english' || gameType === 'sentence-builder') {
-      // 对于翻译类题目，比较完整答案
+    if (gameType === 'chinese-english' || gameType === 'sentence-builder' || gameType === 'listening') {
+      // 对于翻译/听写类题目，比较完整英文答案
       isCorrect = userAnswer === correctAnswer;
     } else if (gameType === 'word-blitz') {
-      // 对于单词题目，检查是否在选项中
+      // 对于单词题目，检查是否在中文选项中
       if (currentQuestion.options && currentQuestion.options.length > 0) {
         isCorrect = currentQuestion.options.some(option => 
           option.toLowerCase() === userAnswer || option.toLowerCase().includes(userAnswer)
@@ -267,6 +281,7 @@ export default function FullscreenGameMode({
 
   const handleCorrectAnswer = () => {
     setShowSuccessAnimation(true);
+    // 采用函数式更新，避免闭包状态问题
     setGameState(prev => ({
       ...prev,
       score: prev.score + (100 + prev.streak * 10),
@@ -276,25 +291,27 @@ export default function FullscreenGameMode({
 
     setTimeout(() => {
       setShowSuccessAnimation(false);
-      if (gameState.currentQuestion < 10) {
-        loadNextQuestion();
-      } else {
-        completeGame();
-      }
+      // 顺序推进下一题
+      loadNextQuestion();
     }, 1500);
   };
 
   const handleIncorrectAnswer = () => {
     setShowFailAnimation(true);
-    setGameState(prev => ({
-      ...prev,
-      lives: prev.lives - 1,
-      streak: 0
-    }));
+    let willGameOver = false;
+    setGameState(prev => {
+      const newLives = prev.lives - 1;
+      willGameOver = newLives <= 0;
+      return ({
+        ...prev,
+        lives: newLives,
+        streak: 0
+      });
+    });
 
     setTimeout(() => {
       setShowFailAnimation(false);
-      if (gameState.lives <= 1) {
+      if (willGameOver) {
         completeGame();
       } else {
         loadNextQuestion();
@@ -489,7 +506,7 @@ export default function FullscreenGameMode({
             <div className="text-center text-white">
               <div className="text-sm opacity-60 mb-1">题目进度</div>
               <div className="text-lg font-bold">
-                {gameState.currentQuestion + 1} / 10
+                {Math.min(currentIndex + 1, totalCount || currentIndex + 1)} / {totalCount || '—'}
               </div>
             </div>
 

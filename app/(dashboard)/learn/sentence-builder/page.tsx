@@ -170,6 +170,10 @@ function SentenceBuilder() {
   });
   
   const userId = generateUserId();
+  
+  // 顺序索引与总数
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   // 设置面包屑
   useEffect(() => {
@@ -191,7 +195,7 @@ function SentenceBuilder() {
     
     if (fromCourse && courseIdFromUrl) {
       setIsFullscreen(true); // 从课程页面进入时直接启动全屏游戏
-      setTimeout(() => loadNextItem(), 100); // 延迟加载以确保courseId已设置
+      setTimeout(() => { setCurrentIndex(0); loadNextItem(0); }, 100); // 延迟加载以确保courseId已设置
     }
   }, [searchParams]);
 
@@ -219,12 +223,13 @@ function SentenceBuilder() {
   }, []);
 
   // 加载下一题目
-  const loadNextItem = async () => {
+  const loadNextItem = async (nextIndex?: number) => {
     setLoading(true);
     try {
+      const idx = typeof nextIndex === 'number' ? nextIndex : currentIndex;
       const query = selectedCourseId
-        ? `?courseId=${selectedCourseId}&gameType=sentence-builder&userId=${userId}`
-        : `?gameType=sentence-builder&userId=${userId}`;
+        ? `?courseId=${selectedCourseId}&gameType=sentence-builder&userId=${userId}&index=${idx}`
+        : `?gameType=sentence-builder&userId=${userId}&index=${idx}`;
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
 
       if (!response.ok) {
@@ -236,8 +241,16 @@ function SentenceBuilder() {
         throw new Error('API returned error');
       }
 
+      if (data.type === 'done') {
+        setTotalCount(data.total ?? null);
+        toast.success('本课程题目已完成，恭喜！');
+        return;
+      }
+
       if (data.type === 'item') {
         setItem(data.item);
+        setTotalCount(data.total ?? null);
+        setCurrentIndex(typeof data.index === 'number' ? data.index : idx);
 
         // 从答案中生成单词池
         const answerWords = data.item.answer.toLowerCase().split(' ');
@@ -265,7 +278,8 @@ function SentenceBuilder() {
   // 当课程改变时加载题目
   useEffect(() => {
     if (selectedCourseId !== null) {
-      loadNextItem();
+      setCurrentIndex(0);
+      loadNextItem(0);
     }
   }, [selectedCourseId, userId]);
 
@@ -352,7 +366,7 @@ function SentenceBuilder() {
         duration: 2000,
       });
       setTimeout(() => {
-        loadNextItem();
+        loadNextItem(currentIndex + 1);
       }, 1500);
     } else {
       toast.error('答案不正确，再试一次！', {

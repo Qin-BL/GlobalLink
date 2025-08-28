@@ -174,6 +174,9 @@ function ListeningMode() {
     correctAnswers: 0,
     totalAnswers: 0
   });
+  // 顺序索引与总数
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   // 设置面包屑
   useEffect(() => {
@@ -216,22 +219,34 @@ function ListeningMode() {
     
     if (fromCourse && courseIdFromUrl) {
       setIsFullscreen(true); // 从课程页面进入时直接启动全屏游戏
-      setTimeout(() => loadNextItem(), 100); // 延迟加载以确保courseId已设置
+      setTimeout(() => { setCurrentIndex(0); loadNextItem(0); }, 100); // 延迟加载以确保courseId已设置
     }
   }, [searchParams]);
 
+  // 当选择的课程变化时，重置索引并加载第 0 题
+  useEffect(() => {
+    if (selectedCourseId !== null) {
+      setCurrentIndex(0);
+      loadNextItem(0);
+    }
+  }, [selectedCourseId]);
+
   // 加载下一题目
-  const loadNextItem = async () => {
+  const loadNextItem = async (nextIndex?: number) => {
     setLoading(true);
     try {
+      const idx = typeof nextIndex === 'number' ? nextIndex : currentIndex;
       const query = selectedCourseId 
-        ? `?courseId=${selectedCourseId}&gameType=listening` 
-        : '?gameType=listening';
+        ? `?courseId=${selectedCourseId}&gameType=listening&index=${idx}` 
+        : `?gameType=listening&index=${idx}`;
       
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
       const data = await response.json();
       
-      if (data.type === 'item' || data.type === 'word') {
+      if (data.type === 'done') {
+        setTotalCount(data.total ?? null);
+        toast.success('本课程题目已完成，恭喜！');
+      } else if (data.type === 'item' || data.type === 'word') {
         const listeningItem: ListeningItem = {
           id: data.item?.id || data.word?.id || Math.random(),
           text: data.item?.answer || data.word?.term || '默认英文',
@@ -242,6 +257,8 @@ function ListeningMode() {
         };
         
         setItem(listeningItem);
+        setTotalCount(data.total ?? null);
+        setCurrentIndex(typeof data.index === 'number' ? data.index : idx);
         setUserInput('');
         setResult('idle');
         setShowHint(false);
@@ -313,7 +330,7 @@ function ListeningMode() {
     if (isCorrect) {
       toast.success('回答正确！');
       setTimeout(() => {
-        loadNextItem();
+        loadNextItem(currentIndex + 1);
       }, 2000);
     } else {
       toast.error('答案不正确，请再试一次');
@@ -383,7 +400,7 @@ function ListeningMode() {
         <Volume2 className="w-4 h-4" />
       </button>
       <button
-        onClick={loadNextItem}
+        onClick={() => loadNextItem(currentIndex + 1)}
         className="btn btn-secondary"
         title="下一题"
       >
@@ -395,7 +412,7 @@ function ListeningMode() {
   if (isFullscreen) {
     return (
       <FullscreenGameMode
-        gameType="sentence-builder" // 复用sentence-builder类型，或者可以添加listening类型
+        gameType="listening" // 使用 listening 类型
         onExit={exitFullscreenMode}
         onGameComplete={handleFullscreenGameComplete}
         courseId={selectedCourseId?.toString()}
@@ -454,7 +471,7 @@ function ListeningMode() {
             </div>
           </div>
           <button
-            onClick={loadNextItem}
+            onClick={() => loadNextItem()}
             disabled={loading}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
           >

@@ -32,7 +32,8 @@ import {
   addActivity, 
   updateWordProgress, 
   getLearningStats,
-  updateLearningStats 
+  updateLearningStats,
+  getTodayProgress
 } from '@/lib/localStorage';
 import { 
   loadGameDataForCourse, 
@@ -158,14 +159,14 @@ function ChoiceButton({
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={`
-        p-4 rounded-xl border-2 transition-all duration-300 text-left font-medium relative overflow-hidden
+        p-6 rounded-2xl transition-all duration-300 text-left font-medium relative overflow-hidden shadow-lg border
         ${isCorrect 
           ? 'bg-green-500 text-white border-green-500 shadow-lg' 
           : isWrong
           ? 'bg-red-500 text-white border-red-500 shadow-lg'
           : isSelected
-          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg' 
-          : 'border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-slate-700'
+          ? 'border-blue-500 bg-slate-800 text-white shadow-blue-500/30' 
+          : 'border-slate-600 bg-slate-800 text-gray-300 hover:border-blue-500 hover:bg-slate-700'
         }
       `}
     >
@@ -178,53 +179,34 @@ function ChoiceButton({
 function WordCard({ word, onPlayAudio }: { word: Word | null; onPlayAudio: () => void }) {
   if (!word) {
     return (
-      <CardContainer className="text-center p-8">
-        <div className="w-48 h-48 rounded-lg mx-auto mb-4 flex items-center justify-center bg-gray-100 dark:bg-slate-700">
-          <Target className="w-16 h-16 text-gray-400 dark:text-gray-500" />
+      <div className="bg-slate-900 rounded-3xl p-12 text-center shadow-2xl">
+        <div className="w-48 h-48 rounded-lg mx-auto mb-4 flex items-center justify-center bg-slate-800">
+          <Target className="w-16 h-16 text-gray-500" />
         </div>
-        <div className="text-2xl font-bold text-gray-400 dark:text-gray-500">加载中...</div>
-      </CardContainer>
+        <div className="text-2xl font-bold text-gray-400">加载中...</div>
+      </div>
     );
   }
 
   return (
-    <CardContainer className="text-center p-8" hover={false}>
-      {/* 单词图片 */}
-      {word.imageUrl && (
-        <div className="mb-6">
-          <img 
-            src={word.imageUrl} 
-            alt={word.term} 
-            className="w-48 h-48 object-cover rounded-lg mx-auto shadow-lg"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-            }}
-          />
-        </div>
-      )}
+    <div className="bg-slate-900 rounded-3xl p-12 text-center shadow-2xl border border-slate-700">
+      {/* 音频播放按钮 */}
+      <div className="flex justify-center mb-8">
+        <button 
+          onClick={onPlayAudio}
+          className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center text-white hover:bg-blue-600 transition-all shadow-lg"
+        >
+          <Volume2 className="w-8 h-8" />
+        </button>
+      </div>
       
       {/* 英文单词 */}
       <div className="mb-6">
-        <div className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-wide">
+        <div className="text-6xl font-bold mb-4 text-white tracking-wide">
           {word.term}
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          选择正确的中文释义
-        </p>
       </div>
-      
-      {/* 播放按钮 */}
-      <div>
-        <button 
-          onClick={onPlayAudio}
-          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
-        >
-          <Volume2 className="w-4 h-4" />
-          播放发音
-        </button>
-      </div>
-    </CardContainer>
+    </div>
   );
 }
 
@@ -246,6 +228,7 @@ export default function WordBlitzWrapper() {
     </Suspense>
   );
 }
+
 function WordBlitz() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -262,6 +245,7 @@ function WordBlitz() {
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [gameResult, setGameResult] = useState<'correct' | 'wrong' | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [totalQuestions, setTotalQuestions] = useState<number>(0);
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
     streak: 0,
@@ -273,6 +257,13 @@ function WordBlitz() {
   
   // 使用免费用户ID
   const userId = getFreeUserId();
+
+  // 获取学习统计
+  const learningStats = getLearningStats();
+  const todayProgress = getTodayProgress();
+  const accuracyRate = gameStats.totalAnswers > 0 
+    ? Math.round((gameStats.correctAnswers / gameStats.totalAnswers) * 100) 
+    : learningStats.totalWordsLearned > 0 ? 95 : 98; // 默认显示98%
 
   // 设置面包屑
   useEffect(() => {
@@ -310,10 +301,11 @@ function WordBlitz() {
     setLoading(true);
     setShowSetup(false);
     setSelectedCourse(courseId);
+    setCurrentIndex(0);
     
     try {
-      // 使用API直接获取单词数据
-      const query = `?courseId=${courseId}&userId=${userId}`;
+      // 使用API直接获取单词数据（顺序模式：index=0）
+      const query = `?courseId=${courseId}&userId=${userId}&index=0`;
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
       
       if (!response.ok) {
@@ -340,12 +332,16 @@ function WordBlitz() {
         setChoices(apiData.choices);
         setSelectedChoice(null);
         setGameResult(null);
+        setTotalQuestions(apiData.total || 0);
         
-        // 为了维持现有的游戏状态管理，我们仍然设置 gameData
+        // 为了维持现有的游戏状态管理，我们仍然设置 gameData（可选）
         setGameData([{ ...word, options: apiData.choices }] as any);
         
         // 成功提示
         toast.success('课程加载成功！开始游戏吧！');
+      } else if (apiData.type === 'done') {
+        // 课程无题或已完成
+        handleGameComplete();
       } else {
         throw new Error('无效的API响应格式');
       }
@@ -406,7 +402,8 @@ function WordBlitz() {
   // 加载下一个单词
   const loadNextWord = async () => {
     try {
-      const query = `?courseId=${selectedCourse}&userId=${userId}`;
+      const nextIndex = currentIndex + 1;
+      const query = `?courseId=${selectedCourse}&userId=${userId}&index=${nextIndex}`;
       const response = await fetch('/api/play/next' + query, { cache: 'no-store' });
       const apiData = await response.json();
       
@@ -426,13 +423,18 @@ function WordBlitz() {
         setChoices(apiData.choices);
         setSelectedChoice(null);
         setGameResult(null);
+        setCurrentIndex(nextIndex);
+        setTotalQuestions(apiData.total || totalQuestions);
         
         // 自动播放单词发音
         setTimeout(() => {
           speakWord(word.term);
         }, 500);
-      } else {
+      } else if (apiData.type === 'done') {
         // 如果没有更多单词，结束游戏
+        handleGameComplete();
+      } else {
+        // 兜底：结束游戏
         handleGameComplete();
       }
     } catch (error) {
@@ -573,9 +575,7 @@ function WordBlitz() {
     toast.success(`游戏完成！得分: ${results.score}`);
   };
 
-  const accuracyRate = gameStats.totalAnswers > 0 
-    ? Math.round((gameStats.correctAnswers / gameStats.totalAnswers) * 100) 
-    : 0;
+  // 已移除重复的 accuracyRate 声明，统一使用上方的 accuracyRate 计算值
 
   const headerActions = (
     <div className="flex items-center gap-3">
@@ -661,141 +661,111 @@ function WordBlitz() {
   }
 
   return (
-    <PageContainer
-      title="百词斩"
-      subtitle="看图选词，快速记忆单词"
-      headerActions={headerActions}
-    >
-      {/* 游戏统计 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
-          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{gameStats.score}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-300">积分</div>
+    <div className="min-h-screen bg-primary text-white flex flex-col" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {/* 顶部标题栏 */}
+      <div className="flex items-center justify-between p-6">
+        {/* 左侧标题 */}
+        <div>
+          <h1 className="text-2xl font-bold text-white">百词斩</h1>
+          <p className="text-sm text-gray-400">看图选词，快速记忆单词</p>
         </div>
         
-        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
-          <div className="text-2xl font-bold text-orange-500 mb-1 flex items-center justify-center gap-1">
-            <Flame className="w-6 h-6" />
-            {gameStats.streak}
+        {/* 右侧统计指标 - 四个带汉字提示的卡片 */}
+        <div className="grid grid-cols-4 gap-3">
+          {/* 积分 */}
+          <div className="px-5 py-3 rounded-xl bg-card border border-border-color shadow-inner text-center" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+            <div className="flex items-center justify-center gap-2 text-lg font-semibold">
+              <Star className="w-4 h-4 text-yellow-400" />
+              <span style={{ color: 'var(--text-primary)' }}>{gameStats.score}</span>
+            </div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>积分</div>
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-300">连击</div>
-        </div>
-        
-        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
-          <div className="text-2xl font-bold text-green-500 mb-1">{accuracyRate}%</div>
-          <div className="text-sm text-gray-600 dark:text-gray-300">准确率</div>
-        </div>
-        
-        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-center p-4">
-          <div className="text-2xl font-bold text-blue-500 mb-1">{gameStats.totalAnswers}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-300">已答题</div>
+          {/* 连击 */}
+          <div className="px-5 py-3 rounded-xl bg-card border border-border-color shadow-inner text-center" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+            <div className="flex items-center justify-center gap-2 text-lg font-semibold">
+              <Flame className="w-4 h-4 text-orange-400" />
+              <span style={{ color: 'var(--text-primary)' }}>{gameStats.streak}</span>
+            </div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>连击</div>
+          </div>
+          {/* 准确率 */}
+          <div className="px-5 py-3 rounded-xl bg-card border border-border-color shadow-inner text-center" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+            <div className="text-lg font-semibold text-emerald-400">{accuracyRate}%</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>准确率</div>
+          </div>
+          {/* 已答题 */}
+          <div className="px-5 py-3 rounded-xl bg-card border border-border-color shadow-inner text-center" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+            <div className="text-lg font-semibold text-blue-400">{gameStats.totalAnswers}</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>已答题</div>
+          </div>
         </div>
       </div>
 
-      {/* 进度条 */}
-      {gameStats.gameStarted && (
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-        >
-          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500"
-              style={{ width: `${accuracyRate}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
-            <span>学习进度</span>
-            <span>{accuracyRate}%</span>
-          </div>
-        </motion.div>
-      )}
 
-      {/* 游戏进度 */}
-      {gameData.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              第 {currentIndex + 1} 题，共 {gameData.length} 题
-            </span>
-            <button
-              onClick={() => setShowSetup(true)}
-              className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
-              title="重新选择课程"
-            >
-              <Settings size={16} />
-            </button>
+
+      {/* 主游戏区域 */}
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-800/50 mx-6 my-4 rounded-2xl border border-slate-700 relative">
+        {/* 音频播放按钮 */}
+        <div className="mb-8">
+          <button 
+            onClick={playWordAudio}
+            className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center text-white hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            title="播放发音"
+          >
+            <Volume2 className="w-8 h-8" />
+          </button>
+        </div>
+        
+        {/* 单词显示 */}
+        <div className="text-7xl font-bold mb-8 tracking-wide" style={{ color: 'var(--text-primary)' }}>
+          {currentWord?.term || 'university'}
+        </div>
+        
+        {/* 进度指示器 */}
+        <div className="mb-12">
+          <div className="w-96 h-2 rounded-full overflow-hidden mb-2" style={{ backgroundColor: 'var(--border-color)' }}>
+            <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}></div>
           </div>
-          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500"
-              style={{ width: `${((currentIndex + 1) / gameData.length) * 100}%` }}
-            />
+          <div className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+            第 {currentIndex + 1} / {totalQuestions} 题
           </div>
         </div>
-      )}
-
-      {/* 单词显示卡片 */}
-          <div className="mb-8">
-            <WordCard word={currentWord} onPlayAudio={playWordAudio} />
+        
+        {/* 选择选项 */}
+        <div className="grid grid-cols-2 gap-4 w-full max-w-2xl mb-8">
+          {choices.map((choice, index) => (
+            <button
+              key={choice}
+              onClick={() => handleChoiceSelect(choice)}
+              disabled={!!selectedChoice}
+              className={`
+                p-6 rounded-2xl text-lg font-medium transition-all duration-200 border
+                ${selectedChoice === choice
+                  ? gameResult === 'correct' 
+                    ? 'bg-green-600 border-green-500 text-white' 
+                    : 'bg-red-600 border-red-500 text-white'
+                  : selectedChoice 
+                    ? 'bg-slate-700 border-slate-600 text-gray-400'
+                    : 'bg-slate-700 border-slate-600 text-white hover:bg-slate-600'
+                }`}
+            >
+              {choice}
+            </button>
+          ))}
+        </div>
+        
+        {/* 底部信息 - 移到主游戏区域内 */}
+        <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            今日任务 {todayProgress} / {learningStats.dailyGoal}
           </div>
-
-          {/* 选择按钮 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {choices.map((choice, index) => (
-              <ChoiceButton
-                key={choice}
-                choice={choice}
-                onClick={() => handleChoiceSelect(choice)}
-                isSelected={selectedChoice === choice}
-                isCorrect={gameResult === 'correct' && selectedChoice === choice}
-                isWrong={gameResult === 'wrong' && selectedChoice === choice}
-                delay={index * 0.1}
-              />
-            ))}
+          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            提示：空格 = 播放，1-4 = 选择
           </div>
+        </div>
+      </div>
 
-          {/* 快捷键提示 */}
-          <div className="text-center">
-            <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3">
-              <div className="flex flex-wrap gap-4 justify-center text-xs text-gray-500 dark:text-gray-400">
-                <span>空格键 = 播放发音</span>
-                <span>1-4 = 选择对应选项</span>
-                <span>快速选择提升分数</span>
-              </div>
-            </div>
-          </div>
 
-          {/* 游戏结果显示 */}
-          <AnimatePresence>
-            {gameResult && currentWord && (
-              <motion.div
-                className="mt-6 text-center"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-              >
-                {gameResult === 'correct' ? (
-                  <div className="bg-white dark:bg-slate-800 border border-green-500 bg-green-50 dark:bg-green-900/20 rounded-xl p-4">
-                    <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
-                      <CheckCircle className="w-5 h-5" />
-                      <span className="font-medium">正确！"{currentWord.term}" 的意思是 "{currentWord.meaning}"</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white dark:bg-slate-800 border border-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
-                    <div className="flex items-center justify-center gap-2 text-red-600 dark:text-red-400">
-                      <XCircle className="w-5 h-5" />
-                      <span className="font-medium">错误！正确答案是 "{currentWord.meaning}"</span>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-    </PageContainer>
+    </div>
   );
 }

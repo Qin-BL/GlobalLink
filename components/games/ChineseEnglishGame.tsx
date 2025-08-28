@@ -193,6 +193,13 @@ export default function ChineseEnglishGame({
   const [totalSpeakingTime, setTotalSpeakingTime] = useState(0);
   const [currentRecordingTime, setCurrentRecordingTime] = useState(0);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
+  
+  // 句子构建相关状态
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [availableWords, setAvailableWords] = useState<string[]>([]);
+  const [isAnswerChecked, setIsAnswerChecked] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [streak, setStreak] = useState(0);
 
   // 语音识别相关
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
@@ -244,11 +251,17 @@ export default function ChineseEnglishGame({
     setScore(0);
     setCompletedExercises(0);
     setTotalAccuracy(0);
+    setStreak(0);
     setSpeechResult(null);
     setShowHints(false);
     setAudioURL(null);
     setTotalSpeakingTime(0);
     setGameStartTime(Date.now());
+    
+    // 初始化句子构建器
+    setTimeout(() => {
+      resetSentenceBuilder();
+    }, 100);
   };
 
   // 开始录音
@@ -457,6 +470,16 @@ export default function ChineseEnglishGame({
     setAudioURL(null);
     setGameState('playing');
     setCurrentRecordingTime(0);
+    
+    // 重置句子构建器状态
+    setSelectedWords([]);
+    setAvailableWords([]);
+    setIsAnswerChecked(false);
+    setIsCorrect(false);
+    
+    setTimeout(() => {
+      resetSentenceBuilder();
+    }, 100);
   };
 
   // 结束游戏
@@ -512,6 +535,61 @@ export default function ChineseEnglishGame({
     setGameState('playing');
   };
 
+  // 句子构建相关函数
+  const selectWord = (word: string, index: number) => {
+    if (isAnswerChecked) return;
+    
+    setSelectedWords(prev => [...prev, word]);
+    setAvailableWords(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeWord = (index: number) => {
+    if (isAnswerChecked) return;
+    
+    const word = selectedWords[index];
+    setSelectedWords(prev => prev.filter((_, i) => i !== index));
+    setAvailableWords(prev => [...prev, word]);
+  };
+
+  const checkAnswer = () => {
+    if (!currentExercise || selectedWords.length === 0) return;
+    
+    const userSentence = selectedWords.join(' ').toLowerCase().trim();
+    const correctSentence = currentExercise.englishText.toLowerCase().trim();
+    
+    const correct = userSentence === correctSentence;
+    setIsCorrect(correct);
+    setIsAnswerChecked(true);
+    
+    if (correct) {
+      const points = 100 + (streak * 10); // 连击奖励
+      setScore(prev => prev + points);
+      setStreak(prev => prev + 1);
+      setCompletedExercises(prev => prev + 1);
+      setTotalAccuracy(prev => prev + 100);
+    } else {
+      setStreak(0);
+      setTotalAccuracy(prev => prev + 0);
+    }
+  };
+
+  const resetSentenceBuilder = () => {
+    if (!currentExercise) return;
+    
+    // 创建单词数组，包含正确答案的单词和一些干扰词
+    const correctWords = currentExercise.englishText.split(' ');
+    const distractorWords = ['good', 'very', 'really', 'always', 'never', 'often', 'sometimes'];
+    
+    // 随机选择2-3个干扰词
+    const shuffledDistractors = distractorWords.sort(() => Math.random() - 0.5).slice(0, 3);
+    const allWords = [...correctWords, ...shuffledDistractors].sort(() => Math.random() - 0.5);
+    
+    setAvailableWords(allWords);
+    setSelectedWords([]);
+    setIsAnswerChecked(false);
+    setIsCorrect(false);
+  };
+
   // 游戏菜单
   if (gameState === 'menu') {
     return (
@@ -519,10 +597,10 @@ export default function ChineseEnglishGame({
         <Card className="p-8 text-center">
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-primary-400 mb-4">
-              <Mic className="inline w-8 h-8 mr-2 align-[-0.2em]" /> Chinese-English
+              <Mic className="inline w-8 h-8 mr-2 align-[-0.2em]" /> 中译英练习
             </h1>
             <p className="text-gray-300 text-lg">
-              中英文对照口语练习
+              看中文，构建英文句子
             </p>
           </div>
           
@@ -530,10 +608,10 @@ export default function ChineseEnglishGame({
             <div className="p-4 bg-gray-700 rounded-lg">
               <h3 className="font-semibold text-white mb-2">练习说明</h3>
               <ul className="text-gray-300 text-sm space-y-1">
-                <li>• 看中文提示，用英文表达出来</li>
-                <li>• 系统会实时识别并评分你的发音</li>
-                <li>• 根据准确度和关键词匹配获得分数</li>
-                <li>• 可以听标准发音并重新录制</li>
+                <li>• 看中文提示，点击单词构建英文句子</li>
+                <li>• 系统会检查你的句子是否正确</li>
+                <li>• 根据准确度获得分数和连击</li>
+                <li>• 可以听标准发音学习正确表达</li>
               </ul>
             </div>
             
@@ -541,14 +619,14 @@ export default function ChineseEnglishGame({
               <div className="p-3 bg-gray-800 rounded">
                 <h4 className="text-primary-400 font-bold mb-2">评分标准</h4>
                 <div className="text-gray-400 text-xs space-y-1">
-                  <div>• 发音准确度 (40%)</div>
-                  <div>• 关键词匹配 (30%)</div>
-                  <div>• 语音清晰度 (20%)</div>
-                  <div>• 完整性 (10%)</div>
+                  <div>• 句子完整性 (40%)</div>
+                  <div>• 语法正确性 (30%)</div>
+                  <div>• 单词顺序 (20%)</div>
+                  <div>• 速度奖励 (10%)</div>
                 </div>
               </div>
               <div className="p-3 bg-gray-800 rounded">
-                <h4 className="text-primary-400 font-bold mb-2">练习分类</h4>
+                <h4 className="text-primary-400 font-bold mb-2">课程选择</h4>
                 <div className="text-gray-400 text-xs space-y-1">
                   <div>• 日常对话</div>
                   <div>• 商务英语</div>
@@ -573,214 +651,132 @@ export default function ChineseEnglishGame({
   // 游戏进行中
   if ((gameState === 'playing' || gameState === 'recording' || gameState === 'analyzing') && currentExercise) {
     const progress = ((exerciseIndex + 1) / exercises.length) * 100;
+    const accuracyRate = completedExercises > 0 ? Math.round(totalAccuracy / completedExercises) : 0;
     
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        {/* 游戏状态栏 */}
-        <div className="mb-6 grid grid-cols-4 gap-4 text-center">
-          <div className="bg-gray-800 rounded-lg p-3">
-            <div className="text-2xl font-bold text-blue-400">{score}</div>
-            <div className="text-gray-400 text-sm">分数</div>
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col">
+        {/* 顶部标题栏 */}
+        <div className="flex items-center justify-between p-6 bg-slate-800">
+          {/* 左侧标题 */}
+          <div>
+            <h1 className="text-xl font-bold text-white">中译英练习</h1>
           </div>
-          <div className="bg-gray-800 rounded-lg p-3">
-            <div className="text-2xl font-bold text-green-400">{completedExercises}/{exercises.length}</div>
-            <div className="text-gray-400 text-sm">进度</div>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-3">
-            <div className="text-2xl font-bold text-purple-400">
-              {completedExercises > 0 ? Math.round(totalAccuracy / completedExercises) : 0}%
+          
+          {/* 右侧统计指标 */}
+          <div className="flex items-center gap-6 text-sm">
+            <div className="text-white">
+              <span className="text-gray-300">分数: </span>
+              <span className="font-semibold">{score}</span>
             </div>
-            <div className="text-gray-400 text-sm">平均准确度</div>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-3">
-            <div className="text-2xl font-bold text-orange-400">{Math.round(totalSpeakingTime / 60)}分</div>
-            <div className="text-gray-400 text-sm">练习时长</div>
+            <div className="text-white">
+              <span className="text-gray-300">连击: </span>
+              <span className="font-semibold">{streak}</span>
+            </div>
+            <div className="text-white">
+              <span className="text-gray-300">正确率: </span>
+              <span className="font-semibold">{accuracyRate}%</span>
+            </div>
           </div>
         </div>
 
         {/* 进度条 */}
-        <div className="mb-6">
-          <Progress value={progress} className="h-2" />
+        <div className="px-6 py-4 bg-slate-800">
+          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+          </div>
+          <div className="text-center text-sm text-gray-300 mt-2">
+            第 {exerciseIndex + 1} 题，共 {exercises.length} 题
+          </div>
         </div>
 
-        {/* 练习内容 */}
-        <Card className="p-8 mb-6">
-          <div className="text-center mb-6">
-            <div className="text-sm text-gray-400 mb-2">请用英文表达以下中文</div>
-            <div className="text-3xl font-bold text-white mb-4">
-              {currentExercise.chineseText}
-            </div>
-            
-            {/* 类别和难度标签 */}
-            <div className="flex gap-2 justify-center mb-4">
-              <span className="px-3 py-1 bg-blue-900/30 text-blue-400 rounded-full text-sm">
-                {currentExercise.category}
-              </span>
-              <span className="px-3 py-1 bg-yellow-900/30 text-yellow-400 rounded-full text-sm">
-                难度 {currentExercise.difficulty}
-              </span>
-            </div>
-
-            {/* 标准答案（可选显示） */}
-            <div className="text-lg text-gray-300 mb-6">
-              标准表达: {currentExercise.englishText}
+        {/* 主游戏区域 */}
+        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-800 mx-6 my-6 rounded-2xl">
+          {/* 中文显示 */}
+          <div className="text-5xl font-bold mb-8 text-white text-center">
+            {currentExercise.chineseText}
+          </div>
+          
+          {/* 音频播放和提示按钮 */}
+          <div className="flex gap-4 mb-8">
+            <button 
+              onClick={playStandardAudio}
+              className="w-12 h-12 bg-transparent border border-gray-500 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:border-gray-400 transition-all duration-200"
+              title="播放发音"
+            >
+              <Volume2 className="w-5 h-5" />
+            </button>
+            <button 
+              className="w-12 h-12 bg-transparent border border-gray-500 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:border-gray-400 transition-all duration-200"
+              title="提示"
+            >
+              <Lightbulb className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {/* 构建句子区域 */}
+          <div className="w-full max-w-4xl mb-8">
+            <div className="min-h-24 border-2 border-dashed border-gray-600 rounded-2xl p-6 text-center flex flex-wrap items-center justify-center gap-2">
+              {selectedWords.length > 0 ? (
+                selectedWords.map((word, index) => (
+                  <button
+                    key={index}
+                    onClick={() => removeWord(index)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-lg font-medium hover:bg-blue-700 transition-all duration-200"
+                  >
+                    {word}
+                  </button>
+                ))
+              ) : (
+                <span className="text-gray-400 text-lg">
+                  点击下方单词来构建句子
+                </span>
+              )}
             </div>
           </div>
-
-          {/* 录音状态 */}
-          {gameState === 'recording' && (
-            <div className="text-center mb-6">
-              <div className="w-24 h-24 mx-auto mb-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                <Mic className="text-white w-10 h-10" />
-              </div>
-              <div className="text-red-400 font-semibold text-lg">
-                录音中... {currentRecordingTime}s
-              </div>
-              <div className="text-gray-400 text-sm mt-2">
-                请清晰地说出英文表达
-              </div>
-            </div>
-          )}
-
-          {/* 分析状态 */}
-          {gameState === 'analyzing' && (
-            <div className="text-center mb-6">
-              <div className="w-24 h-24 mx-auto mb-4 bg-blue-500 rounded-full flex items-center justify-center">
-                <div className="loading-spinner"></div>
-              </div>
-              <div className="text-blue-400 font-semibold text-lg">
-                正在分析语音...
-              </div>
-            </div>
-          )}
-
-          {/* 控制按钮 */}
-          <div className="flex gap-4 justify-center">
-            {gameState === 'playing' && (
-              <>
-                <Button
-                  onClick={startRecording}
-                  className="px-8 py-4 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-                >
-                  <Mic className="w-5 h-5 inline mr-2" />
-                  开始录音
-                </Button>
-                <Button
-                  onClick={playStandardAudio}
-                  variant="secondary"
-                  className="px-6 py-4"
-                >
-                  <Volume2 className="w-5 h-5 inline mr-2" />
-                  听标准发音
-                </Button>
-                <Button
-                  onClick={() => setShowHints(!showHints)}
-                  variant="secondary"
-                  className="px-6 py-4"
-                >
-                  <Lightbulb className="w-5 h-5 inline mr-2" />
-                  {showHints ? '隐藏' : '显示'}提示
-                </Button>
-              </>
-            )}
-            
-            {gameState === 'recording' && (
-              <Button
-                onClick={stopRecording}
-                className="px-8 py-4 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700"
+          
+          {/* 单词选择区域 */}
+          <div className="flex flex-wrap gap-3 mb-8 justify-center">
+            {availableWords.map((word, index) => (
+              <button
+                key={index}
+                onClick={() => selectWord(word, index)}
+                disabled={isAnswerChecked}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl text-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
               >
-                <Square className="w-5 h-5 inline mr-2" />
-                停止录音
-              </Button>
-            )}
+                {word}
+              </button>
+            ))}
           </div>
-
-          {/* 提示内容 */}
-          {showHints && currentExercise.hints && (
-            <div className="mt-6 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg">
-              <h4 className="text-yellow-400 font-semibold mb-2"><Lightbulb className="inline w-4 h-4 mr-2" /> 提示</h4>
-              <ul className="text-yellow-300 text-sm space-y-1">
-                {currentExercise.hints.map((hint, index) => (
-                  <li key={index}>• {hint}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </Card>
-
-        {/* 语音分析结果 */}
-        {speechResult && (
-          <Card className="p-6 mb-6">
-            <h3 className="text-xl font-bold text-white mb-4"><BarChart3 className="inline w-5 h-5 mr-2" /> 语音分析结果</h3>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-3 bg-gray-800 rounded">
-                <div className="text-2xl font-bold text-green-400">{speechResult.accuracy.toFixed(0)}%</div>
-                <div className="text-gray-400 text-sm">准确度</div>
+          
+          {/* 检查答案按钮 */}
+          <button 
+            onClick={checkAnswer}
+            disabled={selectedWords.length === 0 || isAnswerChecked}
+            className="w-full max-w-2xl py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-2xl text-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            检查答案
+          </button>
+          
+          {/* 答案结果显示 */}
+          {isAnswerChecked && (
+            <div className="mt-6 text-center">
+              <div className={`text-2xl font-bold mb-4 ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                {isCorrect ? '✓ 正确！' : '✗ 错误'}
               </div>
-              <div className="text-center p-3 bg-gray-800 rounded">
-                <div className="text-2xl font-bold text-blue-400">{speechResult.confidence.toFixed(0)}%</div>
-                <div className="text-gray-400 text-sm">置信度</div>
-              </div>
-              <div className="text-center p-3 bg-gray-800 rounded">
-                <div className="text-2xl font-bold text-purple-400">{speechResult.keywordMatch.toFixed(0)}%</div>
-                <div className="text-gray-400 text-sm">关键词匹配</div>
-              </div>
-              <div className="text-center p-3 bg-gray-800 rounded">
-                <div className="text-2xl font-bold text-orange-400">{currentRecordingTime}s</div>
-                <div className="text-gray-400 text-sm">录音时长</div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-gray-300 font-semibold mb-2"><Target className="inline w-4 h-4 mr-2" /> 你的表达</h4>
-                <div className="p-3 bg-gray-800 rounded text-white">
-                  "{speechResult.transcript}"
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-gray-300 font-semibold mb-2"><Sparkles className="inline w-4 h-4 mr-2" /> 改进建议</h4>
-                <ul className="space-y-1">
-                  {speechResult.feedback.map((item, index) => (
-                    <li key={index} className="text-gray-300 text-sm">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* 录音回放 */}
-              {audioURL && (
-                <div>
-                  <h4 className="text-gray-300 font-semibold mb-2"><Volume2 className="inline w-4 h-4 mr-2" /> 录音回放</h4>
-                  <audio controls src={audioURL} className="w-full">
-                    您的浏览器不支持音频播放。
-                  </audio>
+              {!isCorrect && (
+                <div className="text-gray-300 mb-4">
+                  正确答案：{currentExercise.englishText}
                 </div>
               )}
-
-              <div className="flex gap-3 justify-center">
-                <Button
-                  onClick={retryRecording}
-                  variant="secondary"
-                  className="px-6 py-2"
-                >
-                  <RotateCcw className="w-4 h-4 inline mr-2" />
-                  重新录音
-                </Button>
-                <Button
-                  onClick={nextExercise}
-                  className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600"
-                >
-                  <ArrowRight className="w-4 h-4 inline mr-2" />
-                  下一题
-                </Button>
-              </div>
+              <button 
+                onClick={nextExercise}
+                className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-lg font-semibold transition-all duration-200"
+              >
+                下一题
+              </button>
             </div>
-          </Card>
-        )}
+          )}
+        </div>
       </div>
     );
   }

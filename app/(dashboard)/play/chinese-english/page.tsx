@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { PageContainer, CardContainer } from '@/components/layout/MainContent';
 import { useLayoutStore } from '@/store/layout';
 import { useSearchParams } from 'next/navigation';
-import { loadGameDataForCourse, SentenceBuilderItem, saveGameSession, GameSession } from '@/lib/gameData';
+import { saveGameSession, GameSession } from '@/lib/gameData'
 import { getFreeUserId } from '@/lib/localStorage';
 import FullscreenGameMode from '@/components/games/FullscreenGameMode';
 
@@ -167,11 +167,22 @@ export default function ChineseEnglishGamePageWrapper() {
 function ChineseEnglishGame() {
   const { setBreadcrumbs } = useLayoutStore();
   const searchParams = useSearchParams();
+  const userId = getFreeUserId();
   
-  // 游戏状态
+  // 游戏状态（改为使用按索引从 API 获取）
   const [showSetup, setShowSetup] = useState(false);
-  const [gameData, setGameData] = useState<SentenceBuilderItem[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  
+  // 当前题目（API返回）
+  const [currentItem, setCurrentItem] = useState<{
+    id: string;
+    prompt: string;
+    answer: string;
+    tokens: string[];
+  } | null>(null);
+
   const [availableTokens, setAvailableTokens] = useState<string[]>([]);
   const [placedTokens, setPlacedTokens] = useState<string[]>([]);
   const [usedTokens, setUsedTokens] = useState<Set<string>>(new Set());
@@ -204,36 +215,48 @@ function ChineseEnglishGame() {
     const fromCourse = searchParams.get('from') === 'course';
     
     if (fromCourse && courseIdFromUrl) {
-      // 从课程页面进入时直接启动全屏游戏
       setIsFullscreen(true);
       handleStartGame(courseIdFromUrl);
     } else if (courseIdFromUrl) {
-      // 有课程ID但不是从课程页面进入
       setShowSetup(false);
       handleStartGame(courseIdFromUrl);
     } else {
-      // 没有课程ID，显示选择界面
       setShowSetup(true);
       setLoading(false);
     }
   }, [searchParams]);
 
-  // 开始游戏
+  // 开始游戏（从 API 加载 index=0）
   const handleStartGame = async (courseId: string) => {
     setLoading(true);
     setShowSetup(false);
-    
+    setSelectedCourse(courseId);
+    setCurrentIndex(0);
+
     try {
-      const data = await loadGameDataForCourse(courseId, 'chinese-english');
-      setGameData(data);
-      
-      if (data.length > 0) {
-        initializeCurrentSentence(data[0]);
+      const query = `?courseId=${courseId}&userId=${userId}&gameType=chinese-english&index=0`;
+      const resp = await fetch('/api/play/next' + query, { cache: 'no-store' });
+      if (!resp.ok) throw new Error(`API request failed with status ${resp.status}`);
+      const apiData = await resp.json();
+
+      if (apiData.error) throw new Error(apiData.error);
+
+      if (apiData.type === 'item' && apiData.item) {
+        const item = apiData.item as { id: string; prompt: string; answer: string; tokens: string[] };
+        setCurrentItem(item);
+        setAvailableTokens(item.tokens);
+        setPlacedTokens([]);
+        setUsedTokens(new Set());
+        setValidationState('none');
+        setTotalQuestions(apiData.total || 0);
+        toast.success('课程加载成功！开始游戏吧！');
+      } else if (apiData.type === 'done') {
+        handleGameComplete();
+      } else {
+        throw new Error('无效的API响应格式');
       }
-      
-      toast.success('课程加载成功！开始游戏吧！');
-    } catch (error) {
-      console.error('Failed to load game data:', error);
+    } catch (e) {
+      console.error('Failed to start game:', e);
       toast.error('加载课程失败，请重试');
       setShowSetup(true);
     } finally {
@@ -241,25 +264,20 @@ function ChineseEnglishGame() {
     }
   };
 
-  // 初始化当前句子
-  const initializeCurrentSentence = (item: SentenceBuilderItem) => {
-    const allTokens = [...item.words, ...item.distractors];
-    const shuffledTokens = allTokens.sort(() => Math.random() - 0.5);
-    
-    setAvailableTokens(shuffledTokens);
-    setPlacedTokens([]);
-    setUsedTokens(new Set());
-    setValidationState('none');
-    setShowHint(false);
+  // 重置当前题目
+  const resetCurrentSentence = () => {
+    if (currentItem) {
+      setAvailableTokens(currentItem.tokens);
+      setPlacedTokens([]);
+      setUsedTokens(new Set());
+      setValidationState('none');
+      setShowHint(false);
+    }
   };
-
-  // 当前句子数据
-  const currentSentence = gameData[currentIndex];
 
   // 添加单词到句子
   const addTokenToSentence = (token: string) => {
     if (usedTokens.has(token)) return;
-    
     setPlacedTokens(prev => [...prev, token]);
     setUsedTokens(prev => new Set([...prev, token]));
     setValidationState('none');
@@ -279,16 +297,12 @@ function ChineseEnglishGame() {
 
   // 检查答案
   const checkAnswer = () => {
-    if (!currentSentence || placedTokens.length === 0) return;
-    
+    if (!currentItem || placedTokens.length === 0) return;
     const userAnswer = placedTokens.join(' ').toLowerCase();
-    const correctAnswer = currentSentence.english.toLowerCase();
-    
+    const correctAnswer = currentItem.answer.toLowerCase();
     const isCorrect = userAnswer === correctAnswer;
-    
     setValidationState(isCorrect ? 'correct' : 'wrong');
-    
-    // 更新统计
+
     setGameStats(prev => ({
       ...prev,
       totalAnswers: prev.totalAnswers + 1,
@@ -296,37 +310,58 @@ function ChineseEnglishGame() {
       score: prev.score + (isCorrect ? (showHint ? 5 : 10) : 0),
       streak: isCorrect ? prev.streak + 1 : 0
     }));
-    
+
     if (isCorrect) {
       toast.success('回答正确！');
-      
-      // 2秒后自动进入下一题
       setTimeout(() => {
-        handleNextSentence();
+        loadNextSentence();
       }, 2000);
     } else {
       toast.error('答案不正确，请重试');
     }
   };
 
-  // 下一句
-  const handleNextSentence = () => {
-    if (currentIndex < gameData.length - 1) {
+  // 加载下一题（从 API 按索引获取）
+  const loadNextSentence = async () => {
+    try {
       const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
-      initializeCurrentSentence(gameData[nextIndex]);
-    } else {
-      // 游戏结束
-      toast.success('恭喜完成所有题目！');
+      const query = `?courseId=${selectedCourse}&userId=${userId}&gameType=chinese-english&index=${nextIndex}`;
+      const resp = await fetch('/api/play/next' + query, { cache: 'no-store' });
+      const apiData = await resp.json();
+
+      if (apiData.error) throw new Error(apiData.error);
+
+      if (apiData.type === 'item' && apiData.item) {
+        const item = apiData.item as { id: string; prompt: string; answer: string; tokens: string[] };
+        setCurrentItem(item);
+        setAvailableTokens(item.tokens);
+        setPlacedTokens([]);
+        setUsedTokens(new Set());
+        setValidationState('none');
+        setCurrentIndex(nextIndex);
+        setTotalQuestions(apiData.total || totalQuestions);
+      } else if (apiData.type === 'done') {
+        handleGameComplete();
+      } else {
+        handleGameComplete();
+      }
+    } catch (e) {
+      console.error('Failed to load next sentence:', e);
+      toast.error('加载下一题失败');
       handleGameComplete();
     }
+  };
+
+  // 兼容旧函数名（若其他地方调用）
+  const handleNextSentence = () => {
+    void loadNextSentence();
   };
 
   // 游戏完成
   const handleGameComplete = () => {
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const courseIdParam = params?.get('courseId')?.toString() || '';
-    const derivedCourseId = courseIdParam || (gameData[0]?.id?.split('-')[0] ?? '');
+    const derivedCourseId = courseIdParam || selectedCourse || '';
 
     const session: GameSession = {
       id: `session-${Date.now()}`,
@@ -337,40 +372,21 @@ function ChineseEnglishGame() {
       correctAnswers: gameStats.correctAnswers,
       totalAnswers: gameStats.totalAnswers,
       streak: gameStats.streak,
-      startTime: new Date(Date.now() - gameStats.totalAnswers * 30000), // 估算
+      startTime: new Date(Date.now() - gameStats.totalAnswers * 30000),
       endTime: new Date(),
       completed: true
     };
     
     saveGameSession(session);
-    
-    // 显示结果或返回首页
     setTimeout(() => {
       window.location.href = '/dashboard';
     }, 3000);
   };
 
-  // 重置当前题目
-  const resetCurrentSentence = () => {
-    if (currentSentence) {
-      initializeCurrentSentence(currentSentence);
-    }
-  };
-
-  // 显示提示
-  const toggleHint = () => {
-    setShowHint(!showHint);
-    if (!showHint) {
-      setGameStats(prev => ({ ...prev, hintsUsed: prev.hintsUsed + 1 }));
-    }
-  };
-
   // 播放发音
   const playPronunciation = () => {
-    if (currentSentence?.soundmark) {
-      // 这里可以集成语音合成API
-      toast.success('发音功能开发中...');
-    }
+    // 暂无发音数据，保留占位
+    toast.success('发音功能开发中...');
   };
 
   // 启动全屏模式
@@ -424,7 +440,7 @@ function ChineseEnglishGame() {
     );
   }
 
-  if (!currentSentence) {
+  if (!currentItem) {
     return (
       <PageContainer>
         <div className="text-center py-16">
@@ -479,7 +495,7 @@ function ChineseEnglishGame() {
         <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-gray-600 dark:text-gray-300">
-              第 {currentIndex + 1} 题，共 {gameData.length} 题
+              第 {currentIndex + 1} 题，共 {totalQuestions} 题
             </span>
             <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">
               分数: {gameStats.score}
@@ -489,7 +505,7 @@ function ChineseEnglishGame() {
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div 
               className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all"
-              style={{ width: `${((currentIndex + 1) / gameData.length) * 100}%` }}
+              style={{ width: `${totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0}%` }}
             ></div>
           </div>
           
@@ -514,7 +530,7 @@ function ChineseEnglishGame() {
                 <Volume2 size={18} />
               </button>
               <button
-                onClick={toggleHint}
+                onClick={() => setShowHint(!showHint)}
                 className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
                 title="显示提示"
               >
@@ -524,16 +540,8 @@ function ChineseEnglishGame() {
           </div>
           
           <p className="text-xl text-gray-900 dark:text-white mb-4">
-            {currentSentence.chinese}
+            {currentItem.prompt}
           </p>
-          
-          {showHint && currentSentence.soundmark && (
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>音标提示:</strong> {currentSentence.soundmark}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -596,7 +604,7 @@ function ChineseEnglishGame() {
               <span className="font-medium">正确答案!</span>
             </div>
             <p className="text-green-600 dark:text-green-300 mt-1">
-              {currentSentence.english}
+              {currentItem.answer}
             </p>
           </motion.div>
         )}
@@ -613,7 +621,7 @@ function ChineseEnglishGame() {
               <span className="font-medium">答案不正确</span>
             </div>
             <p className="text-red-600 dark:text-red-300 mt-1">
-              正确答案: {currentSentence.english}
+              正确答案: {currentItem.answer}
             </p>
           </motion.div>
         )}

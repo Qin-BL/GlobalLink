@@ -6,6 +6,8 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const courseIdParam = url.searchParams.get('courseId');
     const gameType = url.searchParams.get('gameType') || 'word-blitz';
+    const indexParam = url.searchParams.get('index');
+    const index = indexParam ? Math.max(0, parseInt(indexParam)) : 0;
     
     // 如果指定了课程ID，使用该课程
     if (courseIdParam) {
@@ -16,58 +18,76 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: 'course not found' }, { status: 404 });
       }
 
+      // 如果请求的是超出范围的顺序下标，返回完成标记
+      if (gameType === 'word-blitz' && index >= courseData.length) {
+        return NextResponse.json({ type: 'done', total: courseData.length, index });
+      }
+
+      // 如果请求的是超出范围的顺序下标，返回完成标记
+      if (index >= courseData.length) {
+        return NextResponse.json({ type: 'done', total: courseData.length, index });
+      }
+
       // 根据游戏类型生成不同的题目
       if (gameType === 'word-blitz') {
-        // 百词斩模式 - 返回单个单词和选择项
-        const item = courseData[Math.floor(Math.random() * courseData.length)];
+        // 百词斩模式 - 顺序返回（按 index）单个单词和选择项
+        const item = courseData[index];
         const allItems = courseData.concat(loadCourseData(1)); // 增加更多干扰项
         const choices = generateWordChoices(item.chinese, allItems);
         
         return NextResponse.json({
           type: 'word',
           word: {
-            id: `${courseId}-word`,
+            id: `${courseId}-word-${index}`,
             term: item.english,
             meaning: item.chinese,
             soundmark: item.soundmark
           },
-          choices
+          choices,
+          total: courseData.length,
+          index
         });
       } else if (gameType === 'sentence-builder') {
-        // 连词造句模式
-        const item = courseData[Math.floor(Math.random() * courseData.length)];
+        // 连词造句模式 - 按 index 顺序返回
+        const item = courseData[index];
         return NextResponse.json({
           type: 'item',
           item: {
-            id: `${courseId}-sentence`,
+            id: `${courseId}-sentence-${index}`,
             prompt: item.chinese,
             answer: item.english,
             tokens: generateSentenceTokens(item.english)
-          }
+          },
+          total: courseData.length,
+          index
         });
       } else if (gameType === 'listening') {
-        // 听写模式
-        const item = courseData[Math.floor(Math.random() * courseData.length)];
+        // 听写模式 - 按 index 顺序返回
+        const item = courseData[index];
         return NextResponse.json({
           type: 'item',
           item: {
-            id: `${courseId}-listening`,
+            id: `${courseId}-listening-${index}`,
             prompt: item.chinese,
             answer: item.english,
             audioUrl: null // 可以后续添加音频文件
-          }
+          },
+          total: courseData.length,
+          index
         });
       } else {
-        // 中译英模式 (chinese-english)
-        const item = courseData[Math.floor(Math.random() * courseData.length)];
+        // 中译英模式 (chinese-english) - 按 index 顺序返回
+        const item = courseData[index];
         return NextResponse.json({
           type: 'item',
           item: {
-            id: `${courseId}-translation`,
+            id: `${courseId}-translation-${index}`,
             prompt: item.chinese,
             answer: item.english,
             tokens: generateSentenceTokens(item.english)
-          }
+          },
+          total: courseData.length,
+          index
         });
       }
     }
@@ -94,7 +114,9 @@ export async function GET(req: Request) {
         meaning: item.chinese,
         soundmark: item.soundmark
       },
-      choices
+      choices,
+      total: courseData.length,
+      index: 0
     });
     
   } catch (error) {
