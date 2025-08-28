@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import random
 import string
@@ -25,8 +26,8 @@ conf = ConnectionConfig(
     MAIL_STARTTLS=settings.MAIL_USE_TLS,
     MAIL_SSL_TLS=settings.MAIL_USE_TLS if settings.MAIL_PORT == 465 else False,
     USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True,
-    TIMEOUT=10  # 添加超时设置，单位为秒
+    VALIDATE_CERTS=False,  # 禁用证书验证，解决某些环境下的证书问题
+    TIMEOUT=15  # 增加超时时间到15秒
 )
 
 # 验证邮件配置
@@ -70,6 +71,10 @@ async def send_email(
     retries = 0
     while retries <= max_retries:
         try:
+            # 添加邮件配置调试信息
+            logger.info(f"尝试发送邮件至 {email_to}")
+            logger.debug(f"邮件服务器配置: {settings.MAIL_SERVER}:{settings.MAIL_PORT}, TLS: {settings.MAIL_USE_TLS}")
+            
             message = MessageSchema(
                 subject=subject,
                 recipients=[email_to],
@@ -84,8 +89,11 @@ async def send_email(
         except Exception as e:
             retries += 1
             logger.error(f"发送邮件失败 (尝试 {retries}/{max_retries}): {str(e)}")
+            logger.debug(f"异常类型: {type(e).__name__}")
             if retries <= max_retries:
+                logger.info(f"{retry_delay}秒后重试...")
                 await asyncio.sleep(retry_delay)
+    logger.error(f"邮件发送失败，已达到最大重试次数({max_retries})")
     return False
 
 
