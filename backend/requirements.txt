@@ -28,7 +28,7 @@ redis==4.5.5
 pymongo==4.3.3
 jinja2==3.1.2
 asyncio==3.4.3
-aiosmtplib==3.0.2
+aiosmtplib==2.0.2
 backoff==2.2.1
 motor==3.1.2
 async-timeout==4.0.2
