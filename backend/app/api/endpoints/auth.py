@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import Any
 import logging
+from datetime import timedelta
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -120,8 +121,8 @@ async def login_access_token(
 async def login_custom(
     *, 
     db: Session = Depends(deps.get_db),
-    username: str = Body(...),
-    password: str = Body(...),
+    username: str = Body(..., embed=True, description="用户名、邮箱或手机号"),
+    password: str = Body(..., embed=True, description="用户密码"),
     request: Request = None,
 ) -> Any:
     """自定义登录端点，支持用户名/邮箱/手机号登录"""
@@ -323,12 +324,10 @@ async def register(
 
 @router.post("/send-verification-code")
 async def send_email_verification_code(
-    email_data: dict = Body(...),
+    email: EmailStr = Body(..., embed=True, description="接收验证码的邮箱地址"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Any:
     """发送邮箱验证码"""
-    # 从请求体中提取email
-    email = email_data.get("email")
     if not email:
         raise HTTPException(
             status_code=400,
@@ -362,9 +361,9 @@ async def send_email_verification_code(
 
 @router.post("/verify-email-code")
 async def verify_email_verification_code(
-    *,
-    email: EmailStr,
-    code: str,
+    *, 
+    email: EmailStr = Body(..., embed=True, description="接收验证码的邮箱地址"),
+    code: str = Body(..., embed=True, description="邮箱验证码"),
 ) -> Any:
     """验证邮箱验证码"""
     is_valid = await verify_email_code(email, code)
@@ -380,7 +379,7 @@ async def verify_email_verification_code(
 
 @router.post("/logout")
 async def logout(
-    token: str = Body(...),
+    token: str = Body(..., embed=True, description="用户的JWT令牌"),
     current_user: models.User = Depends(deps.get_current_user_async),
     request: Request = None,
 ) -> Any:
