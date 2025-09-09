@@ -89,9 +89,12 @@ async def login_access_token(
     
     # 生成访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    token = await security.create_access_token(
+    access_token = await security.create_access_token(
         user.id, expires_delta=access_token_expires
     )
+    
+    # 生成刷新令牌
+    refresh_token = await security.create_refresh_token(user.id)
     
     # 记录用户登录活动
     try:
@@ -112,8 +115,9 @@ async def login_access_token(
         logger.error(f"记录用户登录活动失败: {e}")
     
     return {
-        "access_token": token,
+        "access_token": access_token,
         "token_type": "bearer",
+        "refresh_token": refresh_token,
     }
 
 
@@ -179,9 +183,12 @@ async def login_custom(
     
     # 生成访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    token = await security.create_access_token(
+    access_token = await security.create_access_token(
         user.id, expires_delta=access_token_expires
     )
+    
+    # 生成刷新令牌
+    refresh_token = await security.create_refresh_token(user.id)
     
     # 记录用户登录活动
     try:
@@ -202,8 +209,9 @@ async def login_custom(
         logger.error(f"记录用户登录活动失败: {e}")
     
     return {
-        "access_token": token,
+        "access_token": access_token,
         "token_type": "bearer",
+        "refresh_token": refresh_token,
     }
 
 
@@ -375,6 +383,31 @@ async def verify_email_verification_code(
         )
     
     return {"message": "验证成功"}
+
+
+@router.post("/refresh-token", response_model=schemas.Token)
+async def refresh_token(
+    refresh_token: str = Body(..., embed=True, description="用户的刷新令牌")
+) -> Any:
+    """使用刷新令牌获取新的访问令牌"""
+    # 使用刷新令牌获取新的访问令牌
+    new_access_token = await security.refresh_access_token(refresh_token)
+    
+    if not new_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的或过期的刷新令牌",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 生成新的刷新令牌
+    # 注意：这里也可以选择继续使用原有的刷新令牌，但为了安全起见，建议生成新的
+    # 为了简化实现，我们这里继续使用原有的刷新令牌
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+    }
 
 
 @router.post("/logout")

@@ -1,6 +1,5 @@
 import secrets
 from typing import Any, Dict, List, Optional, Union
-
 from pydantic import AnyHttpUrl, BaseSettings, PostgresDsn, validator, EmailStr
 
 
@@ -9,6 +8,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    # 刷新令牌有效期（30天）
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     # BACKEND_CORS_ORIGINS is a JSON-formatted list of origins
     # e.g: ["http://localhost", "http://localhost:4200", "http://localhost:3000"]
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
@@ -94,6 +95,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_WINDOW: int = 60  # 限流窗口（秒）
     JWT_ALGORITHM: str = "HS256"  # JWT算法
     TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 7  # Token缓存过期时间（7天）
+    REFRESH_TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 30  # 刷新令牌缓存过期时间（30天）
     
     # 前端密码加密验证配置
     EXPECTED_DOMAIN: str = "http://localhost:3080"  # 预期域名，用于前端密码加密验证
