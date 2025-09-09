@@ -67,6 +67,19 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 10  # 验证码有效期（分钟）
     VERIFICATION_CODE_LENGTH: int = 6  # 验证码长度
 
+    # 错误通知配置
+    ERROR_NOTIFICATION_RECIPIENTS: List[EmailStr] = ["15010993510@163.com"]  # 错误邮件通知接收邮箱列表
+    ERROR_NOTIFICATION_ENABLED: bool = True  # 是否启用错误邮件通知功能
+
+    @validator("ERROR_NOTIFICATION_RECIPIENTS", pre=True)
+    def assemble_error_recipients(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
+        """解析错误通知接收邮箱列表，支持逗号分隔的字符串"""
+        if isinstance(v, str) and not v.startswith("["):
+            return [email.strip() for email in v.split(",") if email.strip()]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+
     @validator("SQLALCHEMY_DATABASE_URI", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
         if isinstance(v, str):
