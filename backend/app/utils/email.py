@@ -195,7 +195,7 @@ async def verify_email_code(email: EmailStr, code: str) -> bool:
         return False
     
     # 验证成功后删除缓存中的验证码
-    if stored_code == code:
+    if int(stored_code) == int(code):
         # 验证成功后删除缓存
         await set_redis_cache(cache_key, None, expire_seconds=1)
         return True
