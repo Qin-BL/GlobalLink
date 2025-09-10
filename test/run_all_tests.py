@@ -367,4 +367,12 @@ def main():
         sys.exit(0)
 
 if __name__ == '__main__':
+    main() error_tests = sum(1 for r in results.values() if 'error' in r)
+    
+    if failed_tests > 0 or error_tests > 0:
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
+if __name__ == '__main__':
     main()

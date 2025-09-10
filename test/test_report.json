@@ -1,0 +1,44 @@
+{
+  "units": {
+    "status": "error",
+    "message": "Import error: cannot import name 'run_tests' from 'test_units' (D:\\项目\\GlobalLink\\test\\test_units.py)"
+  },
+  "whitebox": {
+    "status": "error",
+    "message": "Import error: cannot import name 'run_tests' from 'test_whitebox' (D:\\项目\\GlobalLink\\test\\test_whitebox.py)"
+  },
+  "integration": {
+    "status": "error",
+    "message": "Import error: cannot import name 'run_tests' from 'test_integration' (D:\\项目\\GlobalLink\\test\\test_integration.py)"
+  },
+  "blackbox": {
+    "status": "error",
+    "message": "Import error: cannot import name 'run_tests' from 'test_blackbox' (D:\\项目\\GlobalLink\\test\\test_blackbox.py)"
+  },
+  "functional": {
+    "status": "error",
+    "message": "Import error: cannot import name 'run_tests' from 'test_all_apis' (D:\\项目\\GlobalLink\\test\\test_all_apis.py)"
+  },
+  "error_notification": {
+    "status": "error",
+    "message": "Import error: cannot import name 'run_tests' from 'test_error_notification' (D:\\项目\\GlobalLink\\test\\test_error_notification.py)"
+  },
+  "_summary": {
+    "total_time": 0.3899862766265869,
+    "success_count": 0,
+    "failed_count": 6,
+    "skipped_count": 0,
+    "total_count": 5,
+    "start_time": "2025-09-10 22:31:02",
+    "test_types": [
+      "units",
+      "whitebox",
+      "integration",
+      "blackbox",
+      "functional",
+      "error_notification"
+    ],
+    "environment": "remote",
+    "server_url": "http://47.108.76.21:8000"
+  }
+}

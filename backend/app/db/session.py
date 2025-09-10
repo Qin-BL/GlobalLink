@@ -13,7 +13,9 @@ from app.core.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# MongoDB连接
+# MongoDB连接（可选）
+mongo_client = None
+mongo_db = None
 try:
     mongo_client = MongoClient(
         settings.MONGODB_URI,
@@ -28,8 +30,9 @@ try:
     mongo_db = mongo_client[settings.MONGODB_DB]
     logger.info("MongoDB连接成功")
 except ConnectionFailure as e:
-    logger.error(f"MongoDB连接失败: {e}")
-    raise
+    logger.warning(f"MongoDB连接失败，将使用SQLite作为主数据库: {e}")
+    mongo_client = None
+    mongo_db = None
 
 # Redis连接池
 redis_pool = redis.ConnectionPool(
@@ -47,8 +50,8 @@ def get_redis_connection():
 
 Base = declarative_base()
 
-# 保留SQLAlchemy连接用于兼容现有代码
-db_uri = settings.SQLALCHEMY_DATABASE_URI
+# SQLAlchemy数据库连接
+db_uri = str(settings.SQLALCHEMY_DATABASE_URI) if settings.SQLALCHEMY_DATABASE_URI else "sqlite:///./globallink.db"
 engine = create_engine(
     db_uri,
     pool_pre_ping=True,

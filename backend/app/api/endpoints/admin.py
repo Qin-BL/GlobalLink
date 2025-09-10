@@ -11,7 +11,7 @@ from app.core.security import get_password_hash, verify_password
 router = APIRouter()
 
 
-@router.post("/login", response_model=schemas.Token)
+@router.post("/login", response_model=schemas.user.Token)
 async def admin_login(
     *,
     db: Session = Depends(deps.get_db),
@@ -120,7 +120,7 @@ def get_user_stats(
 def create_user_admin(
     *,
     db: Session = Depends(deps.get_db),
-    user_in: schemas.UserCreateAdmin,
+    user_in: schemas.user.UserCreateAdmin,
     current_user: models.User = Depends(deps.get_current_admin_user),
 ) -> Any:
     """管理员创建用户"""
@@ -178,7 +178,7 @@ def update_user_admin(
     *,
     db: Session = Depends(deps.get_db),
     user_id: int,
-    user_in: schemas.UserUpdateAdmin,
+    user_in: schemas.user.UserUpdateAdmin,
     current_user: models.User = Depends(deps.get_current_admin_user),
 ) -> Any:
     """管理员更新用户信息"""
@@ -252,7 +252,7 @@ def delete_user(
     db.query(models.Membership).filter(models.Membership.user_id == user_id).delete()
     
     # 删除用户的学习进度
-    db.query(models.Progress).filter(models.Progress.user_id == user_id).delete()
+    db.query(models.LearningProgress).filter(models.LearningProgress.user_id == user_id).delete()
     
     # 删除用户的奖励记录
     if hasattr(models, 'Reward'):
@@ -294,7 +294,7 @@ def delete_all_users(
     db.query(models.Membership).filter(models.Membership.user_id.in_(user_ids)).delete(synchronize_session=False)
     
     # 删除学习进度
-    db.query(models.Progress).filter(models.Progress.user_id.in_(user_ids)).delete(synchronize_session=False)
+    db.query(models.LearningProgress).filter(models.LearningProgress.user_id.in_(user_ids)).delete(synchronize_session=False)
     
     # 删除奖励记录
     if hasattr(models, 'Reward'):
@@ -379,7 +379,7 @@ def get_user_progress(
         raise HTTPException(status_code=404, detail="用户不存在")
     
     # 获取用户的学习进度
-    progress_records = db.query(models.Progress).filter(models.Progress.user_id == user_id).all()
+    progress_records = db.query(models.LearningProgress).filter(models.LearningProgress.user_id == user_id).all()
     
     return {
         "user_id": user_id,

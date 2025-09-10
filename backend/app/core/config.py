@@ -1,6 +1,10 @@
 import secrets
 from typing import Any, Dict, List, Optional, Union
-from pydantic import AnyHttpUrl, BaseSettings, PostgresDsn, validator, EmailStr
+from pydantic import AnyHttpUrl, PostgresDsn, field_validator, EmailStr
+try:
+    from pydantic_settings import BaseSettings
+except ImportError:
+    from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -12,13 +16,14 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     # BACKEND_CORS_ORIGINS is a JSON-formatted list of origins
     # e.g: ["http://localhost", "http://localhost:4200", "http://localhost:3000"]
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
+    BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3080",
         "http://localhost:8000",
         "http://localhost",
     ]
 
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
@@ -33,7 +38,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "password"
     POSTGRES_DB: str = "globallink"
-    SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
+    SQLALCHEMY_DATABASE_URI: Optional[str] = None
     
     # 数据库连接池配置
     DB_POOL_SIZE: int = 20
@@ -71,7 +76,8 @@ class Settings(BaseSettings):
     ERROR_NOTIFICATION_RECIPIENTS: List[EmailStr] = ["15010993510@163.com"]  # 错误邮件通知接收邮箱列表
     ERROR_NOTIFICATION_ENABLED: bool = True  # 是否启用错误邮件通知功能
 
-    @validator("ERROR_NOTIFICATION_RECIPIENTS", pre=True)
+    @field_validator("ERROR_NOTIFICATION_RECIPIENTS", mode="before")
+    @classmethod
     def assemble_error_recipients(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
         """解析错误通知接收邮箱列表，支持逗号分隔的字符串"""
         if isinstance(v, str) and not v.startswith("["):
@@ -80,16 +86,13 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
-    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
+    @classmethod
+    def assemble_db_connection(cls, v: Optional[str]) -> Any:
         if isinstance(v, str):
             return v
-        # 使用pydantic v2的新API构建URL
-        user = values.get("POSTGRES_USER")
-        password = values.get("POSTGRES_PASSWORD")
-        host = values.get("POSTGRES_SERVER")
-        db = values.get('POSTGRES_DB') or ''
-        return f"postgresql://{user}:{password}@{host}/{db}"
+        # 如果没有提供URI，使用默认的SQLite数据库
+        return "sqlite:///./globallink.db"
 
     # 微信支付配置
     WECHAT_APP_ID: str = "your_wechat_app_id"
@@ -117,9 +120,10 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "admin"  # 管理员用户名
     ADMIN_PASSWORD: str = "admin"  # 管理员密码
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    model_config = {
+        "case_sensitive": True,
+        "env_file": ".env"
+    }
 
 
 settings = Settings()
