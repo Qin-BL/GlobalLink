@@ -152,3 +152,71 @@ class Token(BaseModel):
 # 令牌数据
 class TokenPayload(BaseModel):
     sub: Optional[int] = None
+
+
+# 管理员创建用户
+class UserCreateAdmin(BaseModel):
+    username: str
+    password: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    role: Optional[str] = "user"
+    is_active: Optional[bool] = True
+    
+    @validator('password')
+    def password_min_length(cls, v):
+        if len(v) < 6:
+            raise ValueError('密码长度至少为6个字符')
+        return v
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v is None:
+            return v
+        # 简单的中国手机号验证
+        if not re.match(r'^1[3-9]\d{9}$', v):
+            raise ValueError('无效的手机号码')
+        return v
+    
+    @validator('role')
+    def validate_role(cls, v):
+        if v not in ['user', 'admin']:
+            raise ValueError('角色只能是 user 或 admin')
+        return v
+
+
+# 管理员更新用户
+class UserUpdateAdmin(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+    
+    @validator('password')
+    def password_min_length(cls, v):
+        if v is not None and len(v) < 6:
+            raise ValueError('密码长度至少为6个字符')
+        return v
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v is None:
+            return v
+        # 简单的中国手机号验证
+        if not re.match(r'^1[3-9]\d{9}$', v):
+            raise ValueError('无效的手机号码')
+        return v
+    
+    @validator('role')
+    def validate_role(cls, v):
+        if v is not None and v not in ['user', 'admin']:
+            raise ValueError('角色只能是 user 或 admin')
+        return v
+
+
+# 管理员登录
+class AdminLogin(BaseModel):
+    username: str
+    password: str

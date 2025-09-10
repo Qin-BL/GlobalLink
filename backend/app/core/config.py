@@ -112,6 +112,10 @@ class Settings(BaseSettings):
     
     # 前端密码加密验证配置
     EXPECTED_DOMAIN: str = "http://localhost:3080"  # 预期域名，用于前端密码加密验证
+    
+    # 管理后台配置
+    ADMIN_USERNAME: str = "admin"  # 管理员用户名
+    ADMIN_PASSWORD: str = "admin"  # 管理员密码
 
     class Config:
         case_sensitive = True

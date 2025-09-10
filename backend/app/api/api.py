@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import auth, users, courses, progress, membership
+from app.api.endpoints import auth, users, courses, progress, membership, admin
 
 api_router = APIRouter()
 
@@ -18,3 +18,6 @@ api_router.include_router(progress.router, prefix="/progress", tags=["progress"]
 
 # 会员相关路由
 api_router.include_router(membership.router, prefix="/membership", tags=["membership"])
+
+# 管理后台相关路由
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])

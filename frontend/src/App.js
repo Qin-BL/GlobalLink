@@ -19,6 +19,8 @@ import Payment from './pages/membership/Payment';
 import Profile from './pages/user/Profile';
 import Referral from './pages/user/Referral';
 import Rewards from './pages/user/Rewards';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import NotFound from './pages/NotFound';
 
 const { Content } = Layout;
@@ -46,72 +48,81 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Layout className="app-layout">
-        <AppHeader />
-        <Content className="app-content">
-          <Routes>
-            {/* 公共路由 */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* 受保护的路由 */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <CourseList />
-              </ProtectedRoute>
-            } />
-            <Route path="/courses" element={
-              <ProtectedRoute>
-                <CourseList />
-              </ProtectedRoute>
-            } />
-            <Route path="/courses/:courseId" element={
-              <ProtectedRoute>
-                <CourseDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="/study/:courseId/mode" element={
-              <ProtectedRoute>
-                <StudyMode />
-              </ProtectedRoute>
-            } />
-            <Route path="/study/:courseId/:mode" element={
-              <ProtectedRoute>
-                <StudySession />
-              </ProtectedRoute>
-            } />
-            <Route path="/membership" element={
-              <ProtectedRoute>
-                <Membership />
-              </ProtectedRoute>
-            } />
-            <Route path="/payment/:type" element={
-              <ProtectedRoute>
-                <Payment />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/referral" element={
-              <ProtectedRoute>
-                <Referral />
-              </ProtectedRoute>
-            } />
-            <Route path="/rewards" element={
-              <ProtectedRoute>
-                <Rewards />
-              </ProtectedRoute>
-            } />
-            
-            {/* 404页面 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Content>
-        <AppFooter />
-      </Layout>
+      <Routes>
+        {/* 管理后台路由 - 独立布局，不包含头部和底部 */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        
+        {/* 普通用户路由 - 包含头部和底部 */}
+        <Route path="/*" element={
+          <Layout className="app-layout">
+            <AppHeader />
+            <Content className="app-content">
+              <Routes>
+                {/* 公共路由 */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                
+                {/* 受保护的路由 */}
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <CourseList />
+                  </ProtectedRoute>
+                } />
+                <Route path="/courses" element={
+                  <ProtectedRoute>
+                    <CourseList />
+                  </ProtectedRoute>
+                } />
+                <Route path="/courses/:courseId" element={
+                  <ProtectedRoute>
+                    <CourseDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="/study/:courseId/mode" element={
+                  <ProtectedRoute>
+                    <StudyMode />
+                  </ProtectedRoute>
+                } />
+                <Route path="/study/:courseId/:mode" element={
+                  <ProtectedRoute>
+                    <StudySession />
+                  </ProtectedRoute>
+                } />
+                <Route path="/membership" element={
+                  <ProtectedRoute>
+                    <Membership />
+                  </ProtectedRoute>
+                } />
+                <Route path="/payment/:type" element={
+                  <ProtectedRoute>
+                    <Payment />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/referral" element={
+                  <ProtectedRoute>
+                    <Referral />
+                  </ProtectedRoute>
+                } />
+                <Route path="/rewards" element={
+                  <ProtectedRoute>
+                    <Rewards />
+                  </ProtectedRoute>
+                } />
+                
+                {/* 404页面 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Content>
+            <AppFooter />
+          </Layout>
+        } />
+      </Routes>
     </ErrorBoundary>
   );
 }

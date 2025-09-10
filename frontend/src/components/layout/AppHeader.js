@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { Layout, Menu, Button, Avatar, Dropdown, Space, Badge, message } from 'antd';
-import { UserOutlined, BellOutlined, LogoutOutlined, GlobalOutlined, BookOutlined, CrownOutlined, TeamOutlined, GiftOutlined } from '@ant-design/icons';
+import { UserOutlined, BellOutlined, LogoutOutlined, GlobalOutlined, BookOutlined, CrownOutlined, TeamOutlined, GiftOutlined, SettingOutlined } from '@ant-design/icons';
 import { logout } from '../../redux/authSlice';
 
 const { Header } = Layout;
@@ -56,6 +56,16 @@ const AppHeader = () => {
       icon: <GiftOutlined />,
       label: '奖励金',
       onClick: () => navigate('/rewards')
+    },
+    // 管理后台入口（仅对管理员显示）
+    ...(user?.role === 'admin' ? [{
+      key: 'admin',
+      icon: <SettingOutlined />,
+      label: '管理后台',
+      onClick: () => window.open('/admin/login', '_blank')
+    }] : []),
+    {
+      type: 'divider'
     },
     {
       key: 'logout',
