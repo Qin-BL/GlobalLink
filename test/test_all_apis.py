@@ -182,17 +182,30 @@ class GlobalLinkAPITester:
         try:
             # 1. 健康检查
             response = self.session.get(f"{self.base_url}/api/v1/health")
-            self.print_result("健康检查", response.status_code == 200)
+            success = response.status_code == 200
+            self.print_result("健康检查", success, response if not success else None)
             
-            # 2. 数据库健康检查
-            response = self.session.get(f"{self.base_url}/api/v1/health/db")
-            self.print_result("数据库健康检查", response.status_code == 200)
+            if success:
+                health_info = response.json()
+                print(f"  状态: {health_info.get('status', 'unknown')}")
+                print(f"  版本: {health_info.get('version', 'unknown')}")
+            
+            # 2. 测试邮件服务健康检查
+            response = self.session.get(f"{self.base_url}/api/v1/health/email")
+            email_success = response.status_code == 200
+            self.print_result("邮件服务健康检查", email_success, response if not email_success else None)
+            
+            if email_success:
+                email_health = response.json()
+                print(f"  邮件服务状态: {email_health.get('status', 'unknown')}")
+                print(f"  配置服务器: {email_health.get('server', 'unknown')}")
+            
+            return success and email_success
             
         except Exception as e:
             self.print_result("健康检查接口测试", False)
             print(f"  异常: {e}")
-        
-        return True
+            return False
     
     def run_all_tests(self, email: str, password: str) -> bool:
         """运行所有测试"""
@@ -223,22 +236,29 @@ class GlobalLinkAPITester:
 
 def main():
     """主函数"""
-    # 测试环境配置
-    TEST_SERVER = "47.108.76.21"
-    BASE_URL = f"http://{TEST_SERVER}:8000"
+    # 服务器配置
+    if len(sys.argv) > 1:
+        base_url = sys.argv[1]
+    else:
+        base_url = "http://localhost:8000"
     
     # 测试账号（从参数或默认值获取）
-    if len(sys.argv) > 2:
-        email = sys.argv[1]
-        password = sys.argv[2]
+    if len(sys.argv) > 3:
+        email = sys.argv[2]
+        password = sys.argv[3]
     else:
         # 使用提供的默认账号
         email = "15010993510@163.com"
         password = "12345678"
     
     # 创建测试器并运行测试
-    tester = GlobalLinkAPITester(BASE_URL)
+    tester = GlobalLinkAPITester(base_url)
     tester.run_all_tests(email, password)
+    
+    print("\n" + "="*60)
+    print("提示：要测试错误通知功能，请运行:")
+    print("python test_error_notification.py [base_url] [email] [password]")
+    print("="*60)
 
 if __name__ == "__main__":
     main()

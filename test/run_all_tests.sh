@@ -111,7 +111,7 @@ run_api_tests() {
         return 1
     fi
     
-    python3 test_all_apis.py "$TEST_EMAIL" "$TEST_PASSWORD"
+    python3 test_all_apis.py "http://$TEST_SERVER:8000" "$TEST_EMAIL" "$TEST_PASSWORD"
     API_TEST_RESULT=$?
     
     if [ $API_TEST_RESULT -eq 0 ]; then
@@ -124,10 +124,85 @@ run_api_tests() {
     return $API_TEST_RESULT
 }
 
+# 运行单元测试
+run_unit_tests() {
+    print_header "运行单元测试"
+    
+    cd "$(dirname "$0")"
+    
+    if [ ! -f "test_units.py" ]; then
+        print_error "单元测试脚本不存在"
+        return 1
+    fi
+    
+    python3 -m test.test_units
+    UNIT_TEST_RESULT=$?
+    
+    if [ $UNIT_TEST_RESULT -eq 0 ]; then
+        print_success "单元测试通过"
+    else
+        print_error "单元测试失败"
+    fi
+    
+    echo
+    return $UNIT_TEST_RESULT
+}
+
+# 运行白盒测试
+run_whitebox_tests() {
+    print_header "运行白盒测试"
+    
+    cd "$(dirname "$0")"
+    
+    if [ ! -f "test_whitebox.py" ]; then
+        print_error "白盒测试脚本不存在"
+        return 1
+    fi
+    
+    python3 -m test.test_whitebox
+    WHITEBOX_TEST_RESULT=$?
+    
+    if [ $WHITEBOX_TEST_RESULT -eq 0 ]; then
+        print_success "白盒测试通过"
+    else
+        print_error "白盒测试失败"
+    fi
+    
+    echo
+    return $WHITEBOX_TEST_RESULT
+}
+
+# 运行集成测试
+run_integration_tests() {
+    print_header "运行集成测试"
+    
+    cd "$(dirname "$0")"
+    
+    if [ ! -f "test_integration.py" ]; then
+        print_error "集成测试脚本不存在"
+        return 1
+    fi
+    
+    python3 -m test.test_integration
+    INTEGRATION_TEST_RESULT=$?
+    
+    if [ $INTEGRATION_TEST_RESULT -eq 0 ]; then
+        print_success "集成测试通过"
+    else
+        print_error "集成测试失败"
+    fi
+    
+    echo
+    return $INTEGRATION_TEST_RESULT
+}
+
 # 生成测试报告
 generate_test_report() {
     local server_result=$1
     local api_result=$2
+    local unit_result=$3
+    local whitebox_result=$4
+    local integration_result=$5
     
     print_header "测试报告"
     
@@ -147,9 +222,28 @@ generate_test_report() {
         echo -e "API接口测试: ${RED}失败${NC}"
     fi
     
+    if [ $unit_result -eq 0 ]; then
+        echo -e "单元测试: ${GREEN}通过${NC}"
+    else
+        echo -e "单元测试: ${RED}失败${NC}"
+    fi
+    
+    if [ $whitebox_result -eq 0 ]; then
+        echo -e "白盒测试: ${GREEN}通过${NC}"
+    else
+        echo -e "白盒测试: ${RED}失败${NC}"
+    fi
+    
+    if [ $integration_result -eq 0 ]; then
+        echo -e "集成测试: ${GREEN}通过${NC}"
+    else
+        echo -e "集成测试: ${RED}失败${NC}"
+    fi
+    
     echo "-" | sed 's/./-/g'
     
-    if [ $server_result -eq 0 ] && [ $api_result -eq 0 ]; then
+    if [ $server_result -eq 0 ] && [ $api_result -eq 0 ] && [ $unit_result -eq 0 ] && 
+       [ $whitebox_result -eq 0 ] && [ $integration_result -eq 0 ]; then
         echo -e "${GREEN}所有测试通过！测试环境正常运行。${NC}"
         return 0
     else
@@ -182,9 +276,21 @@ main() {
     run_api_tests
     API_RESULT=$?
     
+    # 运行单元测试
+    run_unit_tests
+    UNIT_RESULT=$?
+    
+    # 运行白盒测试
+    run_whitebox_tests
+    WHITEBOX_RESULT=$?
+    
+    # 运行集成测试
+    run_integration_tests
+    INTEGRATION_RESULT=$?
+    
     # 生成报告
     echo
-    generate_test_report $SERVER_RESULT $API_RESULT
+    generate_test_report $SERVER_RESULT $API_RESULT $UNIT_RESULT $WHITEBOX_RESULT $INTEGRATION_RESULT
     FINAL_RESULT=$?
     
     echo
