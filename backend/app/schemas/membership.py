@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, ConfigDict
 
 
 # 会员基础模式
@@ -23,8 +24,7 @@ class MembershipInDB(MembershipBase):
     is_active: bool
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API响应中的会员
@@ -53,7 +53,7 @@ class PaymentCreate(PaymentBase):
 class PaymentInDB(PaymentBase):
     id: int
     user_id: int
-    transaction_id: [str] = None
+    transaction_id: Optional[str] = None
     status: str  # 'pending', 'completed', 'failed'
     created_at: datetime
     
@@ -86,16 +86,16 @@ class RewardBase(BaseModel):
 # 创建奖励金时的属性
 class RewardCreate(RewardBase):
     user_id: int
-    related_payment_id: [int] = None
-    related_user_id: [int] = None
+    related_payment_id: Optional[int] = None
+    related_user_id: Optional[int] = None
 
 
 # 数据库中的奖励金
 class RewardInDB(RewardBase):
     id: int
     user_id: int
-    related_payment_id: [int] = None
-    related_user_id: [int] = None
+    related_payment_id: Optional[int] = None
+    related_user_id: Optional[int] = None
     status: str  # 'pending', 'available', 'withdrawn'
     created_at: datetime
     

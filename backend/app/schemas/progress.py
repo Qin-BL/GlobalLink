@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, ConfigDict
 
 
 # 学习进度基础模式
@@ -17,8 +18,8 @@ class LearningProgressCreate(LearningProgressBase):
 
 # 更新学习进度时的属性
 class LearningProgressUpdate(BaseModel):
-    knowledge_point_id: [int] = None
-    last_study_mode: [str] = None
+    knowledge_point_id: Optional[int] = None
+    last_study_mode: Optional[str] = None
 
 
 # 数据库中的学习进度
@@ -27,8 +28,7 @@ class LearningProgressInDB(LearningProgressBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API响应中的学习进度
