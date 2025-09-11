@@ -23,7 +23,7 @@ except ImportError:
     try:
         from pydantic import validator
         PYDANTIC_V2 = False
-        # 为 Pydantic v1 创建兼容的 field_validator
+        # �?Pydantic v1 创建兼容�?field_validator
         def field_validator(field_name, mode="before"):
             def decorator(func):
                 if mode == "before":
@@ -32,7 +32,7 @@ except ImportError:
                     return validator(field_name, allow_reuse=True)(func)
             return decorator
     except ImportError:
-        # 如果都没有，创建一个简单的装饰器
+        # 如果都没有，创建一个简单的装饰�?
         PYDANTIC_V2 = False
         def field_validator(field_name, mode="before"):
             def decorator(func):
@@ -49,11 +49,11 @@ class Settings(BaseSettings):
     
     # 安全配置
     SECRET_KEY: str = secrets.token_urlsafe(32)
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 缩短访问令牌有效期提高安全性
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 缩短刷新令牌有效期
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 缩短访问令牌有效期提高安全�?
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 缩短刷新令牌有效�?
     JWT_ALGORITHM: str = "HS256"
     
-    # 允许的主机（安全配置）
+    # 允许的主机（安全配置�?
     ALLOWED_HOSTS: list[str] = ["localhost", "127.0.0.1", "*.globallink.com"]
     
     # CORS配置
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    # 数据库配置
+    # 数据库配�?
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "globallink_user"
     POSTGRES_PASSWORD: str = "globallink_password"
@@ -111,9 +111,9 @@ class Settings(BaseSettings):
     MAIL_FROM: EmailStr = "your_email@example.com"
     MAIL_FROM_NAME: str = "GlobalLink"
     
-    # 验证码配置
+    # 验证码配�?
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 10  # 验证码有效期（分钟）
-    VERIFICATION_CODE_LENGTH: int = 6  # 验证码长度
+    VERIFICATION_CODE_LENGTH: int = 6  # 验证码长�?
 
     # 错误通知配置
     ERROR_NOTIFICATION_RECIPIENTS: list[EmailStr] = ["15010993510@163.com"]  # 错误邮件通知接收邮箱列表
@@ -134,7 +134,7 @@ class Settings(BaseSettings):
     def assemble_db_connection(cls, v: str | None, values: dict[str, Any] = None) -> Any:
         if isinstance(v, str):
             return v
-        # 如果没有提供URI，使用PostgreSQL数据库
+        # 如果没有提供URI，使用PostgreSQL数据�?
         if values is None:
             values = {}
         return f"postgresql://{values.get('POSTGRES_USER', 'postgres')}:{values.get('POSTGRES_PASSWORD', 'password')}@{values.get('POSTGRES_SERVER', 'localhost')}/{values.get('POSTGRES_DB', 'globallink')}"
@@ -151,19 +151,19 @@ class Settings(BaseSettings):
     MONTHLY_MEMBERSHIP_PRICE: float = 29.9
     YEARLY_MEMBERSHIP_PRICE: float = 299.0
     
-    # 高可用配置
-    RATE_LIMIT_REQUESTS: int = 100  # 每分钟请求限制
-    RATE_LIMIT_WINDOW: int = 60  # 限流窗口（秒）
+    # 高可用配�?
+    RATE_LIMIT_REQUESTS: int = 100  # 每分钟请求限�?
+    RATE_LIMIT_WINDOW: int = 60  # 限流窗口（秒�?
     JWT_ALGORITHM: str = "HS256"  # JWT算法
-    TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 7  # Token缓存过期时间（7天）
-    REFRESH_TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 30  # 刷新令牌缓存过期时间（30天）
+    TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 7  # Token缓存过期时间�?天）
+    REFRESH_TOKEN_CACHE_EXPIRE_SECONDS: int = 60 * 60 * 24 * 30  # 刷新令牌缓存过期时间�?0天）
     
     # 前端密码加密验证配置
-    EXPECTED_DOMAIN: str = "http://localhost:3080"  # 预期域名，用于前端密码加密验证
+    EXPECTED_DOMAIN: str = "http://localhost:3080"  # 预期域名，用于前端密码加密验�?
     
     # 管理后台配置
     ADMIN_USERNAME: str = "admin"  # 管理员用户名
-    ADMIN_PASSWORD: str = "admin"  # 管理员密码
+    ADMIN_PASSWORD: str = "admin"  # 管理员密�?
 
     model_config = {
         "case_sensitive": True,

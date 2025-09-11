@@ -1,153 +1,66 @@
 """
-前端加密密码解密工具
-处理前端使用 Web Crypto API 加密的密码
+密码解密工具
 """
+import base64
 import json
-import hashlib
-from datetime import datetime, timedelta
 import logging
-# 配置日志
+from typing import Optional
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+
+from ..core.config import settings
+
 logger = logging.getLogger(__name__)
 
-# 时间戳有效期（5分钟）
-TIMESTAMP_VALIDITY = timedelta(minutes=5)
-
-
-def decrypt_frontend_password(encrypted_data: str, expected_domain: [str] = None) -> [str]:
-    """
-    解密前端加密的密码
+class PasswordDecryptor:
+    """密码解密器"""
     
-    Args:
-        encrypted_data: 前端加密的JSON字符串
-        expected_domain: 预期的域名（用于验证）
-        
-    Returns:
-        str: 原始密码哈希，如果解密失败返回None
-    """
-    try:
-        # 解析前端加密数据
-        data = json.loads(encrypted_data)
-        
-        # 检查必需字段
-        if not all(key in data for key in ['hash', 'timestamp', 'salt']):
-            logger.warning("前端加密数据缺少必需字段")
-            return None
-        
-        # 验证时间戳有效性
-        timestamp = data['timestamp']
-        if not _validate_timestamp(timestamp):
-            logger.warning(f"时间戳已过期或无效: {timestamp}")
-            return None
-        
-        # 如果是降级模式（加密失败），直接返回原始密码
-        if data.get('error') == 'encryption_failed':
-            logger.info("前端加密失败，使用降级模式")
-            return data['hash']
-        
-        # 验证域名（如果提供）
-        if expected_domain:
-            if 'domain' not in data or data['domain'] != expected_domain:
-                logger.warning(f"域名不匹配: 预期 {expected_domain}, 实际 {data.get('domain')}")
-                return None
-        
-        # 返回原始哈希值
-        return data['hash']
-    except json.JSONDecodeError:
-        logger.warning("前端加密数据不是有效的JSON")
-        # 可能是原始密码（降级模式）
-        return encrypted_data
-    except Exception as e:
-        logger.error(f"解密前端密码失败: {e}")
-        return None
-
-
-
-def _validate_timestamp(timestamp: int) -> bool:
-    """
-    验证时间戳是否在有效期内
+    def __init__(self):
+        # 从配置获取解密密钥
+        self.encryption_key = getattr(settings, 'ENCRYPTION_KEY', None)
+        if self.encryption_key:
+            self.encryption_key = base64.b64decode(self.encryption_key)
     
-    Args:
-        timestamp: Unix时间戳（毫秒）
-        
-    Returns:
-        bool: 是否有效
-    """
-    try:
-        # 转换为datetime对象
-        timestamp_dt = datetime.fromtimestamp(timestamp / 1000)
-        current_dt = datetime.now()
-        
-        # 检查时间戳是否在未来（防止时间戳伪造）
-        if timestamp_dt > current_dt:
-            logger.warning(f"时间戳在未来: {timestamp}")
-            return False
-        
-        # 检查是否在有效期内
-        time_diff = current_dt - timestamp_dt
-        if time_diff > TIMESTAMP_VALIDITY:
-            logger.warning(f"时间戳已过期: {timestamp}, 差异: {time_diff}")
-            return False
-        
-        return True
-    except Exception as e:
-        logger.error(f"验证时间戳失败: {e}")
-        return False
+    def decrypt_password(self, encrypted_password: str) -> Optional[str]:
+        """
+        解密前端加密的密码
+        """
+        try:
+            if not self.encryption_key:
+                logger.warning("未配置加密密钥，使用明文密码")
+                return encrypted_password
+            
+            # 解析加密数据
+            encrypted_data = json.loads(base64.b64decode(encrypted_password))
+            iv = base64.b64decode(encrypted_data['iv'])
+            ciphertext = base64.b64decode(encrypted_data['data'])
+            
+            # 创建解密器
+            cipher = Cipher(
+                algorithms.AES(self.encryption_key),
+                modes.CBC(iv),
+                backend=default_backend()
+            )
+            decryptor = cipher.decryptor()
+            
+            # 解密
+            padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            # 去除PKCS7填充
+            padding_length = padded_plaintext[-1]
+            plaintext = padded_plaintext[:-padding_length]
+            
+            return plaintext.decode('utf-8')
+            
+        except Exception as e:
+            logger.warning(f"密码解密失败，使用降级模式: {e}")
+            # 降级处理：如果解密失败，假设是明文密码
+            return encrypted_password
 
+# 全局解密器实例
+password_decryptor = PasswordDecryptor()
 
-
-def is_frontend_encrypted(password_data: str) -> bool:
-    """
-    检查密码数据是否是前端加密的格式
-    
-    Args:
-        password_data: 密码数据
-        
-    Returns:
-        bool: 是否是前端加密格式
-    """
-    try:
-        data = json.loads(password_data)
-        return all(key in data for key in ['hash', 'timestamp', 'salt'])
-    except (json.JSONDecodeError, TypeError):
-        return False
-
-
-
-def extract_password_hash(encrypted_data: str) -> [[str, int]]:
-    """
-    从加密数据中提取密码哈希和时间戳
-    
-    Args:
-        encrypted_data: 加密数据
-        
-    Returns:
-        [[str, int]]: (密码哈希, 时间戳) 或 None
-    """
-    try:
-        data = json.loads(encrypted_data)
-        if all(key in data for key in ['hash', 'timestamp']):
-            return data['hash'], data['timestamp']
-        return None
-    except (json.JSONDecodeError, TypeError):
-        return None
-
-
-
-def create_backend_hash(password: str, timestamp: int, salt: str, domain: str) -> str:
-    """
-    在后端创建密码哈希（用于验证前端哈希）
-    
-    Args:
-        password: 原始密码
-        timestamp: 时间戳
-        salt: 盐值
-        domain: 域名
-        
-    Returns:
-        str: 哈希值
-    """
-    # 组合字符串（与前端相同的逻辑）
-    combined_string = f"{password}:{timestamp}:{salt}:{domain}"
-    
-    # 使用SHA-256哈希
-    return hashlib.sha256(combined_string.encode()).hexdigest()
+def decrypt_user_password(encrypted_password: str) -> str:
+    """解密用户密码的便捷函数"""
+    decrypted = password_decryptor.decrypt_password(encrypted_password)
+    return decrypted or encrypted_password

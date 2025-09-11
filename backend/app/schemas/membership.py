@@ -1,3 +1,6 @@
+"""
+会员相关的Pydantic模式
+"""
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
@@ -13,6 +16,14 @@ class MembershipCreate(MembershipBase):
     user_id: int
     start_date: datetime
     end_date: datetime
+
+
+# 更新会员时的属性
+class MembershipUpdate(BaseModel):
+    membership_type: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    is_active: Optional[bool] = None
 
 
 # 数据库中的会员
@@ -34,8 +45,12 @@ class Membership(MembershipBase):
     end_date: datetime
     is_active: bool
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+# 会员响应模式（别名）
+class MembershipResponse(Membership):
+    pass
 
 
 # 支付基础模式
@@ -49,6 +64,12 @@ class PaymentCreate(PaymentBase):
     user_id: int
 
 
+# 更新支付时的属性
+class PaymentUpdate(BaseModel):
+    status: Optional[str] = None
+    transaction_id: Optional[str] = None
+
+
 # 数据库中的支付
 class PaymentInDB(PaymentBase):
     id: int
@@ -57,8 +78,7 @@ class PaymentInDB(PaymentBase):
     status: str  # 'pending', 'completed', 'failed'
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API响应中的支付
@@ -67,8 +87,7 @@ class Payment(PaymentBase):
     status: str
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # 支付二维码响应
@@ -90,6 +109,11 @@ class RewardCreate(RewardBase):
     related_user_id: Optional[int] = None
 
 
+# 更新奖励金时的属性
+class RewardUpdate(BaseModel):
+    status: Optional[str] = None
+
+
 # 数据库中的奖励金
 class RewardInDB(RewardBase):
     id: int
@@ -99,8 +123,7 @@ class RewardInDB(RewardBase):
     status: str  # 'pending', 'available', 'withdrawn'
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API响应中的奖励金
@@ -109,8 +132,7 @@ class Reward(RewardBase):
     status: str
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # 提现基础模式
@@ -125,6 +147,11 @@ class WithdrawalCreate(WithdrawalBase):
     user_id: int
 
 
+# 更新提现时的属性
+class WithdrawalUpdate(BaseModel):
+    status: Optional[str] = None
+
+
 # 数据库中的提现
 class WithdrawalInDB(WithdrawalBase):
     id: int
@@ -132,8 +159,7 @@ class WithdrawalInDB(WithdrawalBase):
     status: str  # 'pending', 'completed', 'failed'
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API响应中的提现
@@ -142,5 +168,4 @@ class Withdrawal(WithdrawalBase):
     status: str
     created_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

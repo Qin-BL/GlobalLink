@@ -1,38 +1,43 @@
-from sqlalchemy import Boolean, Column, String, DateTime, Float, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+"""
+用户模型
+"""
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy.sql import func
+from .base import Base
 
-from .base import BaseModel
 
-
-class User(BaseModel):
+class User(Base):
     __tablename__ = "users"
 
+    id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=True)
     phone = Column(String(20), unique=True, index=True, nullable=True)
     hashed_password = Column(String(255), nullable=False)
+    
+    # 用户状态
     is_active = Column(Boolean, default=True, nullable=False)
-    is_admin = Column(Boolean, default=False, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)
-    last_login = Column(DateTime(timezone=True), nullable=True)
+    is_admin = Column(Boolean, default=False, nullable=False)
     
-    # 推广码
+    # 用户信息
+    full_name = Column(String(100), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+    bio = Column(Text, nullable=True)
+    
+    # 推广相关
     referral_code = Column(String(20), unique=True, index=True, nullable=True)
+    referred_by = Column(Integer, nullable=True)
     
-    # 推广人ID
-    referrer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # 时间戳
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     
-    # 奖励金余额
-    reward_balance = Column(Float, default=0.0, nullable=False)
-    
-    # 关系
-    referrer = relationship("User", remote_side="User.id", back_populates="referred_users")
-    referred_users = relationship("User", back_populates="referrer")
+    def __repr__(self):
+        return f"<User(id={self.id}, username='{self.username}')>"
     
     @property
-    def is_staff(self) -> bool:
+    def is_staff(self):
         """是否为员工（管理员或超级用户）"""
         return self.is_admin or self.is_superuser
-    
-    def __repr__(self) -> str:
-        return f"<User(id={self.id}, username='{self.username}')>"

@@ -1,130 +1,98 @@
-from typing import Any
-
-from fastapi import APIRouter, Depends, HTTPException, status
+"""
+课程管理端点
+"""
+from typing import Any, List
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app import models, schemas
-from app.api import deps
+from ...api.deps import get_current_active_user, get_db
+from ...models import User, Course
+from ...schemas import CourseCreate, CourseUpdate, CourseResponse
 
 router = APIRouter()
 
-
-@router.get("/", response_model=[schemas.Course])
-def read_courses(
-    db: Session = Depends(deps.get_db),
-    skip: int = 0,
-    limit: int = 100,
-    current_user: models.User = Depends(deps.get_current_active_user),
+@router.get("/", response_model=List[CourseResponse])
+def get_courses(
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    """获取所有课程"""
-    courses = db.query(models.Course).offset(skip).limit(limit).all()
+    """
+    获取课程列表
+    """
+    courses = db.query(Course).offset(skip).limit(limit).all()
     return courses
 
-
-@router.get("/{course_id}", response_model=schemas.CourseWithKnowledgePoints)
-def read_course(
+@router.post("/", response_model=CourseResponse)
+def create_course(
     *,
-    db: Session = Depends(deps.get_db),
-    course_id: int,
-    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db),
+    course_in: CourseCreate,
+    current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    """获取特定课程及其知识点"""
-    course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    """
+    创建新课程
+    """
+    course = Course(**course_in.dict())
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+    return course
+
+@router.get("/{course_id}", response_model=CourseResponse)
+def get_course(
+    *,
+    db: Session = Depends(get_db),
+    course_id: int,
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    获取特定课程
+    """
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    return course
+
+@router.put("/{course_id}", response_model=CourseResponse)
+def update_course(
+    *,
+    db: Session = Depends(get_db),
+    course_id: int,
+    course_in: CourseUpdate,
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    更新课程
+    """
+    course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="课程不存在")
     
-    # 检查用户是否有权限访问该课程
-    if not course.is_free:
-        # 检查用户是否是会员
-        membership = deps.check_user_membership(db, current_user.id)
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="需要会员才能访问此课程",
-            )
+    update_data = course_in.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(course, field, value)
     
-    # 获取课程的知识点
-    knowledge_points = (
-        db.query(models.KnowledgePoint)
-        .filter(models.KnowledgePoint.course_id == course_id)
-        .order_by(models.KnowledgePoint.point_order)
-        .all()
-    )
-    
-    # 构建响应
-    course_data = schemas.CourseWithKnowledgePoints.from_orm(course)
-    course_data.knowledge_points = knowledge_points
-    
-    return course_data
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+    return course
 
-
-@router.get("/{course_id}/knowledge-points", response_model=[schemas.KnowledgePoint])
-def read_course_knowledge_points(
+@router.delete("/{course_id}")
+def delete_course(
     *,
-    db: Session = Depends(deps.get_db),
+    db: Session = Depends(get_db),
     course_id: int,
-    current_user: models.User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    """获取特定课程的所有知识点"""
-    course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    """
+    删除课程
+    """
+    course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="课程不存在")
     
-    # 检查用户是否有权限访问该课程
-    if not course.is_free:
-        # 检查用户是否是会员
-        membership = deps.check_user_membership(db, current_user.id)
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="需要会员才能访问此课程",
-            )
-    
-    # 获取课程的知识点
-    knowledge_points = (
-        db.query(models.KnowledgePoint)
-        .filter(models.KnowledgePoint.course_id == course_id)
-        .order_by(models.KnowledgePoint.point_order)
-        .all()
-    )
-    
-    return knowledge_points
-
-
-@router.get("/{course_id}/knowledge-points/{point_id}", response_model=schemas.KnowledgePoint)
-def read_knowledge_point(
-    *,
-    db: Session = Depends(deps.get_db),
-    course_id: int,
-    point_id: int,
-    current_user: models.User = Depends(deps.get_current_active_user),
-) -> Any:
-    """获取特定知识点"""
-    course = db.query(models.Course).filter(models.Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="课程不存在")
-    
-    # 检查用户是否有权限访问该课程
-    if not course.is_free:
-        # 检查用户是否是会员
-        membership = deps.check_user_membership(db, current_user.id)
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="需要会员才能访问此课程",
-            )
-    
-    # 获取知识点
-    knowledge_point = (
-        db.query(models.KnowledgePoint)
-        .filter(
-            models.KnowledgePoint.id == point_id,
-            models.KnowledgePoint.course_id == course_id
-        )
-        .first()
-    )
-    
-    if not knowledge_point:
-        raise HTTPException(status_code=404, detail="知识点不存在")
-    
-    return knowledge_point
+    db.delete(course)
+    db.commit()
+    return {"message": "课程删除成功"}

@@ -1,23 +1,30 @@
+"""
+API路由集合
+"""
 from fastapi import APIRouter
 
-from .endpoints import auth, users, courses, progress, membership, admin
+from app.api.endpoints import auth, users, admin
+from app.core.config import settings
 
 api_router = APIRouter()
 
 # 认证相关路由
-api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(
+    auth.router, 
+    prefix="/auth", 
+    tags=["认证"]
+)
 
-# 用户相关路由
-api_router.include_router(users.router, prefix="/users", tags=["users"])
+# 用户管理路由
+api_router.include_router(
+    users.router, 
+    prefix="/users", 
+    tags=["用户管理"]
+)
 
-# 课程相关路由
-api_router.include_router(courses.router, prefix="/courses", tags=["courses"])
-
-# 学习进度相关路由
-api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
-
-# 会员相关路由
-api_router.include_router(membership.router, prefix="/membership", tags=["membership"])
-
-# 管理后台相关路由
-api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+# 管理员路由
+api_router.include_router(
+    admin.router, 
+    prefix="/admin", 
+    tags=["管理员"]
+)

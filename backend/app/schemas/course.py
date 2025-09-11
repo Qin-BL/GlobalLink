@@ -1,3 +1,6 @@
+"""
+课程相关的Pydantic模式
+"""
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
@@ -30,8 +33,7 @@ class KnowledgePointInDB(KnowledgePointBase):
 class KnowledgePoint(KnowledgePointBase):
     id: int
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # 课程基础模式
@@ -60,16 +62,19 @@ class CourseInDB(CourseBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API响应中的课程
 class Course(CourseBase):
     id: int
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+# 课程响应模式（别名）
+class CourseResponse(Course):
+    pass
 
 
 # 带知识点的课程

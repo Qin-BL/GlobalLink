@@ -1,57 +1,57 @@
-from fastapi import Request, HTTPException, status
-from fastapi.responses import JSONResponse
+"""
+请求频率限制中间件
+"""
 import time
-import logging
 from typing import Callable
+from fastapi import Request, Response, HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.core.config import settings
-from app.utils.redis_cache import set_rate_limit
+from ..utils.redis_cache import get_redis
 
-# 配置日志
-logger = logging.getLogger(__name__)
-
-
-class RateLimiter:
+class RateLimiterMiddleware(BaseHTTPMiddleware):
     """
     请求频率限制中间件
+    基于IP地址限制请求频率
     """
     
-    async def __call__(self, request: Request, call_next: Callable):
+    def __init__(self, app, requests_per_minute: int = 60):
+        super().__init__(app)
+        self.requests_per_minute = requests_per_minute
+        self.window_size = 60  # 1分钟窗口
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 获取客户端IP
         client_ip = request.client.host if request.client else "unknown"
         
-        # 跳过OPTIONS请求（预检请求）
-        if request.method == "OPTIONS":
-            return await call_next(request)
-        
-        # 跳过静态文件
-        if request.url.path.startswith("/static"):
-            return await call_next(request)
-        
-        # 构建限制键（IP + 路径）
-        rate_key = f"{client_ip}:{request.url.path}"
-        
-        # 检查请求频率
-        current_requests = await set_rate_limit(rate_key)
-        
-        # 如果超过限制，返回429错误
-        if current_requests > settings.RATE_LIMIT_REQUESTS:
-            logger.warning(f"请求频率超限: {rate_key}, 当前: {current_requests}")
-            return JSONResponse(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={
-                    "detail": "请求过于频繁，请稍后再试"
-                }
+        # 检查频率限制
+        if not await self._check_rate_limit(client_ip):
+            raise HTTPException(
+                status_code=429,
+                detail="请求过于频繁，请稍后再试"
             )
         
-        # 记录请求开始时间
-        start_time = time.time()
+        return await call_next(request)
+    
+    async def _check_rate_limit(self, client_ip: str) -> bool:
+        """检查请求频率限制"""
+        redis_client = await get_redis()
+        current_time = int(time.time())
+        window_start = current_time - self.window_size
         
-        # 处理请求
-        response = await call_next(request)
+        # 使用滑动窗口算法
+        key = f"rate_limit:{client_ip}"
         
-        # 计算请求处理时间
-        process_time = time.time() - start_time
-        response.headers["X-Process-Time"] = str(process_time)
+        # 清理过期的请求记录
+        await redis_client.zremrangebyscore(key, 0, window_start)
         
-        return response
+        # 获取当前窗口内的请求数
+        current_requests = await redis_client.zcard(key)
+        
+        if current_requests >= self.requests_per_minute:
+            return False
+        
+        # 记录当前请求
+        await redis_client.zadd(key, {str(current_time): current_time})
+        await redis_client.expire(key, self.window_size)
+        
+        return True

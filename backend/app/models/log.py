@@ -9,7 +9,7 @@ class SystemLog(BaseModel):
     """系统日志模型"""
     __tablename__ = "system_logs"
 
-    # 日志类型：api, activity, error, security等
+    # 日志类型：api, activity, error, security�?
     log_type = Column(String(50), nullable=False, index=True)
     
     # 日志级别：DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -18,7 +18,7 @@ class SystemLog(BaseModel):
     # 日志消息
     message = Column(Text, nullable=False)
     
-    # 详细数据（JSON格式）
+    # 详细数据（JSON格式�?
     details = Column(JSON, nullable=True)
     
     # 用户ID（如果相关）
@@ -30,13 +30,13 @@ class SystemLog(BaseModel):
     # 用户代理
     user_agent = Column(Text, nullable=True)
     
-    # 请求路径（API日志）
+    # 请求路径（API日志�?
     request_path = Column(String(500), nullable=True, index=True)
     
-    # HTTP方法（API日志）
+    # HTTP方法（API日志�?
     http_method = Column(String(10), nullable=True)
     
-    # 响应状态码（API日志）
+    # 响应状态码（API日志�?
     status_code = Column(Integer, nullable=True, index=True)
     
     # 响应时间（毫秒）
@@ -55,13 +55,13 @@ class UserActivity(BaseModel):
 
     user_id = Column(Integer, nullable=False, index=True)
     
-    # 活动类型：login, logout, course_view, course_purchase等
+    # 活动类型：login, logout, course_view, course_purchase�?
     activity_type = Column(String(50), nullable=False, index=True)
     
     # 活动描述
     description = Column(Text, nullable=False)
     
-    # 活动详情（JSON格式）
+    # 活动详情（JSON格式�?
     details = Column(JSON, nullable=True)
     
     # IP地址
@@ -87,7 +87,7 @@ class ApiLog(BaseModel):
     # HTTP方法
     method = Column(String(10), nullable=False, index=True)
     
-    # 请求参数（JSON格式）
+    # 请求参数（JSON格式�?
     request_data = Column(JSON, nullable=True)
     
     # 响应状态码
@@ -96,7 +96,7 @@ class ApiLog(BaseModel):
     # 响应时间（毫秒）
     response_time = Column(Integer, nullable=True)
     
-    # 用户ID（如果已认证）
+    # 用户ID（如果已认证�?
     user_id = Column(Integer, nullable=True, index=True)
     
     # IP地址
@@ -105,7 +105,7 @@ class ApiLog(BaseModel):
     # 用户代理
     user_agent = Column(Text, nullable=True)
     
-    # 错误信息（如果有）
+    # 错误信息（如果有�?
     error_message = Column(Text, nullable=True)
     
     def __repr__(self) -> str:
