@@ -258,7 +258,7 @@ setup_redis() {
     log_success "Redis配置完成"
 }
 
-# MongoDB已移除 - 所有数据现在存储在PostgreSQL中
+
 
 # 设置项目目录
 setup_project_directory() {
@@ -487,7 +487,7 @@ check_services() {
     echo "Redis状态:"
     sudo systemctl status redis-server --no-pager -l
     
-    echo "MongoDB已移除 - 所有数据现在存储在PostgreSQL中"
+
     
     echo "后端服务状态:"
     sudo systemctl status globallink-backend.service --no-pager -l

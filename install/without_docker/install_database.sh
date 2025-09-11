@@ -86,8 +86,8 @@ EOF
 
 echo "环境变量文件已创建: .env"
 
-# MongoDB已移除 - 所有数据现在存储在PostgreSQL中
-echo "MongoDB已移除，所有数据现在存储在PostgreSQL中"
+
+
 
 # 安装Redis
 echo "安装Redis..."
@@ -113,7 +113,7 @@ echo "  Redis: localhost:6379"
 echo ""
 echo "重要提示:"
 echo "1. 数据库密码已保存在 .env 文件中"
-echo "2. 所有日志数据现在存储在PostgreSQL中，不再使用MongoDB"
+echo "2. 所有日志数据现在存储在PostgreSQL中"
 echo "3. 请妥善保管数据库密码"
 echo ""
 echo "下一步: 运行后端安装脚本"

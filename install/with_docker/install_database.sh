@@ -21,12 +21,12 @@ sudo -u postgres psql -c "CREATE DATABASE globallink;"
 sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD 'password';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
 
-# MongoDB已移除 - 使用PostgreSQL存储所有数据
-echo "MongoDB已移除，所有数据现在存储在PostgreSQL中"
 
-# 启动MongoDB服务
-echo "启动MongoDB服务..."
-# MongoDB服务已移除
+
+
+
+
+
 
 # 安装Redis
 echo "安装Redis..."
@@ -79,7 +79,7 @@ POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=password
 POSTGRES_DB=globallink
-# MongoDB已移除，使用PostgreSQL存储所有数据
+
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
@@ -87,4 +87,4 @@ REDIS_PASSWORD=
 EOF
 
 echo "===== GlobalLink数据库安装完成 ====="
-echo "PostgreSQL、MongoDB和Redis已安装并配置完成"
+echo "PostgreSQL和Redis已安装并配置完成"

@@ -125,8 +125,8 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# MongoDB配置
-# MongoDB已移除，使用PostgreSQL存储所有日志数据
+
+
 
 # JWT配置
 SECRET_KEY=$(openssl rand -hex 32)
@@ -364,7 +364,7 @@ show_deployment_info() {
     echo "  密码: globallink_password"
     echo ""
     echo "Redis连接: localhost:6379"
-    echo "MongoDB连接: localhost:27017"
+
 }
 
 # 清理函数

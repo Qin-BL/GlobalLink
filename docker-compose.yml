@@ -30,19 +30,7 @@ services:
       - globallink_network
     restart: unless-stopped
 
-  # MongoDB日志数据库
-  mongodb:
-    image: mongo:6
-    container_name: globallink_mongodb
-    environment:
-      MONGO_INITDB_DATABASE: globallink_logs
-    volumes:
-      - mongodb_data:/data/db
-    ports:
-      - "27017:27017"
-    networks:
-      - globallink_network
-    restart: unless-stopped
+
 
   # 后端服务
   backend:
@@ -58,7 +46,7 @@ services:
       - POSTGRES_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MONGODB_URL=mongodb://mongodb:27017/globallink_logs
+
     ports:
       - "8000:8000"
     volumes:
@@ -67,7 +55,6 @@ services:
     depends_on:
       - postgres
       - redis
-      - mongodb
     networks:
       - globallink_network
     restart: unless-stopped
@@ -113,7 +100,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  mongodb_data:
   backend_static:
 
 networks:

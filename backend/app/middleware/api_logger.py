@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class APILoggerMiddleware(BaseHTTPMiddleware):
     """
     API请求日志中间件
-    记录所有API请求到MongoDB，用于监控和分析
+    记录所有API请求到PostgreSQL，用于监控和分析
     """
     
     def __init__(self, app, exclude_paths=None):

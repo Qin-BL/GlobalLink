@@ -25,7 +25,7 @@
 - Node.js 16+
 - PostgreSQL 12+
 - Redis 6+
-- MongoDB 4.4+
+
 - Nginx
 
 ## 🐳 Docker部署
@@ -90,10 +90,10 @@ sudo ./install/one_click_deploy.sh
 ```bash
 # Ubuntu/Debian
 sudo apt update
-sudo apt install python3 python3-pip python3-venv nodejs npm nginx postgresql redis-server mongodb
+sudo apt install python3 python3-pip python3-venv nodejs npm nginx postgresql redis-server
 
 # CentOS/RHEL
-sudo yum install python3 python3-pip nodejs npm nginx postgresql redis mongodb
+sudo yum install python3 python3-pip nodejs npm nginx postgresql redis
 ```
 
 #### 2. 数据库设置
