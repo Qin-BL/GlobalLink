@@ -92,9 +92,9 @@ WECHAT_API_KEY: str = "your_wechat_api_key"
 
 部署成功后访问：
 
-- **主应用**: http://your-server-ip
-- **API文档**: http://your-server-ip/api/docs
-- **管理后台**: http://your-server-ip/admin/login
+- **主应用**: http://your-server-ip:3080
+- **API文档**: http://your-server-ip:8000/docs
+- **管理后台**: http://your-server-ip:3080/admin/login
   - 默认账号: admin / admin123
 
 ## 📁 项目结构

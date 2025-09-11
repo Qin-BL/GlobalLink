@@ -56,8 +56,7 @@ POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=password
 POSTGRES_DB=globallink
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DB=globallink
+# MongoDB已移除，使用PostgreSQL存储所有数据
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
@@ -88,7 +87,7 @@ chmod +x ../start_backend.sh
  cat > ../backend.service << EOF
 [Unit]
 Description=GlobalLink Backend Service
-After=network.target postgresql.service mongodb.service redis-server.service
+After=network.target postgresql.service redis-server.service
 
 [Service]
 Type=simple

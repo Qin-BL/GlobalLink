@@ -2,6 +2,7 @@
 
 # GlobalLink 一键部署脚本
 # 支持PostgreSQL数据库的完整部署
+# 支持幂等性安装 - 已安装的组件不会重复安装
 
 set -e
 
@@ -11,6 +12,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# 状态文件路径
+STATUS_FILE="$HOME/.globallink_install_status"
 
 # 日志函数
 log_info() {
@@ -27,6 +31,86 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# 组件状态管理函数
+mark_component_installed() {
+    local component=$1
+    local version=${2:-"1.0.0"}
+    echo "${component}:${version}:$(date '+%Y-%m-%d %H:%M:%S')" >> "$STATUS_FILE"
+    log_success "标记组件 $component 为已安装"
+}
+
+is_component_installed() {
+    local component=$1
+    if [[ -f "$STATUS_FILE" ]]; then
+        grep -q "^${component}:" "$STATUS_FILE"
+        return $?
+    fi
+    return 1
+}
+
+get_component_version() {
+    local component=$1
+    if [[ -f "$STATUS_FILE" ]]; then
+        grep "^${component}:" "$STATUS_FILE" | tail -1 | cut -d':' -f2
+    fi
+}
+
+# 检查系统组件是否已安装
+check_system_component() {
+    local component=$1
+    case $component in
+        "docker")
+            command -v docker >/dev/null 2>&1 && docker --version >/dev/null 2>&1
+            ;;
+        "docker-compose")
+            command -v docker-compose >/dev/null 2>&1 && docker-compose --version >/dev/null 2>&1
+            ;;
+        "node")
+            command -v node >/dev/null 2>&1 && node --version >/dev/null 2>&1
+            ;;
+        "npm")
+            command -v npm >/dev/null 2>&1 && npm --version >/dev/null 2>&1
+            ;;
+        "python3")
+            command -v python3 >/dev/null 2>&1 && python3 --version >/dev/null 2>&1
+            ;;
+        "pip3")
+            command -v pip3 >/dev/null 2>&1 && pip3 --version >/dev/null 2>&1
+            ;;
+        "nginx")
+            command -v nginx >/dev/null 2>&1 && nginx -v >/dev/null 2>&1
+            ;;
+        "postgresql")
+            command -v psql >/dev/null 2>&1 && systemctl is-active --quiet postgresql 2>/dev/null
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# 检查服务是否运行
+check_service_running() {
+    local service=$1
+    case $service in
+        "globallink-backend")
+            curl -s http://localhost:8000/health >/dev/null 2>&1
+            ;;
+        "globallink-frontend")
+            curl -s http://localhost:3000 >/dev/null 2>&1
+            ;;
+        "nginx")
+            systemctl is-active --quiet nginx 2>/dev/null || service nginx status >/dev/null 2>&1
+            ;;
+        "postgresql")
+            systemctl is-active --quiet postgresql 2>/dev/null || service postgresql status >/dev/null 2>&1
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 # 检查是否为root用户
@@ -58,6 +142,32 @@ check_os() {
 
 # 安装系统依赖
 install_system_dependencies() {
+    if is_component_installed "system_dependencies"; then
+        log_info "系统依赖已安装，检查并更新配置..."
+        # 检查关键组件是否可用
+        local missing_components=()
+        
+        if ! check_system_component "python3"; then
+            missing_components+=("python3")
+        fi
+        if ! check_system_component "node"; then
+            missing_components+=("nodejs")
+        fi
+        if ! check_system_component "postgresql"; then
+            missing_components+=("postgresql")
+        fi
+        if ! check_system_component "nginx"; then
+            missing_components+=("nginx")
+        fi
+        
+        if [ ${#missing_components[@]} -eq 0 ]; then
+            log_success "所有系统依赖都已正确安装"
+            return
+        else
+            log_warning "发现缺失组件: ${missing_components[*]}，将重新安装"
+        fi
+    fi
+    
     log_info "安装系统依赖..."
     
     if [ "$OS" = "debian" ]; then
@@ -71,7 +181,7 @@ install_system_dependencies() {
             postgresql \
             postgresql-contrib \
             redis-server \
-            mongodb \
+
             nginx \
             git \
             curl \
@@ -88,7 +198,7 @@ install_system_dependencies() {
             postgresql-server \
             postgresql-contrib \
             redis \
-            mongodb-org \
+
             nginx \
             git \
             curl \
@@ -96,23 +206,45 @@ install_system_dependencies() {
             unzip
     fi
     
+    mark_component_installed "system_dependencies"
     log_success "系统依赖安装完成"
 }
 
 # 配置PostgreSQL
 setup_postgresql() {
+    if is_component_installed "postgresql_setup"; then
+        log_info "PostgreSQL已配置，检查服务状态..."
+        if check_service_running "postgresql"; then
+            # 检查数据库是否存在
+            if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw globallink; then
+                log_success "PostgreSQL数据库已存在且服务正常"
+                return
+            else
+                log_warning "PostgreSQL服务正常但数据库不存在，将重新创建数据库"
+            fi
+        else
+            log_warning "PostgreSQL服务未运行，将重新启动"
+        fi
+    fi
+    
     log_info "配置PostgreSQL数据库..."
     
     # 启动PostgreSQL服务
     sudo systemctl start postgresql
     sudo systemctl enable postgresql
     
-    # 创建数据库和用户
-    sudo -u postgres psql -c "CREATE DATABASE globallink;"
-    sudo -u postgres psql -c "CREATE USER globallink_user WITH PASSWORD 'globallink_password';"
-    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink_user;"
-    sudo -u postgres psql -c "ALTER USER globallink_user CREATEDB;"
+    # 检查数据库是否已存在
+    if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw globallink; then
+        log_info "数据库 globallink 已存在，跳过创建"
+    else
+        log_info "创建数据库和用户..."
+        sudo -u postgres psql -c "CREATE DATABASE globallink;"
+        sudo -u postgres psql -c "CREATE USER globallink_user WITH PASSWORD 'globallink_password';"
+        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink_user;"
+        sudo -u postgres psql -c "ALTER USER globallink_user CREATEDB;"
+    fi
     
+    mark_component_installed "postgresql_setup"
     log_success "PostgreSQL配置完成"
 }
 
@@ -126,15 +258,7 @@ setup_redis() {
     log_success "Redis配置完成"
 }
 
-# 配置MongoDB
-setup_mongodb() {
-    log_info "配置MongoDB..."
-    
-    sudo systemctl start mongod
-    sudo systemctl enable mongod
-    
-    log_success "MongoDB配置完成"
-}
+# MongoDB已移除 - 所有数据现在存储在PostgreSQL中
 
 # 设置项目目录
 setup_project_directory() {
@@ -203,8 +327,10 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# MongoDB配置
-MONGODB_URL=mongodb://localhost:27017/globallink_logs
+# 日志配置 - 使用PostgreSQL存储所有日志数据
+LOG_TABLE_NAME=system_logs
+ENABLE_API_LOGGING=true
+ENABLE_ACTIVITY_LOGGING=true
 
 # JWT配置
 SECRET_KEY=$(openssl rand -hex 32)
@@ -361,8 +487,7 @@ check_services() {
     echo "Redis状态:"
     sudo systemctl status redis-server --no-pager -l
     
-    echo "MongoDB状态:"
-    sudo systemctl status mongod --no-pager -l
+    echo "MongoDB已移除 - 所有数据现在存储在PostgreSQL中"
     
     echo "后端服务状态:"
     sudo systemctl status globallink-backend.service --no-pager -l
@@ -408,7 +533,6 @@ main() {
     install_system_dependencies
     setup_postgresql
     setup_redis
-    setup_mongodb
     setup_project_directory
     install_backend_dependencies
     install_frontend_dependencies

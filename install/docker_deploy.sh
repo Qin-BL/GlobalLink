@@ -2,8 +2,12 @@
 
 # GlobalLink Docker一键部署脚本
 # 使用Docker Compose进行容器化部署
+# 支持幂等性部署 - 已运行的服务不会重复构建
 
 set -e
+
+# 状态文件路径
+STATUS_FILE="$HOME/.globallink_docker_deploy_status"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -27,6 +31,28 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# 组件状态管理函数
+mark_component_deployed() {
+    local component=$1
+    echo "${component}:$(date '+%Y-%m-%d %H:%M:%S')" >> "$STATUS_FILE"
+    log_success "标记组件 $component 为已部署"
+}
+
+is_component_deployed() {
+    local component=$1
+    if [[ -f "$STATUS_FILE" ]]; then
+        grep -q "^${component}:" "$STATUS_FILE"
+        return $?
+    fi
+    return 1
+}
+
+# 检查Docker容器是否运行
+check_container_running() {
+    local container_name=$1
+    docker ps --format "table {{.Names}}" | grep -q "$container_name" 2>/dev/null
 }
 
 # 检查Docker是否安装
@@ -73,6 +99,16 @@ check_ports() {
 
 # 创建环境配置文件
 create_env_files() {
+    if is_component_deployed "env_files" && [ -f "../backend/.env" ] && [ -f "../frontend/.env" ]; then
+        log_info "环境配置文件已存在，检查配置..."
+        if grep -q "POSTGRES_SERVER" "../backend/.env" && grep -q "REACT_APP_API_URL" "../frontend/.env"; then
+            log_success "环境配置文件正常"
+            return
+        else
+            log_warning "环境配置文件不完整，将重新创建"
+        fi
+    fi
+    
     log_info "创建环境配置文件..."
     
     # 后端环境配置
@@ -90,7 +126,7 @@ REDIS_PORT=6379
 REDIS_PASSWORD=
 
 # MongoDB配置
-MONGODB_URL=mongodb://mongodb:27017/globallink_logs
+# MongoDB已移除，使用PostgreSQL存储所有日志数据
 
 # JWT配置
 SECRET_KEY=$(openssl rand -hex 32)
@@ -128,11 +164,17 @@ REACT_APP_API_URL=http://localhost/api
 GENERATE_SOURCEMAP=false
 EOF
 
+    mark_component_deployed "env_files"
     log_success "环境配置文件创建完成"
 }
 
 # 创建数据库初始化脚本
 create_db_init_script() {
+    if is_component_deployed "db_init_script" && [ -f "../backend/scripts/init.sql" ]; then
+        log_info "数据库初始化脚本已存在，跳过创建"
+        return
+    fi
+    
     log_info "创建数据库初始化脚本..."
     
     mkdir -p ../backend/scripts
@@ -149,14 +191,40 @@ SELECT 'CREATE DATABASE globallink'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'globallink');
 EOF
 
+    mark_component_deployed "db_init_script"
     log_success "数据库初始化脚本创建完成"
 }
 
 # 构建和启动服务
 build_and_start() {
-    log_info "构建和启动服务..."
-    
     cd ..
+    
+    # 检查是否已经部署
+    if is_component_deployed "docker_services"; then
+        log_info "服务已部署，检查运行状态..."
+        
+        # 检查主要容器是否运行
+        containers_running=true
+        for container in "globallink-backend" "globallink-frontend" "globallink-nginx"; do
+            if check_container_running "$container"; then
+                log_success "$container 容器正在运行"
+            else
+                log_warning "$container 容器未运行"
+                containers_running=false
+            fi
+        done
+        
+        if $containers_running; then
+            log_success "所有服务正常运行，跳过构建"
+            return
+        else
+            log_warning "部分服务未运行，将重新启动服务"
+            docker-compose up -d
+            return
+        fi
+    fi
+    
+    log_info "首次部署，构建和启动服务..."
     
     # 停止现有服务
     docker-compose down -v 2>/dev/null || true
@@ -169,6 +237,7 @@ build_and_start() {
     log_info "启动服务..."
     docker-compose up -d
     
+    mark_component_deployed "docker_services"
     log_success "服务启动完成"
 }
 
@@ -220,6 +289,25 @@ wait_for_services() {
 
 # 初始化数据库
 init_database() {
+    if is_component_deployed "database_init"; then
+        log_info "数据库已初始化，检查数据库表..."
+        
+        # 检查是否有基础表
+        if docker-compose exec -T backend python -c "
+from app.db.session import engine
+from sqlalchemy import inspect
+inspector = inspect(engine)
+tables = inspector.get_table_names()
+print(f'Found {len(tables)} tables')
+exit(0 if len(tables) > 0 else 1)
+" 2>/dev/null; then
+            log_success "数据库表已存在"
+            return
+        else
+            log_warning "数据库表不存在，将重新初始化"
+        fi
+    fi
+    
     log_info "初始化数据库..."
     
     # 运行数据库迁移
@@ -238,6 +326,7 @@ init_db()
 print('基础数据初始化完成')
 "
     
+    mark_component_deployed "database_init"
     log_success "数据库初始化完成"
 }
 

@@ -24,8 +24,7 @@ POSTGRES_SERVER=db
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=password
 POSTGRES_DB=globallink
-MONGODB_URI=mongodb://mongodb:27017
-MONGODB_DB=globallink
+# MongoDB已移除，使用PostgreSQL存储所有数据
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_DB=0

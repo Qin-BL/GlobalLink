@@ -1,112 +1,93 @@
 #!/usr/bin/env bash
 
-# 数据库安装脚本（不使用Docker）
+# GlobalLink 数据库安装脚本 (Without Docker)
+# 安装和配置PostgreSQL和Redis
+
 set -e
 
-# 确保使用bash而不是sh
-if [ -z "$BASH_VERSION" ]; then
-  echo "错误：请使用bash而不是sh运行此脚本"
-  exit 1
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 日志函数
+log() {
+    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+# 检查是否为root用户
+if [[ $EUID -eq 0 ]]; then
+   log_error "请不要使用root用户运行此脚本"
+   exit 1
 fi
 
-# 检查是否有权限运行sudo
-if ! sudo -v >/dev/null 2>&1; then
-  echo "错误：需要sudo权限运行此脚本"
-  exit 1
-fi
+log "===== GlobalLink 数据库安装开始 ====="
 
-echo "===== 开始安装GlobalLink数据库 ====="
+# 更新系统包
+log "更新系统包..."
+sudo apt update
 
 # 安装PostgreSQL
-echo "安装PostgreSQL..."
-sudo apt update
+log "安装PostgreSQL..."
 sudo apt install -y postgresql postgresql-contrib
 
 # 启动PostgreSQL服务
- echo "启动PostgreSQL服务..."
- sudo service postgresql start
- sudo update-rc.d postgresql enable
+log "启动PostgreSQL服务..."
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
 
-# 创建数据库和用户
- echo "创建数据库和用户..."
+# 配置PostgreSQL
+log "配置PostgreSQL数据库..."
 
- # 检查数据库是否已存在
- DB_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='globallink'")
- if [ "$DB_EXISTS" = '1' ]; then
-   echo "数据库 'globallink' 已存在，跳过创建"
-   # 获取现有用户密码
-   DB_PASSWORD=$(grep 'POSTGRES_PASSWORD=' .env 2>/dev/null | cut -d '=' -f 2)
-   if [ -z "$DB_PASSWORD" ]; then
-     # 如果.env文件中没有密码，生成新密码
-     DB_PASSWORD=$(openssl rand -base64 12)
-     echo "数据库密码: $DB_PASSWORD"
-     echo "请保存此密码，稍后配置需要使用"
-   else
-     echo "使用现有数据库密码"
-   fi
- else
-   # 生成随机密码
-   DB_PASSWORD=$(openssl rand -base64 12)
-   echo "数据库密码: $DB_PASSWORD"
-   echo "请保存此密码，稍后配置需要使用"
+# 生成随机密码
+DB_PASSWORD=$(openssl rand -base64 32)
 
-   sudo -u postgres psql -c "CREATE DATABASE globallink;"
- fi
+# 创建数据库用户和数据库
+sudo -u postgres psql << EOF
+CREATE USER globallink_user WITH PASSWORD '$DB_PASSWORD';
+CREATE DATABASE globallink OWNER globallink_user;
+GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink_user;
+ALTER USER globallink_user CREATEDB;
+\q
+EOF
 
- # 检查用户是否已存在
- USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='globallink'")
- if [ "$USER_EXISTS" = '1' ]; then
-   echo "用户 'globallink' 已存在，更新密码"
-   sudo -u postgres psql -c "ALTER USER globallink WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
- else
-   echo "创建用户 'globallink'"
-   sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
- fi
+log "PostgreSQL配置完成"
+log "数据库用户: globallink_user"
+log "数据库名称: globallink"
+log "数据库密码: $DB_PASSWORD"
 
- # 确保用户有数据库权限
- sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
-
- # 创建环境变量文件
- echo "创建环境变量文件..."
- cat > .env << EOF
+# 创建环境变量文件
+log "创建环境变量文件..."
+cat > .env << EOF
 # 数据库配置
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=globallink
+POSTGRES_SERVER=localhost
+POSTGRES_USER=globallink_user
 POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=globallink
 
-MONGODB_URI=mongodb://localhost:27017/
+# Redis配置
 REDIS_URL=redis://localhost:6379/0
+
+# 日志配置 - 使用PostgreSQL存储所有日志数据
+LOG_TABLE_NAME=system_logs
+ENABLE_API_LOGGING=true
+ENABLE_ACTIVITY_LOGGING=true
 EOF
 
 echo "环境变量文件已创建: .env"
 
-# 安装MongoDB
-echo "安装MongoDB..."
-wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
-sudo apt update
-sudo apt install -y mongodb-org
-
-# 启动MongoDB服务
- echo "启动MongoDB服务..."
-
- # 尝试启动MongoDB服务
- if sudo service mongod start; then
-   echo "MongoDB服务启动成功"
- else
-   echo "尝试使用systemctl启动MongoDB服务..."
-   sudo systemctl start mongod
- fi
-
- # 尝试配置MongoDB服务开机自启
- if sudo update-rc.d mongod enable 2>/dev/null; then
-   echo "MongoDB服务已设置为开机自启"
- else
-   echo "尝试使用systemctl配置MongoDB服务开机自启..."
-   sudo systemctl enable mongod
- fi
+# MongoDB已移除 - 所有数据现在存储在PostgreSQL中
+echo "MongoDB已移除，所有数据现在存储在PostgreSQL中"
 
 # 安装Redis
 echo "安装Redis..."
@@ -122,4 +103,17 @@ sudo sed -i 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis/redis.conf
  sudo update-rc.d redis-server enable
 
 echo "===== GlobalLink数据库安装完成 ====="
-echo "PostgreSQL、MongoDB和Redis已安装并配置完成"
+echo "PostgreSQL和Redis已安装并配置完成"
+echo ""
+echo "数据库连接信息:"
+echo "  PostgreSQL: localhost:5432/globallink"
+echo "  用户名: globallink_user"
+echo "  密码: $DB_PASSWORD"
+echo "  Redis: localhost:6379"
+echo ""
+echo "重要提示:"
+echo "1. 数据库密码已保存在 .env 文件中"
+echo "2. 所有日志数据现在存储在PostgreSQL中，不再使用MongoDB"
+echo "3. 请妥善保管数据库密码"
+echo ""
+echo "下一步: 运行后端安装脚本"

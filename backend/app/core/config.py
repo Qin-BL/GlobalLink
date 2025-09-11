@@ -89,9 +89,10 @@ class Settings(BaseSettings):
     DB_MAX_CONNECTIONS: int = 100
     DB_ECHO: bool = False  # 生产环境关闭SQL日志
     
-    # MongoDB配置
-    MONGODB_URI: str = "mongodb://localhost:27017"
-    MONGODB_DB: str = "globallink"
+    # 日志配置 - 使用PostgreSQL存储日志
+    LOG_TABLE_NAME: str = "system_logs"
+    ENABLE_API_LOGGING: bool = True
+    ENABLE_ACTIVITY_LOGGING: bool = True
     
     # Redis配置
     REDIS_HOST: str = "localhost"

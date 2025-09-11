@@ -126,7 +126,7 @@ create_backend_service() {
   cat > "$PROJECT_ROOT/backend.service" << EOF
 [Unit]
 Description=GlobalLink Backend Service
-After=network.target postgresql.service mongodb.service redis-server.service
+After=network.target postgresql.service redis-server.service
 
 [Service]
 Type=simple
@@ -241,13 +241,8 @@ install_database() {
 
   # 安装MongoDB
   log "安装MongoDB..."
-  sudo apt install -y gnupg
-  wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
-  echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-  sudo apt update
-  sudo apt install -y mongodb-org
-  sudo service mongod start
-  sudo update-rc.d mongod enable
+  # MongoDB已移除 - 使用PostgreSQL存储所有数据
+  log "MongoDB已移除，所有数据现在存储在PostgreSQL中"
 
   # 安装Redis
   log "安装Redis..."
@@ -262,8 +257,23 @@ install_database() {
 install_backend() {
   CURRENT_STEP="backend"
   if check_status "$CURRENT_STEP"; then
-    log "后端已安装，跳过"
-    return
+    log "后端已安装，检查后端环境..."
+    
+    # 检查虚拟环境
+    if [ -d "$PROJECT_ROOT/backend/venv" ] && [ -f "$PROJECT_ROOT/backend/venv/bin/activate" ]; then
+      cd "$PROJECT_ROOT/backend"
+      source venv/bin/activate
+      if python -c "import fastapi, uvicorn" 2>/dev/null; then
+        log "后端依赖正常"
+        cd ..
+        return
+      else
+        log "后端依赖不完整，将重新安装"
+        cd ..
+      fi
+    else
+      log "虚拟环境不存在，将重新创建"
+    fi
   fi
 
   log "===== 安装后端 ====="
@@ -281,12 +291,16 @@ install_backend() {
 
   # 安装Python和pip
   log "安装Python和pip..."
-  sudo apt install -y python3 python3-pip python3-venv
+  if ! check_system_component "python3"; then
+    sudo apt install -y python3 python3-pip python3-venv
+  fi
 
   # 创建并激活虚拟环境
   log "创建Python虚拟环境..."
   cd backend
-  python3 -m venv venv
+  if [ ! -d "venv" ]; then
+    python3 -m venv venv
+  fi
   source venv/bin/activate
 
   # 安装后端依赖
@@ -296,13 +310,17 @@ install_backend() {
 
   # 检查并创建.env文件
   log "检查环境变量文件..."
-  if [ -f ".env.example" ]; then
-    log "发现.env.example文件，复制为.env文件..."
-    cp .env.example .env
-    log "警告：请务必修改.env文件中的配置参数，特别是数据库密码和邮件服务配置"
+  if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+      log "发现.env.example文件，复制为.env文件..."
+      cp .env.example .env
+      log "警告：请务必修改.env文件中的配置参数，特别是数据库密码和邮件服务配置"
+    else
+      log "错误：未找到.env.example文件，请确保项目结构正确"
+      exit 1
+    fi
   else
-    log "错误：未找到.env.example文件，请确保项目结构正确"
-    exit 1
+    log ".env文件已存在，跳过创建"
   fi
 
   # 修改后端CORS配置
@@ -311,14 +329,15 @@ install_backend() {
 
   # 添加启动脚本
   log "创建启动脚本..."
-  cat > ../start_backend.sh << EOF
+  if [ ! -f "../start_backend.sh" ]; then
+    cat > ../start_backend.sh << EOF
 #!/bin/bash
 cd "\$(dirname "\$0")/backend"
 source venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 EOF
-
-  chmod +x ../start_backend.sh
+    chmod +x ../start_backend.sh
+  fi
 
   # 创建后端服务管理脚本
   log "创建服务管理脚本..."
@@ -333,8 +352,15 @@ EOF
 install_frontend() {
   CURRENT_STEP="frontend"
   if check_status "$CURRENT_STEP"; then
-    log "前端已安装，跳过"
-    return
+    log "前端已安装，检查前端环境..."
+    
+    # 检查node_modules和构建文件
+    if [ -d "$PROJECT_ROOT/frontend/node_modules" ] && [ -d "$PROJECT_ROOT/frontend/build" ]; then
+      log "前端依赖和构建文件正常"
+      return
+    else
+      log "前端依赖或构建文件不完整，将重新安装"
+    fi
   fi
 
   log "===== 安装前端 ====="
@@ -352,9 +378,11 @@ install_frontend() {
 
   # 安装Node.js和npm
   log "安装Node.js和npm..."
-  sudo apt install -y curl
-  curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-  sudo apt install -y nodejs
+  if ! check_system_component "node"; then
+    sudo apt install -y curl
+    curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+    sudo apt install -y nodejs
+  fi
 
   # 验证安装
   node --version
@@ -367,17 +395,20 @@ install_frontend() {
 
   # 修改前端端口配置
   log "修改前端端口为3080..."
-  sed -i 's/"start": "react-scripts start"/"start": "PORT=3080 react-scripts start"/g' package.json
+  if ! grep -q "PORT=3080" package.json; then
+    sed -i 's/"start": "react-scripts start"/"start": "PORT=3080 react-scripts start"/g' package.json
+  fi
 
   # 添加启动脚本
   log "创建启动脚本..."
-  cat > ../start_frontend.sh << EOF
+  if [ ! -f "../start_frontend.sh" ]; then
+    cat > ../start_frontend.sh << EOF
 #!/bin/bash
 cd "\$(dirname "\$0")/frontend"
 npm start
 EOF
-
-  chmod +x ../start_frontend.sh
+    chmod +x ../start_frontend.sh
+  fi
 
   # 构建生产版本
   log "构建生产版本..."
@@ -396,13 +427,26 @@ EOF
 install_nginx() {
   CURRENT_STEP="nginx"
   if check_status "$CURRENT_STEP"; then
-    log "Nginx已安装，跳过"
-    return
+    log "Nginx已安装，检查配置..."
+    
+    # 检查Nginx配置文件
+    if [ -f "/etc/nginx/sites-available/globallink" ] && [ -L "/etc/nginx/sites-enabled/globallink" ]; then
+      if sudo nginx -t 2>/dev/null; then
+        log "Nginx配置正常"
+        return
+      else
+        log "Nginx配置有误，将重新配置"
+      fi
+    else
+      log "Nginx配置文件不存在，将重新创建"
+    fi
   fi
 
   log "===== 安装Nginx ====="
   # 安装Nginx
-  sudo apt install -y nginx
+  if ! check_system_component "nginx"; then
+    sudo apt install -y nginx
+  fi
 
   # 启动Nginx服务
   sudo service nginx start

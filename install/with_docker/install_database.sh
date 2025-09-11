@@ -21,17 +21,12 @@ sudo -u postgres psql -c "CREATE DATABASE globallink;"
 sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD 'password';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
 
-# 安装MongoDB
-echo "安装MongoDB..."
-wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
-sudo apt update
-sudo apt install -y mongodb-org
+# MongoDB已移除 - 使用PostgreSQL存储所有数据
+echo "MongoDB已移除，所有数据现在存储在PostgreSQL中"
 
 # 启动MongoDB服务
 echo "启动MongoDB服务..."
-sudo systemctl start mongod
-sudo systemctl enable mongod
+# MongoDB服务已移除
 
 # 安装Redis
 echo "安装Redis..."
@@ -84,8 +79,7 @@ POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=password
 POSTGRES_DB=globallink
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DB=globallink
+# MongoDB已移除，使用PostgreSQL存储所有数据
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
