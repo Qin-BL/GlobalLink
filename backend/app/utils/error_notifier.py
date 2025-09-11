@@ -16,7 +16,11 @@ class ErrorNotifier:
     """错误通知器"""
     
     def __init__(self):
-        self.admin_emails = settings.ADMIN_EMAILS if hasattr(settings, 'ADMIN_EMAILS') else []
+        # 从配置获取管理员邮箱列表
+        if settings.ERROR_NOTIFICATION_RECIPIENTS and settings.ERROR_NOTIFICATION_ENABLED:
+            self.admin_emails = [email.strip() for email in settings.ERROR_NOTIFICATION_RECIPIENTS.split(',')]
+        else:
+            self.admin_emails = []
     
     async def notify_error(
         self,
