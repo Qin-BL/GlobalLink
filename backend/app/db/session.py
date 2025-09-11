@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 数据库会话管理
 """
@@ -19,7 +20,9 @@ Base = declarative_base()
 # 同步PostgreSQL连接
 def create_database_engine():
     """创建同步数据库引擎"""
-    db_uri = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+    # PostgreSQL默认端口为5432
+    postgres_port = getattr(settings, 'POSTGRES_PORT', 5432)
+    db_uri = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{postgres_port}/{settings.POSTGRES_DB}"
     return create_engine(db_uri, pool_pre_ping=True)
 
 engine = create_database_engine()
@@ -39,7 +42,9 @@ def get_db() -> Generator:
 # 异步PostgreSQL连接
 def create_async_database_engine():
     """创建异步数据库引擎"""
-    db_uri = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+    # PostgreSQL默认端口为5432
+    postgres_port = getattr(settings, 'POSTGRES_PORT', 5432)
+    db_uri = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{postgres_port}/{settings.POSTGRES_DB}"
     engine_kwargs = {
         "pool_pre_ping": True,
         "pool_recycle": 300,

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 邮件发送工具
 """
@@ -16,11 +17,11 @@ class EmailSender:
     """邮件发送器"""
     
     def __init__(self):
-        self.smtp_server = settings.MAIL_SERVER
-        self.smtp_port = settings.MAIL_PORT
-        self.username = settings.MAIL_USERNAME
-        self.password = settings.MAIL_PASSWORD
-        self.use_tls = settings.MAIL_USE_TLS
+        self.smtp_server = settings.SMTP_SERVER
+        self.smtp_port = settings.SMTP_PORT
+        self.username = settings.SMTP_USERNAME
+        self.password = settings.SMTP_PASSWORD
+        self.use_tls = settings.SMTP_TLS
     
     async def send_email(
         self,

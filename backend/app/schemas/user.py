@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 用户相关的Pydantic模型
 """

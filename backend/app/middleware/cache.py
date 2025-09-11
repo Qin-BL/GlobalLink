@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 缓存中间件
 """
@@ -44,7 +45,7 @@ class CacheMiddleware(BaseHTTPMiddleware):
                 response_body += chunk
             
             # 缓存响应
-            await set_cache(cache_key, response_body.decode(), self.cache_ttl)
+            await set_cache(cache_key, response_body.decode('utf-8'), self.cache_ttl)
             
             # 重新创建响应
             return Response(
@@ -59,4 +60,4 @@ class CacheMiddleware(BaseHTTPMiddleware):
     def _generate_cache_key(self, request: Request) -> str:
         """生成缓存键"""
         key_data = f"{request.url.path}?{request.url.query}"
-        return f"cache:{hashlib.md5(key_data.encode()).hexdigest()}"
+        return f"cache:{hashlib.md5(key_data.encode('utf-8')).hexdigest()}"

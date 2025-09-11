@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 白盒测试模块
 测试系统内部实现和代码路径

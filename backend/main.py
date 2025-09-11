@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 GlobalLink 后端应用主入口
 """

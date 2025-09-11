@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from .base import Base, BaseModel
 from .user import User
 from .membership import Membership, Payment, Reward, Withdrawal

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 黑盒测试模块
 测试系统外部行为，不关心内部实现

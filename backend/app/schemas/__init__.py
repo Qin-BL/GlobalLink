@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from .user import (
     UserBase, UserResponse, UserCreate, UserUpdate, UserInDB
 )

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 学习进度相关的Pydantic模式
 """

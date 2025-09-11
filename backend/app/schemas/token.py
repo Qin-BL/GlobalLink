@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 令牌相关的Pydantic模型
 """

@@ -1,8 +1,11 @@
-from sqlalchemy.orm import Session
+# -*- coding: utf-8 -*-
+"""
+用户活动日志记录工具
+"""
 from datetime import datetime
 import logging
 from typing import Dict, Any, Optional
-from ..models.log import SystemLog, UserActivity, ApiLog
+from ..models.log import UserActivity, ApiLog
 from ..db.session import get_db
 
 logger = logging.getLogger(__name__)

@@ -1,14 +1,19 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey
+# -*- coding: utf-8 -*-
+"""
+课程模型
+"""
+from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey
 from sqlalchemy.orm import relationship
 
-from app.models.base import BaseModel
+from .base import Base
 
 
-class Course(BaseModel):
+class Course(Base):
     __tablename__ = "courses"
 
+    id = Column(Integer, primary_key=True, index=True)
     course_number = Column(Integer, unique=True, nullable=False)
-    title = Column(String, nullable=False)
+    title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     is_free = Column(Boolean, default=False)
     
@@ -16,9 +21,10 @@ class Course(BaseModel):
     knowledge_points = relationship("KnowledgePoint", back_populates="course")
 
 
-class KnowledgePoint(BaseModel):
+class KnowledgePoint(Base):
     __tablename__ = "knowledge_points"
 
+    id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), index=True)
     point_order = Column(Integer, nullable=False)  # 知识点在课程中的顺序
     chinese = Column(Text, nullable=False)

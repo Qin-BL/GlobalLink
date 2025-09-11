@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 课程相关的Pydantic模式
 """
