@@ -121,11 +121,13 @@ class Settings(BaseSettings):
 
     @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
     @classmethod
-    def assemble_db_connection(cls, v: Optional[str]) -> Any:
+    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any] = None) -> Any:
         if isinstance(v, str):
             return v
-        # 如果没有提供URI，使用默认的SQLite数据库
-        return "sqlite:///./globallink.db"
+        # 如果没有提供URI，使用PostgreSQL数据库
+        if values is None:
+            values = {}
+        return f"postgresql://{values.get('POSTGRES_USER', 'postgres')}:{values.get('POSTGRES_PASSWORD', 'password')}@{values.get('POSTGRES_SERVER', 'localhost')}/{values.get('POSTGRES_DB', 'globallink')}"
 
     # 微信支付配置
     WECHAT_APP_ID: str = "your_wechat_app_id"

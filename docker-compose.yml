@@ -1,55 +1,121 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:14
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    env_file:
-      - ./backend/.env
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15
+    container_name: globallink_postgres
     environment:
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=globallink
+      POSTGRES_DB: globallink
+      POSTGRES_USER: globallink_user
+      POSTGRES_PASSWORD: globallink_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    networks:
+      - globallink_network
+    restart: unless-stopped
 
-  backend:
-    build: ./backend
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: globallink_redis
+    ports:
+      - "6379:6379"
     volumes:
-      - ./backend:/app
-      - ./courses:/app/courses
-    env_file:
-      - ./backend/.env
+      - redis_data:/data
+    networks:
+      - globallink_network
+    restart: unless-stopped
+
+  # MongoDB日志数据库
+  mongodb:
+    image: mongo:6
+    container_name: globallink_mongodb
+    environment:
+      MONGO_INITDB_DATABASE: globallink_logs
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - globallink_network
+    restart: unless-stopped
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: globallink_backend
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=globallink_user
+      - POSTGRES_PASSWORD=globallink_password
+      - POSTGRES_DB=globallink
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGODB_URL=mongodb://mongodb:27017/globallink_logs
     ports:
       - "8000:8000"
-    command: >
-      bash -c "cd /app && 
-      apt-get update && 
-      apt-get install -y --no-install-recommends build-essential libpq-dev && 
-      pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir -r requirements.txt && 
-      uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - ./backend:/app
+      - backend_static:/app/static
     depends_on:
-      db:
-        condition: service_healthy
+      - postgres
+      - redis
+      - mongodb
+    networks:
+      - globallink_network
+    restart: unless-stopped
 
+  # 前端服务
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: globallink_frontend
+    ports:
+      - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    ports:
-      - "3080:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
     depends_on:
       - backend
-    environment:
-      - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:8000/api/v1
+    networks:
+      - globallink_network
+    restart: unless-stopped
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: globallink_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - backend_static:/var/www/static
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - globallink_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
+  mongodb_data:
+  backend_static:
+
+networks:
+  globallink_network:
+    driver: bridge
