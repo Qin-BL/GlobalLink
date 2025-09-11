@@ -3,7 +3,7 @@ API路由集合
 """
 from fastapi import APIRouter
 
-from app.api.endpoints import auth, users, admin
+from app.api.endpoints import auth, users, admin, courses, membership, progress
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -27,4 +27,25 @@ api_router.include_router(
     admin.router, 
     prefix="/admin", 
     tags=["管理员"]
+)
+
+# 课程管理路由
+api_router.include_router(
+    courses.router, 
+    prefix="/courses", 
+    tags=["课程管理"]
+)
+
+# 会员管理路由
+api_router.include_router(
+    membership.router, 
+    prefix="/membership", 
+    tags=["会员管理"]
+)
+
+# 学习进度路由
+api_router.include_router(
+    progress.router, 
+    prefix="/progress", 
+    tags=["学习进度"]
 )
