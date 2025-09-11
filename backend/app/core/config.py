@@ -18,11 +18,22 @@ except ImportError:
 # 兼容不同版本的pydantic validator
 try:
     from pydantic import field_validator
+    PYDANTIC_V2 = True
 except ImportError:
     try:
-        from pydantic import validator as field_validator
+        from pydantic import validator
+        PYDANTIC_V2 = False
+        # 为 Pydantic v1 创建兼容的 field_validator
+        def field_validator(field_name, mode="before"):
+            def decorator(func):
+                if mode == "before":
+                    return validator(field_name, pre=True, allow_reuse=True)(func)
+                else:
+                    return validator(field_name, allow_reuse=True)(func)
+            return decorator
     except ImportError:
         # 如果都没有，创建一个简单的装饰器
+        PYDANTIC_V2 = False
         def field_validator(field_name, mode="before"):
             def decorator(func):
                 return func
