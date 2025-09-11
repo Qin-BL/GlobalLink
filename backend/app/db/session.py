@@ -18,10 +18,15 @@ logger = logging.getLogger(__name__)
 # 同步PostgreSQL连接
 def create_database_engine():
     """创建同步数据库引擎"""
-    # PostgreSQL默认端口为5432
-    postgres_port = getattr(settings, 'POSTGRES_PORT', 5432)
-    db_uri = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{postgres_port}/{settings.POSTGRES_DB}"
-    return create_engine(db_uri, pool_pre_ping=True)
+    db_uri = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+    engine_kwargs = {
+        "pool_pre_ping": settings.DB_POOL_PRE_PING,
+        "pool_recycle": settings.DB_POOL_RECYCLE,
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_POOL_MAX_OVERFLOW,
+        "pool_timeout": settings.DB_POOL_TIMEOUT,
+    }
+    return create_engine(db_uri, **engine_kwargs)
 
 engine = create_database_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -40,14 +45,12 @@ def get_db() -> Generator:
 # 异步PostgreSQL连接
 def create_async_database_engine():
     """创建异步数据库引擎"""
-    # PostgreSQL默认端口为5432
-    postgres_port = getattr(settings, 'POSTGRES_PORT', 5432)
-    db_uri = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{postgres_port}/{settings.POSTGRES_DB}"
+    db_uri = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
     engine_kwargs = {
-        "pool_pre_ping": True,
-        "pool_recycle": 300,
-        "pool_size": 5,
-        "max_overflow": 10,
+        "pool_pre_ping": settings.DB_POOL_PRE_PING,
+        "pool_recycle": settings.DB_POOL_RECYCLE,
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_POOL_MAX_OVERFLOW,
     }
     return create_async_engine(db_uri, **engine_kwargs)
 

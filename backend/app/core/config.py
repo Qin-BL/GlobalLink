@@ -79,7 +79,15 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "globallink_user"
     POSTGRES_PASSWORD: str = "globallink_password"
     POSTGRES_DB: str = "globallink"
+    POSTGRES_PORT: int = 5432
     SQLALCHEMY_DATABASE_URI: str | None = None
+
+    # 数据库连接池配置
+    DB_POOL_PRE_PING: bool = True
+    DB_POOL_RECYCLE: int = 300  # 连接回收时间（秒）
+    DB_POOL_SIZE: int = 5      # 连接池大小
+    DB_POOL_MAX_OVERFLOW: int = 10  # 连接池溢出最大值
+    DB_POOL_TIMEOUT: int = 30  # 连接池获取连接的超时时间（秒）
 
     @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
     @classmethod
