@@ -7,7 +7,7 @@ from pymongo.errors import ConnectionFailure
 import logging
 from functools import lru_cache
 
-from app.core.config import settings
+from ..core.config import settings
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)

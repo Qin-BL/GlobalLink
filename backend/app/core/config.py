@@ -1,10 +1,19 @@
 import secrets
 from typing import Any, Dict, List, Optional, Union
-from pydantic import AnyHttpUrl, PostgresDsn, field_validator, EmailStr
+from pydantic import AnyHttpUrl, field_validator, EmailStr
+
+# 兼容不同版本的pydantic
 try:
     from pydantic_settings import BaseSettings
 except ImportError:
-    from pydantic import BaseSettings
+    try:
+        from pydantic import BaseSettings
+    except ImportError:
+        # 如果都没有，创建一个简单的基类
+        class BaseSettings:
+            def __init__(self, **kwargs):
+                for key, value in kwargs.items():
+                    setattr(self, key, value)
 
 
 class Settings(BaseSettings):

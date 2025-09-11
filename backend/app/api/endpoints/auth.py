@@ -8,11 +8,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import EmailStr
 
-from app import models, schemas
-from app.api import deps
-from app.core import security
-from app.core.config import settings
-from app.core.security import get_password_hash
+from ... import models, schemas
+from .. import deps
+from ...core import security
+from ...core.config import settings
+from ...core.security import get_password_hash
 from app.utils.password_decrypt import decrypt_frontend_password, is_frontend_encrypted
 from app.utils.utils import (
     generate_password_reset_token,
