@@ -30,7 +30,9 @@ async def cache_user_token(token: str, user_id: int, expires_delta: int, token_t
         
         # 维护用户的令牌列表
         user_tokens_key = f"user_{token_type}_tokens:{user_id}"
-        user_tokens = await get_redis_cache(user_tokens_key) or []
+        user_tokens = await get_redis_cache(user_tokens_key)
+        if not isinstance(user_tokens, list):
+            user_tokens = []
         if token not in user_tokens:
             user_tokens.append(token)
             expire_time = settings.REFRESH_TOKEN_CACHE_EXPIRE_SECONDS if token_type == "refresh" else settings.TOKEN_CACHE_EXPIRE_SECONDS
@@ -98,7 +100,9 @@ async def revoke_user_tokens(user_id: int, token_type: str = "access") -> bool:
             return access_result and refresh_result
         
         user_tokens_key = f"user_{token_type}_tokens:{user_id}"
-        user_tokens = await get_redis_cache(user_tokens_key) or []
+        user_tokens = await get_redis_cache(user_tokens_key)
+        if not isinstance(user_tokens, list):
+            user_tokens = []
         
         # 撤销每个令牌
         for token in user_tokens:
@@ -148,7 +152,9 @@ async def revoke_token(token: str, token_type: str = "access") -> bool:
             if user_id:
                 # 从用户令牌列表中移除
                 user_tokens_key = f"user_{token_type}_tokens:{user_id}"
-                user_tokens = await get_redis_cache(user_tokens_key) or []
+                user_tokens = await get_redis_cache(user_tokens_key)
+                if not isinstance(user_tokens, list):
+                    user_tokens = []
                 if token in user_tokens:
                     user_tokens.remove(token)
                     expire_time = settings.REFRESH_TOKEN_CACHE_EXPIRE_SECONDS if token_type == "refresh" else settings.TOKEN_CACHE_EXPIRE_SECONDS
@@ -190,8 +196,10 @@ async def get_user_tokens(user_id: int, token_type: str = "access") -> List[str]
     """
     try:
         user_tokens_key = f"user_{token_type}_tokens:{user_id}"
-        user_tokens = await get_redis_cache(user_tokens_key) or []
-        return user_tokens
+        user_tokens = await get_redis_cache(user_tokens_key)
+        if isinstance(user_tokens, list):
+            return user_tokens
+        return []
         
     except Exception as e:
         logger.error(f"获取用户令牌失败: {e}")

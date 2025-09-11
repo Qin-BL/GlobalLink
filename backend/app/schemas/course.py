@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Optional, List
+from pydantic import BaseModel, ConfigDict
 
 
 # 知识点基础模式
@@ -22,8 +23,7 @@ class KnowledgePointInDB(KnowledgePointBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # API响应中的知识点
@@ -38,7 +38,7 @@ class KnowledgePoint(KnowledgePointBase):
 class CourseBase(BaseModel):
     course_number: int
     title: str
-    description: [str] = None
+    description: Optional[str] = None
     is_free: bool = False
 
 
@@ -49,9 +49,9 @@ class CourseCreate(CourseBase):
 
 # 更新课程时的属性
 class CourseUpdate(BaseModel):
-    title: [str] = None
-    description: [str] = None
-    is_free: [bool] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    is_free: Optional[bool] = None
 
 
 # 数据库中的课程
@@ -74,7 +74,6 @@ class Course(CourseBase):
 
 # 带知识点的课程
 class CourseWithKnowledgePoints(Course):
-    knowledge_points: [KnowledgePoint] = []
+    knowledge_points: List[KnowledgePoint] = []
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
