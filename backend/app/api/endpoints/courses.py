@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,7 +9,7 @@ from app.api import deps
 router = APIRouter()
 
 
-@router.get("/", response_model=List[schemas.Course])
+@router.get("/", response_model=[schemas.Course])
 def read_courses(
     db: Session = Depends(deps.get_db),
     skip: int = 0,
@@ -58,7 +58,7 @@ def read_course(
     return course_data
 
 
-@router.get("/{course_id}/knowledge-points", response_model=List[schemas.KnowledgePoint])
+@router.get("/{course_id}/knowledge-points", response_model=[schemas.KnowledgePoint])
 def read_course_knowledge_points(
     *,
     db: Session = Depends(deps.get_db),

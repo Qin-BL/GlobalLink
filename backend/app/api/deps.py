@@ -1,172 +1,190 @@
-from typing import Generator, Optional, AsyncGenerator
 import logging
+from datetime import datetime
 
 from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
-from pydantic import ValidationError
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-from app import models, schemas
-from app.core import security
-from app.core.config import settings
-from app.db.session import SessionLocal, get_redis, get_mongo_db
-from app.utils.activity_logger import log_user_activity
+from ..models import User
+from ..schemas import TokenPayload
+from ..core import security
+from ..core.config import settings
+from ..db.session import get_db
 
-# 配置日志
 logger = logging.getLogger(__name__)
 
-reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+# OAuth2密码流认证
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    auto_error=False
 )
 
-
-def get_db() -> Generator:
-    """获取SQLite数据库会话"""
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-async def get_redis_client() -> AsyncGenerator:
-    """获取Redis客户端"""
-    redis = await get_redis()
-    try:
-        yield redis
-    finally:
-        await redis.close()
-
-
-async def get_mongodb() -> AsyncGenerator:
-    """获取MongoDB客户端"""
-    mongo = await get_mongo_db()
-    yield mongo
-
-
-async def get_current_user_async(
-    request: Request,
-    db: Session = Depends(get_db), 
-    token: str = Depends(reusable_oauth2)
-) -> models.User:
-    """异步获取当前用户（使用Redis缓存）"""
-    try:
-        # 首先尝试从Redis缓存验证令牌
-        user_id = await security.verify_token(token)
-        
-        if not user_id:
-            # 如果缓存中没有，则解码JWT令牌
-            payload = jwt.decode(
-                token, settings.SECRET_KEY, algorithms=[security.DEFAULT_ALGORITHM]
-            )
-            token_data = schemas.TokenPayload(**payload)
-            user_id = token_data.sub
-        
-        # 从数据库获取用户
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="用户不存在")
-        if not user.is_active:
-            raise HTTPException(status_code=400, detail="用户未激活")
-        
-        # 记录用户活动
-        client_ip = request.client.host if request.client else None
-        user_agent = request.headers.get("user-agent", "")
-        await log_user_activity(
-            user_id=user.id,
-            activity_type="api_access",
-            details={
-                "path": request.url.path,
-                "method": request.method,
-                "ip": client_ip,
-                "user_agent": user_agent
-            }
-        )
-        
-        return user
-    except (jwt.JWTError, ValidationError) as e:
-        logger.error(f"令牌验证失败: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="无法验证凭据",
-        )
+# HTTP Bearer认证（用于API密钥等）
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
-) -> models.User:
-    """同步获取当前用户（用于兼容现有代码）"""
+    db: Session = Depends(get_db),
+    token: str | None = Depends(oauth2_scheme)
+) -> User:
+    """获取当前认证用户"""
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="未提供认证令牌",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.DEFAULT_ALGORITHM]
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=[security.ALGORITHM]
         )
-        token_data = schemas.TokenPayload(**payload)
-    except (jwt.JWTError, ValidationError):
+        token_data = TokenPayload(**payload)
+    except (JWTError, ValueError) as e:
+        logger.warning(f"JWT解码失败: {e}")
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="无法验证凭据",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的认证令牌",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    user = db.query(models.User).filter(models.User.id == token_data.sub).first()
+    
+    user = db.query(User).filter(User.id == token_data.sub).first()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="用户不存在"
+        )
+    
     if not user.is_active:
-        raise HTTPException(status_code=400, detail="用户未激活")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户账户已被禁用"
+        )
+    
+    # 更新最后登录时间
+    user.last_login = datetime.utcnow()
+    db.commit()
+    
     return user
 
 
 def get_current_active_user(
-    current_user: models.User = Depends(get_current_user),
-) -> models.User:
+    current_user: User = Depends(get_current_user),
+) -> User:
     """获取当前活跃用户"""
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="用户未激活")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户账户已被禁用"
+        )
     return current_user
 
 
-async def get_current_active_user_async(
-    current_user: models.User = Depends(get_current_user_async),
-) -> models.User:
-    """异步获取当前活跃用户"""
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="用户未激活")
+def get_current_superuser(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """获取当前超级用户"""
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足，需要超级用户权限"
+        )
     return current_user
 
 
-def get_current_admin_user(
-    current_user: models.User = Depends(get_current_user),
-) -> models.User:
+def get_current_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
     """获取当前管理员用户"""
-    if current_user.role != "admin":
+    if not (current_user.is_superuser or current_user.is_admin):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="权限不足"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="权限不足，需要管理员权限"
         )
     return current_user
 
 
-async def get_current_admin_user_async(
-    current_user: models.User = Depends(get_current_user_async),
-) -> models.User:
-    """异步获取当前管理员用户"""
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="权限不足"
+def get_optional_current_user(
+    db: Session = Depends(get_db),
+    token: str | None = Depends(oauth2_scheme)
+) -> User | None:
+    """获取可选的当前用户（用于可选认证的端点）"""
+    if not token:
+        return None
+    
+    try:
+        payload = jwt.decode(
+            token, 
+            settings.SECRET_KEY, 
+            algorithms=[security.ALGORITHM]
         )
-    return current_user
+        token_data = TokenPayload(**payload)
+        user = db.query(User).filter(User.id == token_data.sub).first()
+        
+        if user and user.is_active:
+            return user
+        return None
+    except (JWTError, ValueError):
+        return None
 
 
-def check_user_membership(
-    db: Session,
-    user_id: int,
-) -> Optional[models.Membership]:
-    # 查询用户的有效会员
-    membership = (
-        db.query(models.Membership)
-        .filter(
-            models.Membership.user_id == user_id,
-            models.Membership.is_active == True,
-            models.Membership.end_date > models.func.now()
-        )
-        .first()
-    )
-    return membership
+def check_rate_limit(
+    request: Request,
+    max_requests: int = 100,
+    window_seconds: int = 3600
+) -> None:
+    """检查请求频率限制"""
+    client_ip = request.client.host if request.client else "unknown"
+    
+    # 这里可以集成Redis来实现真正的速率限制
+    # 目前只是一个占位符实现
+    logger.info(f"Rate limit check for IP: {client_ip}")
+
+
+def validate_api_key(
+    request: Request,
+    api_key: str | None = None
+) -> bool:
+    """验证API密钥"""
+    if not api_key:
+        return False
+    
+    # 这里应该从数据库或配置中验证API密钥
+    # 目前只是一个占位符实现
+    return api_key == settings.API_KEY if hasattr(settings, 'API_KEY') else False
+
+
+def get_user_permissions(user: User) -> list[str]:
+    """获取用户权限列表"""
+    permissions = ["read"]
+    
+    if user.is_active:
+        permissions.append("write")
+    
+    if user.is_admin:
+        permissions.extend(["admin", "manage_users"])
+    
+    if user.is_superuser:
+        permissions.extend(["superuser", "manage_system"])
+    
+    return permissions
+
+
+def require_permission(permission: str):
+    """权限装饰器工厂"""
+    def permission_checker(
+        current_user: User = Depends(get_current_active_user)
+    ) -> User:
+        user_permissions = get_user_permissions(current_user)
+        if permission not in user_permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"权限不足，需要 '{permission}' 权限"
+            )
+        return current_user
+    
+    return permission_checker

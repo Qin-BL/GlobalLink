@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict, Any, List
+Any, 
 
 from app.utils.redis_cache import get_redis_cache, set_redis_cache
 from app.core.config import settings
@@ -40,7 +40,7 @@ async def cache_user_token(token: str, user_id: int, expires_delta: int, token_t
         return False
 
 
-async def get_cached_user_id(token: str, token_type: str = "access") -> Optional[int]:
+async def get_cached_user_id(token: str, token_type: str = "access") -> [int]:
     """
     从Redis缓存获取令牌对应的用户ID
     
@@ -62,7 +62,7 @@ async def get_cached_user_id(token: str, token_type: str = "access") -> Optional
         return None
 
 
-async def get_cached_user_id_for_refresh_token(refresh_token: str) -> Optional[int]:
+async def get_cached_user_id_for_refresh_token(refresh_token: str) -> [int]:
     """
     从Redis缓存获取刷新令牌对应的用户ID（便捷函数）
     

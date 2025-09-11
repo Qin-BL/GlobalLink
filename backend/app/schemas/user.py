@@ -1,222 +1,194 @@
-from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, validator, Field
 import re
 
 
 # 共享属性
 class UserBase(BaseModel):
-    username: str
+    username: str = Field(..., min_length=3, max_length=50, description="用户名")
 
 
 # 创建用户时的属性
 class UserCreate(UserBase):
-    password: str
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    referral_code: Optional[str] = None  # 推广人的推广码
-    email_verification_code: Optional[str] = None  # 邮箱验证码
-    
-    @validator('password')
-    def password_min_length(cls, v):
-        if len(v) < 8:
-            raise ValueError('密码长度至少为8个字符')
-        return v
+    password: str = Field(..., min_length=8, description="密码")
+    email: EmailStr | None = Field(None, description="邮箱地址")
+    phone: str | None = Field(None, description="手机号码")
+    referral_code: str | None = Field(None, description="推广人的推广码")
     
     @validator('phone')
     def validate_phone(cls, v):
         if v is None:
             return v
-        # 简单的中国手机号验证
+        # 中国手机号验证
         if not re.match(r'^1[3-9]\d{9}$', v):
             raise ValueError('无效的手机号码')
         return v
     
-    @validator('username', 'email', 'phone')
-    def check_auth_fields(cls, v, values, **kwargs):
-        field = kwargs['field']
-        if field.name == 'username':
-            return v
-        
-        # 确保至少提供了邮箱或手机号之一
-        if 'email' in values or 'phone' in values:
-            return v
-        
-        if field.name == 'email' and not v and 'phone' not in values:
-            raise ValueError('邮箱和手机号至少提供一个')
-        
-        if field.name == 'phone' and not v and 'email' not in values:
-            raise ValueError('邮箱和手机号至少提供一个')
-        
+    @validator('username')
+    def validate_username(cls, v):
+        # 用户名只能包含字母、数字、下划线
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('用户名只能包含字母、数字和下划线')
         return v
 
 
 # 更新用户时的属性
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    password: Optional[str] = None
-    
-    @validator('password')
-    def password_min_length(cls, v):
-        if v is not None and len(v) < 8:
-            raise ValueError('密码长度至少为8个字符')
-        return v
+    username: str | None = Field(None, min_length=3, max_length=50)
+    email: EmailStr | None = None
+    phone: str | None = None
+    password: str | None = Field(None, min_length=8)
     
     @validator('phone')
     def validate_phone(cls, v):
         if v is None:
             return v
-        # 简单的中国手机号验证
         if not re.match(r'^1[3-9]\d{9}$', v):
             raise ValueError('无效的手机号码')
         return v
-
-
-# 数据库中存储的用户属性
-class UserInDB(UserBase):
-    id: int
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    hashed_password: str
-    is_active: bool
-    role: str
-    referral_code: Optional[str] = None
-    referrer_id: Optional[int] = None
-    reward_balance: float
-    created_at: datetime
-    last_login: Optional[datetime] = None
     
-    class Config:
-        orm_mode = True
+    @validator('username')
+    def validate_username(cls, v):
+        if v is None:
+            return v
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('用户名只能包含字母、数字和下划线')
+        return v
 
 
 # API响应中的用户属性
-class User(UserBase):
+class UserResponse(UserBase):
     id: int
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
     is_active: bool
-    role: str
-    referral_code: Optional[str] = None
+    is_admin: bool
+    is_superuser: bool
+    referral_code: str | None = None
     reward_balance: float
     created_at: datetime
-    last_login: Optional[datetime] = None
+    updated_at: datetime
+    last_login: datetime | None = None
     
     class Config:
         orm_mode = True
+
+
+# 数据库中存储的用户属性（内部使用）
+class UserInDB(UserResponse):
+    hashed_password: str
 
 
 # 用户登录请求
 class UserLogin(BaseModel):
-    username: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    password: str
-    
-    @validator('username', 'email', 'phone')
-    def check_auth_fields(cls, v, values, **kwargs):
-        field = kwargs['field']
-        
-        # 确保至少提供了用户名、邮箱或手机号之一
-        if field.name == 'username' and v:
-            return v
-        if field.name == 'email' and v:
-            return v
-        if field.name == 'phone' and v:
-            return v
-        
-        # 检查是否已经提供了其他登录方式
-        if 'username' in values and values['username']:
-            return v
-        if 'email' in values and values['email']:
-            return v
-        if 'phone' in values and values['phone']:
-            return v
-        
-        # 如果都没有提供，抛出错误
-        if field.name == 'phone':
-            raise ValueError('用户名、邮箱和手机号至少提供一个')
-        
-        return v
+    username: str = Field(..., description="用户名、邮箱或手机号")
+    password: str = Field(..., description="密码")
 
 
 # 令牌响应
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: str = "bearer"
     refresh_token: str
 
 
 # 令牌数据
 class TokenPayload(BaseModel):
-    sub: Optional[int] = None
+    sub: str | None = None
+    exp: int | None = None
 
 
 # 管理员创建用户
 class UserCreateAdmin(BaseModel):
-    username: str
-    password: str
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    role: Optional[str] = "user"
-    is_active: Optional[bool] = True
-    
-    @validator('password')
-    def password_min_length(cls, v):
-        if len(v) < 6:
-            raise ValueError('密码长度至少为6个字符')
-        return v
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=6)
+    email: EmailStr | None = None
+    phone: str | None = None
+    is_active: bool = True
+    is_admin: bool = False
+    is_superuser: bool = False
     
     @validator('phone')
     def validate_phone(cls, v):
         if v is None:
             return v
-        # 简单的中国手机号验证
         if not re.match(r'^1[3-9]\d{9}$', v):
             raise ValueError('无效的手机号码')
         return v
     
-    @validator('role')
-    def validate_role(cls, v):
-        if v not in ['user', 'admin']:
-            raise ValueError('角色只能是 user 或 admin')
+    @validator('username')
+    def validate_username(cls, v):
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('用户名只能包含字母、数字和下划线')
         return v
 
 
 # 管理员更新用户
 class UserUpdateAdmin(BaseModel):
-    username: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    password: Optional[str] = None
-    role: Optional[str] = None
-    is_active: Optional[bool] = None
-    
-    @validator('password')
-    def password_min_length(cls, v):
-        if v is not None and len(v) < 6:
-            raise ValueError('密码长度至少为6个字符')
-        return v
+    username: str | None = Field(None, min_length=3, max_length=50)
+    email: EmailStr | None = None
+    phone: str | None = None
+    password: str | None = Field(None, min_length=6)
+    is_active: bool | None = None
+    is_admin: bool | None = None
+    is_superuser: bool | None = None
     
     @validator('phone')
     def validate_phone(cls, v):
         if v is None:
             return v
-        # 简单的中国手机号验证
         if not re.match(r'^1[3-9]\d{9}$', v):
             raise ValueError('无效的手机号码')
         return v
     
-    @validator('role')
-    def validate_role(cls, v):
-        if v is not None and v not in ['user', 'admin']:
-            raise ValueError('角色只能是 user 或 admin')
+    @validator('username')
+    def validate_username(cls, v):
+        if v is None:
+            return v
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('用户名只能包含字母、数字和下划线')
         return v
 
 
-# 管理员登录
-class AdminLogin(BaseModel):
+# 推广信息响应
+class ReferralInfo(BaseModel):
+    referral_code: str
+    referral_rate: float
+    reward_balance: float
+    total_referred: int = 0
+
+
+# 推广历史记录
+class ReferralHistory(BaseModel):
+    id: int
     username: str
-    password: str
+    register_time: datetime
+    membership_status: str
+    reward_status: str
+    reward_amount: float | None = None
+
+
+# 用户统计信息（管理员使用）
+class UserStats(BaseModel):
+    total_users: int
+    active_users: int
+    new_users_today: int
+    new_users_this_month: int
+
+
+# 简化的用户信息（用于列表显示）
+class UserSummary(BaseModel):
+    id: int
+    username: str
+    email: str | None = None
+    is_active: bool
+    is_admin: bool
+    created_at: datetime
+    last_login: datetime | None = None
+    
+    class Config:
+        orm_mode = True
+
+
+# 兼容性别名
+User = UserResponse

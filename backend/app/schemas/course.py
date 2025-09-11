@@ -1,4 +1,3 @@
-from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -39,7 +38,7 @@ class KnowledgePoint(KnowledgePointBase):
 class CourseBase(BaseModel):
     course_number: int
     title: str
-    description: Optional[str] = None
+    description: [str] = None
     is_free: bool = False
 
 
@@ -50,9 +49,9 @@ class CourseCreate(CourseBase):
 
 # 更新课程时的属性
 class CourseUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    is_free: Optional[bool] = None
+    title: [str] = None
+    description: [str] = None
+    is_free: [bool] = None
 
 
 # 数据库中的课程
@@ -75,7 +74,7 @@ class Course(CourseBase):
 
 # 带知识点的课程
 class CourseWithKnowledgePoints(Course):
-    knowledge_points: List[KnowledgePoint] = []
+    knowledge_points: [KnowledgePoint] = []
     
     class Config:
         orm_mode = True

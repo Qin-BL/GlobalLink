@@ -5,7 +5,6 @@
 
 import logging
 import traceback
-from typing import List, Optional
 from fastapi import Request
 
 from app.core.config import settings
@@ -22,7 +21,7 @@ DEFAULT_ERROR_RECIPIENTS = settings.ERROR_NOTIFICATION_RECIPIENTS
 class ErrorNotifier:
     """错误邮件通知器"""
     
-    def __init__(self, recipients: Optional[List[str]] = None):
+    def __init__(self, recipients: [[str]] = None):
         """
         初始化错误通知器
         
@@ -34,8 +33,8 @@ class ErrorNotifier:
     async def send_error_notification(
         self,
         error: Exception,
-        request: Optional[Request] = None,
-        additional_info: Optional[dict] = None
+        request: [Request] = None,
+        additional_info: [dict] = None
     ) -> bool:
         """
         发送错误邮件通知
@@ -81,8 +80,8 @@ class ErrorNotifier:
     def _build_body(
         self,
         error: Exception,
-        request: Optional[Request],
-        additional_info: Optional[dict]
+        request: [Request],
+        additional_info: [dict]
     ) -> str:
         """构建邮件内容"""
         
@@ -138,7 +137,7 @@ class ErrorNotifier:
 error_notifier = ErrorNotifier()
 
 
-def configure_error_notifier(recipients: List[str]) -> None:
+def configure_error_notifier(recipients: [str]) -> None:
     """
     配置全局错误通知器的接收邮箱
     
@@ -152,8 +151,8 @@ def configure_error_notifier(recipients: List[str]) -> None:
 
 async def notify_error(
     error: Exception,
-    request: Optional[Request] = None,
-    additional_info: Optional[dict] = None
+    request: [Request] = None,
+    additional_info: [dict] = None
 ) -> bool:
     """
     发送错误通知（使用全局配置）

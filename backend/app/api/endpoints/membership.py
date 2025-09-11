@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any
 from datetime import datetime, timedelta
 import uuid
 
@@ -188,7 +188,7 @@ def payment_callback(
     return {"status": "success"}
 
 
-@router.get("/rewards", response_model=List[schemas.Reward])
+@router.get("/rewards", response_model=[schemas.Reward])
 def read_rewards(
     db: Session = Depends(deps.get_db),
     current_user: models.User = Depends(deps.get_current_active_user),

@@ -1,6 +1,4 @@
 import jwt
-from typing import Optional
-
 from app.core.config import settings
 
 
@@ -18,7 +16,7 @@ def generate_password_reset_token(email: str) -> str:
     return encoded_jwt
 
 
-def verify_password_reset_token(token: str) -> Optional[str]:
+def verify_password_reset_token(token: str) -> [str]:
     """验证密码重置令牌"""
     try:
         decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])

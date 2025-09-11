@@ -6,8 +6,6 @@ import json
 import hashlib
 from datetime import datetime, timedelta
 import logging
-from typing import Optional, Tuple
-
 # 配置日志
 logger = logging.getLogger(__name__)
 
@@ -15,7 +13,7 @@ logger = logging.getLogger(__name__)
 TIMESTAMP_VALIDITY = timedelta(minutes=5)
 
 
-def decrypt_frontend_password(encrypted_data: str, expected_domain: Optional[str] = None) -> Optional[str]:
+def decrypt_frontend_password(encrypted_data: str, expected_domain: [str] = None) -> [str]:
     """
     解密前端加密的密码
     
@@ -115,7 +113,7 @@ def is_frontend_encrypted(password_data: str) -> bool:
 
 
 
-def extract_password_hash(encrypted_data: str) -> Optional[Tuple[str, int]]:
+def extract_password_hash(encrypted_data: str) -> [[str, int]]:
     """
     从加密数据中提取密码哈希和时间戳
     
@@ -123,7 +121,7 @@ def extract_password_hash(encrypted_data: str) -> Optional[Tuple[str, int]]:
         encrypted_data: 加密数据
         
     Returns:
-        Optional[Tuple[str, int]]: (密码哈希, 时间戳) 或 None
+        [[str, int]]: (密码哈希, 时间戳) 或 None
     """
     try:
         data = json.loads(encrypted_data)

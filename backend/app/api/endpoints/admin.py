@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -71,7 +71,7 @@ async def admin_login(
     }
 
 
-@router.get("/users", response_model=List[schemas.User])
+@router.get("/users", response_model=[schemas.User])
 def get_all_users(
     db: Session = Depends(deps.get_db),
     skip: int = 0,

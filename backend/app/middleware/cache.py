@@ -1,6 +1,6 @@
 import json
 import hashlib
-from typing import Callable, Optional
+from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -95,7 +95,7 @@ class CacheMiddleware(BaseHTTPMiddleware):
         # 生成MD5哈希作为缓存键
         return f"api_cache:{hashlib.md5(url.encode()).hexdigest()}"
     
-    async def _get_response_body(self, response: Response) -> Optional[dict]:
+    async def _get_response_body(self, response: Response) -> dict | None:
         """
         获取响应内容
         """

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional, Union
+from typing import Any
 
 from app.core.config import settings
 from app.db.session import get_redis
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 async def set_redis_cache(
     key: str,
     value: Any,
-    expire_seconds: Optional[int] = None
+    expire_seconds: [int] = None
 ) -> bool:
     """
     设置Redis缓存
@@ -57,7 +57,7 @@ async def set_redis_cache(
         return False
 
 
-async def get_redis_cache(key: str) -> Union[str, dict, list, None]:
+async def get_redis_cache(key: str) -> [str, dict, list, None]:
     """
     获取Redis缓存
     

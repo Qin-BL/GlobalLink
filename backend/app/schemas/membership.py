@@ -1,4 +1,3 @@
-from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -54,7 +53,7 @@ class PaymentCreate(PaymentBase):
 class PaymentInDB(PaymentBase):
     id: int
     user_id: int
-    transaction_id: Optional[str] = None
+    transaction_id: [str] = None
     status: str  # 'pending', 'completed', 'failed'
     created_at: datetime
     
@@ -87,16 +86,16 @@ class RewardBase(BaseModel):
 # 创建奖励金时的属性
 class RewardCreate(RewardBase):
     user_id: int
-    related_payment_id: Optional[int] = None
-    related_user_id: Optional[int] = None
+    related_payment_id: [int] = None
+    related_user_id: [int] = None
 
 
 # 数据库中的奖励金
 class RewardInDB(RewardBase):
     id: int
     user_id: int
-    related_payment_id: Optional[int] = None
-    related_user_id: Optional[int] = None
+    related_payment_id: [int] = None
+    related_user_id: [int] = None
     status: str  # 'pending', 'available', 'withdrawn'
     created_at: datetime
     

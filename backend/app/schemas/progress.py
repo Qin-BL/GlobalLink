@@ -1,4 +1,3 @@
-from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -18,8 +17,8 @@ class LearningProgressCreate(LearningProgressBase):
 
 # 更新学习进度时的属性
 class LearningProgressUpdate(BaseModel):
-    knowledge_point_id: Optional[int] = None
-    last_study_mode: Optional[str] = None
+    knowledge_point_id: [int] = None
+    last_study_mode: [str] = None
 
 
 # 数据库中的学习进度

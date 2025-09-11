@@ -4,7 +4,6 @@ import random
 import string
 import ssl
 from datetime import datetime, timedelta
-from typing import Optional, List, Tuple
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -49,7 +48,7 @@ def generate_verification_code(length: int = None) -> str:
 
 
 class EmailSchema(BaseModel):
-    email: List[EmailStr]
+    email: [EmailStr]
 
 async def send_email(
     email_to: str,
@@ -143,7 +142,7 @@ def send_email_background(
     """
     background_tasks.add_task(send_email, email_to, subject, body)
 
-async def send_verification_code(email_to: EmailStr) -> Tuple[bool, Optional[str]]:
+async def send_verification_code(email_to: EmailStr) -> [bool, [str]]:
     """
     发送验证码邮件并将验证码存储在Redis中
     

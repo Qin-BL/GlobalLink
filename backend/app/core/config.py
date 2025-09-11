@@ -1,6 +1,6 @@
 import secrets
-from typing import Any, Dict, List, Optional, Union
-from pydantic import AnyHttpUrl, EmailStr
+from typing import Any
+from pydantic import AnyHttpUrl, EmailStr, Field
 
 # 兼容不同版本的pydantic
 try:
@@ -41,15 +41,24 @@ except ImportError:
 
 
 class Settings(BaseSettings):
+    # 应用基础配置
     API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "GlobalLink"
+    VERSION: str = "2.0.0"
+    DEBUG: bool = False
+    
+    # 安全配置
     SECRET_KEY: str = secrets.token_urlsafe(32)
-    # 60 minutes * 24 hours * 8 days = 8 days
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
-    # 刷新令牌有效期（30天）
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
-    # BACKEND_CORS_ORIGINS is a JSON-formatted list of origins
-    # e.g: ["http://localhost", "http://localhost:4200", "http://localhost:3000"]
-    BACKEND_CORS_ORIGINS: List[str] = [
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 缩短访问令牌有效期提高安全性
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 缩短刷新令牌有效期
+    JWT_ALGORITHM: str = "HS256"
+    
+    # 允许的主机（安全配置）
+    ALLOWED_HOSTS: list[str] = ["localhost", "127.0.0.1", "*.globallink.com"]
+    
+    # CORS配置
+    BACKEND_CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
         "http://localhost:3080",
         "http://localhost:8000",
         "http://localhost",
@@ -57,21 +66,20 @@ class Settings(BaseSettings):
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
 
-    PROJECT_NAME: str = "GlobalLink"
-    
     # 数据库配置
     POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "password"
+    POSTGRES_USER: str = "globallink_user"
+    POSTGRES_PASSWORD: str = "globallink_password"
     POSTGRES_DB: str = "globallink"
-    SQLALCHEMY_DATABASE_URI: Optional[str] = None
+    POSTGRES_PORT: int = 5432
+    SQLALCHEMY_DATABASE_URI: str | None = None
     
     # 数据库连接池配置
     DB_POOL_SIZE: int = 20
@@ -79,6 +87,7 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
     DB_MAX_CONNECTIONS: int = 100
+    DB_ECHO: bool = False  # 生产环境关闭SQL日志
     
     # MongoDB配置
     MONGODB_URI: str = "mongodb://localhost:27017"
@@ -106,12 +115,12 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_LENGTH: int = 6  # 验证码长度
 
     # 错误通知配置
-    ERROR_NOTIFICATION_RECIPIENTS: List[EmailStr] = ["15010993510@163.com"]  # 错误邮件通知接收邮箱列表
+    ERROR_NOTIFICATION_RECIPIENTS: list[EmailStr] = ["15010993510@163.com"]  # 错误邮件通知接收邮箱列表
     ERROR_NOTIFICATION_ENABLED: bool = True  # 是否启用错误邮件通知功能
 
     @field_validator("ERROR_NOTIFICATION_RECIPIENTS", mode="before")
     @classmethod
-    def assemble_error_recipients(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
+    def assemble_error_recipients(cls, v: str | list[str]) -> list[str] | str:
         """解析错误通知接收邮箱列表，支持逗号分隔的字符串"""
         if isinstance(v, str) and not v.startswith("["):
             return [email.strip() for email in v.split(",") if email.strip()]
@@ -121,7 +130,7 @@ class Settings(BaseSettings):
 
     @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
     @classmethod
-    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any] = None) -> Any:
+    def assemble_db_connection(cls, v: str | None, values: dict[str, Any] = None) -> Any:
         if isinstance(v, str):
             return v
         # 如果没有提供URI，使用PostgreSQL数据库

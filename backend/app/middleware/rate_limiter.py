@@ -2,7 +2,7 @@ from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 import time
 import logging
-from typing import Callable, Dict
+from typing import Callable
 
 from app.core.config import settings
 from app.utils.redis_cache import set_rate_limit

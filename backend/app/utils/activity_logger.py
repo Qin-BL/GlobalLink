@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+Any, 
 
 from app.db.session import get_mongo_db
 
@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 async def log_user_activity(
     user_id: int,
     activity_type: str,
-    details: Optional[Dict[str, Any]] = None,
-    ip_address: Optional[str] = None
+    details: [[str, Any]] = None,
+    ip_address: [str] = None
 ) -> bool:
     """
     记录用户活动到MongoDB
@@ -53,9 +53,9 @@ async def log_api_request(
     method: str,
     status_code: int,
     process_time: float,
-    user_id: Optional[int] = None,
-    ip_address: Optional[str] = None,
-    request_data: Optional[Dict[str, Any]] = None,
+    user_id: [int] = None,
+    ip_address: [str] = None,
+    request_data: [[str, Any]] = None,
 ) -> bool:
     """
     记录API请求到MongoDB
@@ -103,7 +103,7 @@ async def log_api_request(
         return False
 
 
-def filter_sensitive_data(data: Dict[str, Any]) -> Dict[str, Any]:
+def filter_sensitive_data(data: [str, Any]) -> [str, Any]:
     """
     过滤请求数据中的敏感信息
     """

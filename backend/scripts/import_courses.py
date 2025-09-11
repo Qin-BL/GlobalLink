@@ -8,7 +8,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import List, Dict, Any
+Any
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -21,7 +21,7 @@ from app.models.course import Course, KnowledgePoint
 from app.schemas.course import CourseCreate, KnowledgePointCreate
 
 
-def load_course_files(courses_dir: str) -> List[Dict[str, Any]]:
+def load_course_files(courses_dir: str) -> [[str, Any]]:
     """加载所有课程JSON文件"""
     courses = []
     courses_path = Path(courses_dir)
@@ -58,7 +58,7 @@ def load_course_files(courses_dir: str) -> List[Dict[str, Any]]:
     return courses
 
 
-def create_course_schema(course_data: Dict[str, Any]) -> CourseCreate:
+def create_course_schema(course_data: [str, Any]) -> CourseCreate:
     """创建课程数据模型"""
     course_number = course_data['course_number']
     
@@ -70,7 +70,7 @@ def create_course_schema(course_data: Dict[str, Any]) -> CourseCreate:
     )
 
 
-def create_knowledge_points(course_id: int, knowledge_data: List[Dict[str, str]]) -> List[KnowledgePointCreate]:
+def create_knowledge_points(course_id: int, knowledge_data: [[str, str]]) -> [KnowledgePointCreate]:
     """创建知识点数据模型"""
     knowledge_points = []
     
@@ -91,7 +91,7 @@ def create_knowledge_points(course_id: int, knowledge_data: List[Dict[str, str]]
     return knowledge_points
 
 
-def import_courses_to_db(db: Session, courses_data: List[Dict[str, Any]]) -> Dict[str, int]:
+def import_courses_to_db(db: Session, courses_data: [[str, Any]]) -> [str, int]:
     """将课程数据导入数据库"""
     stats = {
         'total_courses': len(courses_data),

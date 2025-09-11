@@ -1,4 +1,3 @@
-from typing import Optional
 import uuid
 from wechatpy.pay import WeChatPay
 from app.core.config import settings
@@ -15,7 +14,7 @@ def generate_wechat_pay_qrcode(
     transaction_id: str,
     amount: float,
     description: str,
-    time_expire: Optional[str] = None,
+    time_expire: [str] = None,
 ) -> str:
     """生成微信支付二维码
     
