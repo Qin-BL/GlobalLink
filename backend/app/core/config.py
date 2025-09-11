@@ -1,6 +1,6 @@
 import secrets
 from typing import Any, Dict, List, Optional, Union
-from pydantic import AnyHttpUrl, field_validator, EmailStr
+from pydantic import AnyHttpUrl, EmailStr
 
 # 兼容不同版本的pydantic
 try:
@@ -14,6 +14,19 @@ except ImportError:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
+
+# 兼容不同版本的pydantic validator
+try:
+    from pydantic import field_validator
+except ImportError:
+    try:
+        from pydantic import validator as field_validator
+    except ImportError:
+        # 如果都没有，创建一个简单的装饰器
+        def field_validator(field_name, mode="before"):
+            def decorator(func):
+                return func
+            return decorator
 
 
 class Settings(BaseSettings):
