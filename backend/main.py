@@ -5,8 +5,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .core.config import settings
-from .api.api import api_router
+from app.core.config import settings
+from app.api.api import api_router
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -40,7 +40,7 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "app.main:app",
+        "main:app",
         host="0.0.0.0",
         port=8000,
         reload=True
