@@ -3,7 +3,6 @@
 数据库会话管理
 """
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 import redis
@@ -12,10 +11,9 @@ from functools import lru_cache
 from typing import Generator, AsyncGenerator
 
 from ..core.config import settings
+from .base import Base
 
 logger = logging.getLogger(__name__)
-
-Base = declarative_base()
 
 # 同步PostgreSQL连接
 def create_database_engine():
