@@ -182,8 +182,7 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# MongoDB配置
-MONGODB_URI=mongodb://localhost:27017/globallink_logs
+
 
 # JWT配置
 SECRET_KEY=your-secure-secret-key

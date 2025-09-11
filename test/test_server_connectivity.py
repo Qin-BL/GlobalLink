@@ -124,7 +124,7 @@ class ServerConnectivityTester:
                 "nginx",      # Web服务器
                 "postgresql", # PostgreSQL数据库
                 "redis",      # Redis缓存
-                "mongod",     # MongoDB数据库
+
             ]
             
             all_services_ok = True
@@ -208,7 +208,7 @@ class ServerConnectivityTester:
             (3080, "Frontend"),
             (5432, "PostgreSQL"),
             (6379, "Redis"),
-            (27017, "MongoDB")
+
         ]
         
         port_results = []

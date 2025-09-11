@@ -56,7 +56,7 @@ POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=password
 POSTGRES_DB=globallink
-# MongoDB已移除，使用PostgreSQL存储所有数据
+
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0

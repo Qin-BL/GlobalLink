@@ -239,10 +239,10 @@ install_database() {
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
   fi
 
-  # 安装MongoDB
-  log "安装MongoDB..."
-  # MongoDB已移除 - 使用PostgreSQL存储所有数据
-  log "MongoDB已移除，所有数据现在存储在PostgreSQL中"
+
+
+
+
 
   # 安装Redis
   log "安装Redis..."

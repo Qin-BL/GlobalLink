@@ -6,7 +6,7 @@ from .base import BaseModel
 
 
 class SystemLog(BaseModel):
-    """系统日志模型 - 替代MongoDB日志存储"""
+    """系统日志模型"""
     __tablename__ = "system_logs"
 
     # 日志类型：api, activity, error, security等
