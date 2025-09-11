@@ -147,6 +147,19 @@ class Settings(BaseSettings):
     MONTHLY_MEMBERSHIP_PRICE: float = 29.9
     YEARLY_MEMBERSHIP_PRICE: float = 299.0
 
+    # 日志系统配置
+    # 异步日志记录开关
+    ASYNC_LOGGING_ENABLED: bool = True
+    # 批量写入配置
+    LOG_BATCH_SIZE: int = 50  # 批量写入的日志数量阈值
+    LOG_FLUSH_INTERVAL: int = 5  # 日志刷新间隔（秒）
+    # 日志级别控制
+    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    # 各类型日志的记录级别
+    SYSTEM_LOG_LEVEL: str = "WARNING"  # 系统日志记录级别
+    API_LOG_LEVEL: str = "INFO"  # API日志记录级别
+    ACTIVITY_LOG_LEVEL: str = "INFO"  # 用户活动日志记录级别
+
     # MAIL_SSL_TLS会根据MAIL_PORT自动设置
     # 当MAIL_PORT=465时，MAIL_SSL_TLS=True
     # 当MAIL_PORT=587时，MAIL_SSL_TLS=False

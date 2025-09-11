@@ -7,6 +7,15 @@ import logging
 from typing import Dict, Any, Optional
 from ..models.log import UserActivity, ApiLog
 from ..db.session import get_db
+from ..core.config import settings
+
+# 尝试导入异步日志处理器
+try:
+    from .async_logger import log_activity as async_log_activity
+    from .async_logger import log_api as async_log_api
+    HAS_ASYNC_LOGGER = True
+except ImportError:
+    HAS_ASYNC_LOGGER = False
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +39,24 @@ def log_user_activity(
     Returns:
         bool: 是否记录成功
     """
+    # 根据配置决定使用同步还是异步方式
+    if settings.ASYNC_LOGGING_ENABLED and HAS_ASYNC_LOGGER:
+        try:
+            # 使用异步日志处理器
+            return async_log_activity(
+                user_id=user_id,
+                activity_type=action,
+                description="",
+                details=details,
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+        except Exception as e:
+            logger.error(f"异步记录用户活动失败: {e}")
+            # 如果异步记录失败，降级到同步记录
+            pass
+    
+    # 同步记录方式（保持原有实现）
     try:
         db = next(get_db())
         
@@ -81,6 +108,26 @@ def log_api_request(
     Returns:
         bool: 是否记录成功
     """
+    # 根据配置决定使用同步还是异步方式
+    if settings.ASYNC_LOGGING_ENABLED and HAS_ASYNC_LOGGER:
+        try:
+            # 使用异步日志处理器
+            return async_log_api(
+                method=method,
+                path=path,
+                status_code=status_code,
+                response_time=response_time,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                request_data=request_data
+            )
+        except Exception as e:
+            logger.error(f"异步记录API请求失败: {e}")
+            # 如果异步记录失败，降级到同步记录
+            pass
+    
+    # 同步记录方式（保持原有实现）
     try:
         db = next(get_db())
         
