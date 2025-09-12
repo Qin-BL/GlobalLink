@@ -11,6 +11,47 @@ fi
 
 echo "===== 开始安装GlobalLink后端 ======"
 
+# 检测操作系统
+detect_os() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$NAME
+        VER=$VERSION_ID
+    elif type lsb_release >/dev/null 2>&1; then
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+    elif [ -f /etc/redhat-release ]; then
+        OS="Red Hat Enterprise Linux"
+        VER=$(cat /etc/redhat-release | sed 's/.*release \([0-9.]*\).*/\1/')
+    else
+        OS=$(uname -s)
+        VER=$(uname -r)
+    fi
+    echo "检测到操作系统: $OS $VER"
+}
+
+# 检查是否有sudo权限
+check_sudo() {
+    if ! sudo -n true 2>/dev/null; then
+        echo "错误：此脚本需要sudo权限，请确保当前用户有sudo权限"
+        exit 1
+    fi
+}
+
+# 错误处理函数
+handle_error() {
+    echo "错误：安装过程中出现问题，请检查上面的错误信息"
+    echo "如果是网络问题，请稍后重试"
+    echo "如果是权限问题，请确保有sudo权限"
+    exit 1
+}
+
+# 设置错误处理
+trap 'handle_error' ERR
+
+detect_os
+check_sudo
+
 # 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../" && pwd)"
@@ -30,30 +71,177 @@ fi
 
 # 安装系统依赖包
 echo "安装系统依赖包..."
-sudo apt update
+echo "正在更新包管理器..."
+sudo apt update || {
+    echo "警告：apt update失败，尝试修复..."
+    sudo apt --fix-broken install -y
+    sudo apt update
+}
+
+echo "安装编译工具和系统依赖..."
 sudo apt install -y software-properties-common \
+    build-essential gcc g++ make cmake \
     libjpeg-dev zlib1g-dev libfreetype6-dev \
-    liblcms2-dev libwebp-dev tcl8.6-dev tk8.6-dev
+    liblcms2-dev libwebp-dev tcl8.6-dev tk8.6-dev \
+    libffi-dev libssl-dev libbz2-dev libreadline-dev \
+    libsqlite3-dev wget curl llvm libncurses5-dev \
+    libncursesw5-dev xz-utils tk-dev libxml2-dev \
+    libxmlsec1-dev liblzma-dev pkg-config \
+    python3-dev python3-pip git || {
+    echo "错误：无法安装系统依赖包"
+    echo "请检查网络连接和包管理器状态"
+    exit 1
+}
 
 # 安装Python 3.12.10和pip
 echo "安装Python 3.12.10和pip..."
-sudo add-apt-repository -y ppa:deadsnakes/ppa
+echo "添加deadsnakes PPA..."
+sudo add-apt-repository -y ppa:deadsnakes/ppa || {
+    echo "警告：无法添加deadsnakes PPA，尝试使用系统默认Python"
+    if command -v python3.12 >/dev/null 2>&1; then
+        echo "系统已有Python 3.12"
+    else
+        echo "错误：无法安装Python 3.12，请手动安装"
+        exit 1
+    fi
+}
+
 sudo apt update
-# 修改：移除python3.12-distutils，因为在某些系统上不可用
-sudo apt install -y python3.12 python3.12-venv
+
+# 安装Python 3.12及相关开发包
+echo "安装Python 3.12及开发包..."
+sudo apt install -y python3.12 python3.12-venv python3.12-dev || {
+    echo "错误：无法安装Python 3.12"
+    exit 1
+}
+
+# 尝试安装distutils（某些系统可能没有）
+sudo apt install -y python3.12-distutils 2>/dev/null || {
+    echo "警告：python3.12-distutils不可用，将使用get-pip.py安装pip"
+}
+
 # 安装pip for Python 3.12
-curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12
+echo "安装pip for Python 3.12..."
+if ! python3.12 -m pip --version >/dev/null 2>&1; then
+    echo "使用get-pip.py安装pip..."
+    curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12 || {
+        echo "错误：无法安装pip"
+        exit 1
+    }
+fi
+
+# 验证Python安装
+echo "验证Python 3.12安装..."
+python3.12 --version || {
+    echo "错误：Python 3.12安装验证失败"
+    exit 1
+}
+python3.12 -c "import sys; print('Python路径:', sys.executable)"
 
 # 创建并激活虚拟环境
 echo "创建Python 3.12虚拟环境..."
 cd backend
-python3.12 -m venv venv
-source venv/bin/activate
+
+# 删除旧的虚拟环境（如果存在）
+if [ -d "venv" ]; then
+    echo "删除旧的虚拟环境..."
+    rm -rf venv
+fi
+
+# 创建新的虚拟环境
+echo "创建新的虚拟环境..."
+python3.12 -m venv venv || {
+    echo "错误：无法创建虚拟环境"
+    echo "尝试使用--without-pip选项..."
+    python3.12 -m venv --without-pip venv || {
+        echo "错误：虚拟环境创建失败"
+        exit 1
+    }
+    # 手动安装pip到虚拟环境
+    source venv/bin/activate
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python
+} || {
+    echo "错误：无法创建虚拟环境"
+    exit 1
+}
+
+# 激活虚拟环境
+source venv/bin/activate || {
+    echo "错误：无法激活虚拟环境"
+    exit 1
+}
+
+echo "虚拟环境创建成功，Python版本："
+python --version
+which python
 
 # 安装后端依赖
 echo "安装后端依赖..."
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+
+# 检查requirements.txt是否存在
+if [ ! -f "requirements.txt" ]; then
+    echo "错误：未找到requirements.txt文件"
+    exit 1
+fi
+
+# 升级pip和基础工具
+echo "升级pip和基础工具..."
+pip install --upgrade pip setuptools wheel || {
+    echo "使用清华源升级pip..."
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip setuptools wheel
+}
+
+# 设置编译环境变量
+echo "设置编译环境变量..."
+export CFLAGS="-I/usr/include/python3.12"
+export LDFLAGS="-L/usr/lib/python3.12/config-3.12-x86_64-linux-gnu"
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+
+# 先安装一些可能有问题的包
+echo "预安装可能有编译问题的包..."
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple Cython || {
+    echo "警告：Cython安装失败，继续安装其他包..."
+}
+
+# 尝试安装numpy（很多包依赖它）
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple numpy || {
+    echo "警告：numpy安装失败，尝试使用系统包..."
+    sudo apt install -y python3-numpy 2>/dev/null || true
+}
+
+# 安装requirements.txt中的依赖
+echo "安装项目依赖..."
+# 首先尝试使用清华源
+if ! pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt; then
+    echo "清华源安装失败，尝试使用官方源..."
+    if ! pip install -r requirements.txt; then
+        echo "官方源也失败，尝试逐个安装..."
+        # 逐个安装，跳过失败的包
+        while IFS= read -r line; do
+            if [[ $line =~ ^[^#]*[a-zA-Z] ]]; then
+                package=$(echo "$line" | sed 's/[>=<].*//')
+                echo "安装包: $package"
+                pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "$package" || {
+                    echo "警告：包 $package 安装失败，跳过..."
+                }
+            fi
+        done < requirements.txt
+    fi
+fi
+
+# 验证关键包安装
+echo "验证关键包安装..."
+python -c "import fastapi; print('FastAPI版本:', fastapi.__version__)" || {
+    echo "警告：FastAPI未正确安装"
+}
+python -c "import uvicorn; print('Uvicorn安装成功')" || {
+    echo "警告：Uvicorn未正确安装"
+}
+python -c "import sqlalchemy; print('SQLAlchemy安装成功')" || {
+    echo "警告：SQLAlchemy未正确安装"
+}
+
+echo "依赖安装完成！"
 
 # 检查项目根目录下的.env文件
 echo "检查环境变量文件..."
@@ -76,9 +264,13 @@ EOF
   echo "警告：请务必修改.env文件中的数据库密码"
 fi
 
-# 修改后端CORS配置
-echo "更新后端CORS配置..."
-sed -i 's/"http:\/\/localhost:3000"/"http:\/\/localhost:3080"/g' app/core/config.py
+# 修改后端CORS配置（如果文件存在）
+if [ -f "app/core/config.py" ]; then
+    echo "更新后端CORS配置..."
+    sed -i 's/"http:\/\/localhost:3000"/"http:\/\/localhost:3080"/g' app/core/config.py
+else
+    echo "警告：未找到app/core/config.py文件，跳过CORS配置更新"
+fi
 
 # 添加启动脚本
 echo "创建启动脚本..."
@@ -122,8 +314,54 @@ echo "bash install_service_ubuntu20.sh"
 
 cd ..
 
+# 最终验证
+echo "进行最终验证..."
+cd backend
+
+# 测试虚拟环境和Python导入
+source venv/bin/activate
+python -c "
+try:
+    import sys
+    print(f'Python版本: {sys.version}')
+    print(f'Python路径: {sys.executable}')
+    
+    # 测试关键模块
+    modules_to_test = ['fastapi', 'uvicorn', 'sqlalchemy', 'pydantic']
+    for module in modules_to_test:
+        try:
+            __import__(module)
+            print(f'✓ {module} 导入成功')
+        except ImportError as e:
+            print(f'✗ {module} 导入失败: {e}')
+    
+    print('基础验证完成')
+except Exception as e:
+    print(f'验证过程出错: {e}')
+"
+
+cd ..
+
+echo ""
 echo "===== GlobalLink后端安装完成 ======"
+echo ""
+echo "安装摘要："
+echo "- Python版本: $(python3.12 --version)"
+echo "- 虚拟环境位置: $(pwd)/backend/venv"
+echo "- 项目根目录: $(pwd)"
+echo ""
 echo "您可以通过以下方式启动后端："
 echo "1. 开发模式：./start_backend.sh"
 echo "2. 服务模式：sudo systemctl start globallink-backend"
-echo "API文档地址：http://localhost:8000/docs"
+echo ""
+echo "重要提示："
+echo "- 请确保PostgreSQL和Redis服务已启动"
+echo "- 请检查.env文件中的数据库配置"
+echo "- API文档地址：http://localhost:8000/docs"
+echo ""
+echo "如果遇到问题，请检查："
+echo "1. 系统依赖是否完整安装"
+echo "2. Python虚拟环境是否正确激活"
+echo "3. 数据库连接配置是否正确"
+echo ""
+echo "安装日志已保存，如有问题请查看上述输出信息"
