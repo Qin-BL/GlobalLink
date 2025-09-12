@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         "http://localhost",
     ]
 
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @field_validator("BACKEND_CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         if isinstance(v, str) and not v.startswith("["):
