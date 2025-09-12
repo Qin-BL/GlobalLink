@@ -21,7 +21,6 @@ COPY requirements.txt .
 
 # 安装Python依赖
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir email-validator==1.3.1 && \
     pip install --no-cache-dir -r requirements.txt
 
 # 复制应用代码
