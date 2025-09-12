@@ -28,15 +28,20 @@ if [ ! -d "backend" ]; then
   exit 1
 fi
 
-# 安装Python和pip
-echo "安装Python和pip..."
-sudo apt update
-sudo apt install -y python3 python3-pip python3-venv
+# 安装Python 3.12.10和pip
+ echo "安装Python 3.12.10和pip..."
+ sudo apt update
+ sudo apt install -y software-properties-common
+ sudo add-apt-repository -y ppa:deadsnakes/ppa
+ sudo apt update
+ sudo apt install -y python3.12 python3.12-venv python3.12-distutils
+ # 安装pip for Python 3.12
+ curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12
 
 # 创建并激活虚拟环境
-echo "创建Python虚拟环境..."
-cd backend
-python3 -m venv venv
+ echo "创建Python 3.12虚拟环境..."
+ cd backend
+ python3.12 -m venv venv
 source venv/bin/activate
 
 # 安装后端依赖
