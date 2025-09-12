@@ -341,8 +341,28 @@ echo "bash install_service_ubuntu20.sh"
 
 cd ..
 
-# 最终验证
-echo "进行最终验证..."
+# 添加数据库表结构初始化步骤
+# 关键问题：之前的脚本没有初始化数据库表结构
+# 这会导致首次部署时表不存在或字段不完整
+
+# 在安装依赖之后，添加数据库表结构初始化
+if [ -f "app/db/init_db.py" ]; then
+    echo "初始化数据库表结构..."
+    source venv/bin/activate
+    python -c "import asyncio; from app.db.init_db import init_db; asyncio.run(init_db())"
+    
+    # 添加数据库表结构修复步骤
+    echo "检查并修复数据库表结构..."
+    if [ -f "scripts/fix_user_table.py" ]; then
+        python scripts/fix_user_table.py
+    else
+        echo "警告：未找到表结构修复脚本，建议手动运行修复脚本"
+    fi
+else
+    echo "警告：未找到数据库初始化脚本，建议手动初始化数据库表结构"
+fi
+
+# 在最终验证部分，添加数据库连接测试
 cd backend
 
 # 测试虚拟环境和Python导入
@@ -362,10 +382,59 @@ try:
         except ImportError as e:
             print(f'✗ {module} 导入失败: {e}')
     
+    # 测试数据库连接
+    try:
+        import asyncio
+        from app.db.session import AsyncSessionLocal
+        from sqlalchemy import text
+        
+        async def test_db_connection():
+            try:
+                async with AsyncSessionLocal() as session:
+                    result = await session.execute(text('SELECT version()'))
+                    version = result.scalar_one()
+                    print(f'✓ 数据库连接成功: {version[:50]}...')
+                    
+                    # 检查users表是否存在
+                    result = await session.execute(text("""
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = 'users'
+                        )
+                    """))
+                    users_table_exists = result.scalar_one()
+                    if users_table_exists:
+                        print('✓ users表存在')
+                        # 检查is_superuser字段
+                        result = await session.execute(text("""
+                            SELECT EXISTS (
+                                SELECT FROM information_schema.columns 
+                                WHERE table_schema = 'public' 
+                                AND table_name = 'users'
+                                AND column_name = 'is_superuser'
+                            )
+                        """))
+                        has_is_superuser = result.scalar_one()
+                        if has_is_superuser:
+                            print('✓ users表包含is_superuser字段')
+                        else:
+                            print('✗ users表缺少is_superuser字段，请运行修复脚本')
+                    else:
+                        print('✗ users表不存在，请重新初始化数据库')
+            except Exception as e:
+                print(f'✗ 数据库连接测试失败: {e}')
+                print('请检查数据库配置和服务状态')
+        
+        asyncio.run(test_db_connection())
+    except Exception as e:
+        print(f'数据库测试异常: {e}')
+        print('请手动验证数据库连接和表结构')
+    
     print('基础验证完成')
 except Exception as e:
     print(f'验证过程出错: {e}')
-"
+"""
 
 cd ..
 
