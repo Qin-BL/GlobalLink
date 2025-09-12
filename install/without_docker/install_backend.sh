@@ -358,75 +358,75 @@ fi
 cd backend
 
 # 测试虚拟环境和Python导入
+# 使用here-doc语法避免引号嵌套问题
 source venv/bin/activate
-python -c "
-try:
-    import sys
-    print(f'Python版本: {sys.version}')
-    print(f'Python路径: {sys.executable}')
-    
-    # 测试关键模块
-    modules_to_test = ['fastapi', 'uvicorn', 'sqlalchemy', 'pydantic', 'email_validator']
-    for module in modules_to_test:
-        try:
-            __import__(module)
-            print(f'✓ {module} 导入成功')
-        except ImportError as e:
-            print(f'✗ {module} 导入失败: {e}')
-    
-    # 测试数据库连接
+python << 'EOF'
+import sys
+print(f'Python版本: {sys.version}')
+print(f'Python路径: {sys.executable}')
+
+# 测试关键模块
+modules_to_test = ['fastapi', 'uvicorn', 'sqlalchemy', 'pydantic', 'email_validator']
+for module in modules_to_test:
     try:
-        import asyncio
-        from app.db.session import AsyncSessionLocal
-        from sqlalchemy import text
-        
-        async def test_db_connection():
-            try:
-                async with AsyncSessionLocal() as session:
-                    result = await session.execute(text('SELECT version()'))
-                    version = result.scalar_one()
-                    print(f'✓ 数据库连接成功: {version[:50]}...')
-                    
-                    # 检查users表是否存在
-                    result = await session.execute(text("""
+        __import__(module)
+        print(f'✓ {module} 导入成功')
+    except ImportError as e:
+        print(f'✗ {module} 导入失败: {e}')
+
+# 测试数据库连接
+try:
+    import asyncio
+    from app.db.session import AsyncSessionLocal
+    from sqlalchemy import text
+    
+    async def test_db_connection():
+        try:
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(text('SELECT version()'))
+                version = result.scalar_one()
+                print(f'✓ 数据库连接成功: {version[:50]}...')
+                
+                # 检查users表是否存在
+                check_table_sql = """
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'users'
+                    )
+                """
+                result = await session.execute(text(check_table_sql))
+                users_table_exists = result.scalar_one()
+                if users_table_exists:
+                    print('✓ users表存在')
+                    # 检查is_superuser字段
+                    check_column_sql = """
                         SELECT EXISTS (
-                            SELECT FROM information_schema.tables 
+                            SELECT FROM information_schema.columns 
                             WHERE table_schema = 'public' 
                             AND table_name = 'users'
+                            AND column_name = 'is_superuser'
                         )
-                    """))
-                    users_table_exists = result.scalar_one()
-                    if users_table_exists:
-                        print('✓ users表存在')
-                        # 检查is_superuser字段
-                        result = await session.execute(text("""
-                            SELECT EXISTS (
-                                SELECT FROM information_schema.columns 
-                                WHERE table_schema = 'public' 
-                                AND table_name = 'users'
-                                AND column_name = 'is_superuser'
-                            )
-                        """))
-                        has_is_superuser = result.scalar_one()
-                        if has_is_superuser:
-                            print('✓ users表包含is_superuser字段')
-                        else:
-                            print('✗ users表缺少is_superuser字段，请运行修复脚本')
+                    """
+                    result = await session.execute(text(check_column_sql))
+                    has_is_superuser = result.scalar_one()
+                    if has_is_superuser:
+                        print('✓ users表包含is_superuser字段')
                     else:
-                        print('✗ users表不存在，请重新初始化数据库')
-            except Exception as e:
-                print(f'✗ 数据库连接测试失败: {e}')
-                print('请检查数据库配置和服务状态')
-        
-        asyncio.run(test_db_connection())
-    except Exception as e:
-        print(f'数据库测试异常: {e}')
-        print('请手动验证数据库连接和表结构')
+                        print('✗ users表缺少is_superuser字段，请运行修复脚本')
+                else:
+                    print('✗ users表不存在，请重新初始化数据库')
+        except Exception as e:
+            print(f'✗ 数据库连接测试失败: {e}')
+            print('请检查数据库配置和服务状态')
     
-    print('基础验证完成')
+    asyncio.run(test_db_connection())
 except Exception as e:
-    print(f'验证过程出错: {e}')
-"""
+    print(f'数据库测试异常: {e}')
+    print('请手动验证数据库连接和表结构')
+
+print('基础验证完成')
+EOF
 
 cd ..
 
