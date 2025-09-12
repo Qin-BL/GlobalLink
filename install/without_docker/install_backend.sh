@@ -270,25 +270,74 @@ print('✓ pydantic EmailStr类型测试通过')
 
 echo "依赖安装完成！"
 
-# 检查项目根目录下的.env文件
+# 检查环境变量文件
 echo "检查环境变量文件..."
-if [ -f "$PROJECT_ROOT/.env" ]; then
+# 首先检查backend目录下是否已有.env文件
+if [ -f ".env" ]; then
+  echo "发现backend目录下已有.env文件，保持不变"
+# 如果backend目录没有，但项目根目录有，则复制过来
+elif [ -f "$PROJECT_ROOT/.env" ]; then
   echo "发现项目根目录下的.env文件，复制到backend目录..."
   cp "$PROJECT_ROOT/.env" .env
 else
-  echo "未找到项目根目录下的.env文件，创建默认.env文件"
+  echo "未找到.env文件，创建默认.env文件"
   cat > .env << EOF
+# 数据库配置
 POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=password
 POSTGRES_DB=globallink
+POSTGRES_PORT=5432
+# PostgreSQL超级用户配置
+POSTGRES_SUPERUSER=postgres
+POSTGRES_SUPERUSER_PASSWORD=postgres_password
 
+# Redis配置
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
 REDIS_PASSWORD=
+
+# 日志配置
+TABLE_NAME_LOGS=system_logs
+ENABLE_ACTIVITY_LOGGING=true
+
+# 邮件服务配置
+SMTP_SERVER=smtp.example.com
+SMTP_PORT=587
+SMTP_TLS=True
+SMTP_USER=your_email@example.com
+SMTP_PASSWORD=your_email_password
+SMTP_FROM=your_email@example.com
+EMAIL_TIMEOUT=10
+EMAIL_RETRY_COUNT=3
+
+# JWT配置
+JWT_SECRET_KEY=your-secret-key-here
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS配置
+CORS_ORIGINS=http://localhost:3080,http://127.0.0.1:3080
+
+# 应用配置
+DEBUG=True
+APP_NAME=GlobalLink
+API_V1_STR=/api/v1
+
+# 数据库连接池配置
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=20
+DB_POOL_RECYCLE=3600
+DB_POOL_TIMEOUT=30
+
+# 允许的主机
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# 日志级别
+LOG_LEVEL=INFO
 EOF
-  echo "警告：请务必修改.env文件中的数据库密码"
+  echo "警告：请务必修改.env文件中的数据库密码和其他敏感信息"
 fi
 
 # 修改后端CORS配置（如果文件存在）
