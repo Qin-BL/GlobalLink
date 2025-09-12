@@ -229,6 +229,12 @@ if ! pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
     fi
 fi
 
+# 关键修复：升级email-validator到pydantic所需的版本
+# 错误信息显示需要email-validator >= 2.0
+# 但requirements.txt中是1.3.1版本
+echo "升级email-validator到>=2.0版本..."
+pip install -U email-validator>=2.0.0
+
 # 验证关键包安装
 echo "验证关键包安装..."
 python -c "import fastapi; print('FastAPI版本:', fastapi.__version__)" || {
@@ -239,6 +245,27 @@ python -c "import uvicorn; print('Uvicorn安装成功')" || {
 }
 python -c "import sqlalchemy; print('SQLAlchemy安装成功')" || {
     echo "警告：SQLAlchemy未正确安装"
+}
+python -c "import email_validator; print('email-validator版本:', email_validator.__version__)" || {
+    echo "警告：email-validator未正确安装"
+}
+
+# 验证pydantic能否正常工作
+echo "验证pydantic能否正常工作..."
+python -c "
+from pydantic import BaseModel, EmailStr
+class User(BaseModel):
+    email: EmailStr
+    name: str
+
+# 测试EmailStr类型
+user = User(email='test@example.com', name='Test User')
+print('✓ pydantic EmailStr类型测试通过')
+" || {
+    echo "错误：pydantic使用EmailStr失败，可能是email-validator版本问题"
+    # 再次尝试强制升级email-validator
+    echo "尝试强制升级email-validator..."
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -U email-validator
 }
 
 echo "依赖安装完成！"
@@ -327,7 +354,7 @@ try:
     print(f'Python路径: {sys.executable}')
     
     # 测试关键模块
-    modules_to_test = ['fastapi', 'uvicorn', 'sqlalchemy', 'pydantic']
+    modules_to_test = ['fastapi', 'uvicorn', 'sqlalchemy', 'pydantic', 'email_validator']
     for module in modules_to_test:
         try:
             __import__(module)
