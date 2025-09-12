@@ -349,16 +349,7 @@ cd ..
 if [ -f "app/db/init_db.py" ]; then
     echo "初始化数据库表结构..."
     source venv/bin/activate
-    python -c "import asyncio; from app.db.init_db import init_db; asyncio.run(init_db())"
-    
-    # 添加数据库表结构修复步骤
-    echo "检查并修复数据库表结构..."
-    if [ -f "scripts/fix_user_table.py" ]; then
-        // python scripts/fix_user_table.py
-        echo "数据库初始化完成！"
-    else
-        echo "警告：未找到表结构修复脚本，建议手动运行修复脚本"
-    fi
+    python -c "import asyncio; from app.db.init_db import init_db; asyncio.run(init_db())" 
 else
     echo "警告：未找到数据库初始化脚本，建议手动初始化数据库表结构"
 fi
