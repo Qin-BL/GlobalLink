@@ -72,26 +72,82 @@ log "postgres用户密码: $POSTGRES_PASSWORD"
 
 # 创建环境变量文件
 log "创建环境变量文件..."
-cat > .env << EOF
+# 检查backend目录是否存在
+if [ ! -d "backend" ]; then
+    log_warning "backend目录不存在，在当前目录创建.env文件"
+    ENV_FILE=".env"
+else
+    log "在backend目录创建.env文件"
+    ENV_FILE="backend/.env"
+fi
+
+# 备份现有.env文件（如果存在）
+if [ -f "$ENV_FILE" ]; then
+    log_warning "$ENV_FILE文件已存在，将创建备份并更新数据库配置"
+    cp "$ENV_FILE" "$ENV_FILE.bak.$(date +'%Y%m%d%H%M%S')"
+    
+    # 创建临时文件用于更新环境变量
+    TEMP_FILE="$(mktemp)"
+    
+    # 读取现有.env文件，更新数据库相关配置
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # 检查是否是需要替换的数据库配置行
+        if [[ $line == POSTGRES_SERVER=* ]] || \
+           [[ $line == POSTGRES_USER=* ]] || \
+           [[ $line == POSTGRES_PASSWORD=* ]] || \
+           [[ $line == POSTGRES_DB=* ]] || \
+           [[ $line == POSTGRES_PORT=* ]] || \
+           [[ $line == POSTGRES_SUPERUSER=* ]] || \
+           [[ $line == POSTGRES_SUPERUSER_PASSWORD=* ]]; then
+            continue
+        fi
+        echo "$line" >> "$TEMP_FILE"
+    done < "$ENV_FILE"
+    
+    # 添加或更新数据库配置
+    echo -e "\n# 数据库配置" >> "$TEMP_FILE"
+    echo "POSTGRES_SERVER=localhost" >> "$TEMP_FILE"
+    echo "POSTGRES_USER=globallink" >> "$TEMP_FILE"
+    echo "POSTGRES_PASSWORD=$DB_PASSWORD" >> "$TEMP_FILE"
+    echo "POSTGRES_DB=globallink" >> "$TEMP_FILE"
+    echo "POSTGRES_PORT=5432" >> "$TEMP_FILE"
+    echo "# PostgreSQL超级用户配置" >> "$TEMP_FILE"
+    echo "POSTGRES_SUPERUSER=postgres" >> "$TEMP_FILE"
+    echo "POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD" >> "$TEMP_FILE"
+    
+    # 添加或更新Redis配置
+    echo -e "\n# Redis配置" >> "$TEMP_FILE"
+    echo "REDIS_HOST=localhost" >> "$TEMP_FILE"
+    echo "REDIS_PORT=6379" >> "$TEMP_FILE"
+    echo "REDIS_DB=0" >> "$TEMP_FILE"
+    
+    # 移动临时文件到目标位置
+    mv "$TEMP_FILE" "$ENV_FILE"
+else
+    # 创建新的.env文件
+    log "创建新的.env文件"
+    cat > "$ENV_FILE" << EOF
 # 数据库配置
 POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=globallink
+POSTGRES_PORT=5432
 # PostgreSQL超级用户配置
 POSTGRES_SUPERUSER=postgres
 POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD
 
 # Redis配置
-REDIS_URL=redis://localhost:6379/0
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
 
 # 日志配置 - 使用PostgreSQL存储所有日志数据
-LOG_TABLE_NAME=system_logs
-ENABLE_API_LOGGING=true
+TABLE_NAME_LOGS=system_logs
 ENABLE_ACTIVITY_LOGGING=true
 EOF
 
-echo "环境变量文件已创建: .env"
+echo "环境变量文件已创建: $ENV_FILE"
 
 
 
