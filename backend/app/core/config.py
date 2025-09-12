@@ -67,12 +67,23 @@ class Settings(BaseSettings):
 
     @field_validator("BACKEND_CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            # 如果是字符串，先尝试解析为JSON列表
+            if v.startswith('[') and v.endswith(']'):
+                try:
+                    import json
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    # 如果JSON解析失败，按逗号分隔处理
+                    return [i.strip() for i in v.split(',')]
+            else:
+                # 普通字符串按逗号分隔处理
+                return [i.strip() for i in v.split(',')]
+        elif isinstance(v, list):
+            # 已经是列表，直接返回
             return v
-        raise ValueError(v)
+        raise ValueError(f"Invalid value for CORS origins or allowed hosts: {v}")
 
     # 数据库配置
     POSTGRES_SERVER: str = "localhost"
