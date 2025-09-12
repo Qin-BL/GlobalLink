@@ -17,8 +17,14 @@ sudo systemctl enable postgresql
 
 # 创建数据库和用户
 echo "创建数据库和用户..."
+# 生成随机密码
+DB_PASSWORD=$(openssl rand -base64 32)
+# 生成postgres用户的随机密码
+POSTGRES_PASSWORD=$(openssl rand -base64 32)
+
+sudo -u postgres psql -c "ALTER USER postgres WITH ENCRYPTED PASSWORD '$POSTGRES_PASSWORD';"
 sudo -u postgres psql -c "CREATE DATABASE globallink;"
-sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD 'password';"
+sudo -u postgres psql -c "CREATE USER globallink WITH ENCRYPTED PASSWORD '$DB_PASSWORD';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
 
 
@@ -77,8 +83,11 @@ echo "更新后端环境变量文件..."
 cat > backend/.env << EOF
 POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
-POSTGRES_PASSWORD=password
+POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=globallink
+# PostgreSQL超级用户配置
+POSTGRES_SUPERUSER=postgres
+POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD
 
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -88,3 +97,14 @@ EOF
 
 echo "===== GlobalLink数据库安装完成 ====="
 echo "PostgreSQL和Redis已安装并配置完成"
+echo ""
+echo "数据库连接信息:"
+echo "  PostgreSQL: localhost:5432/globallink"
+echo "  用户名: globallink"
+echo "  密码: $DB_PASSWORD"
+echo "  postgres超级用户密码: $POSTGRES_PASSWORD"
+echo "  Redis: localhost:6379"
+echo ""
+echo "重要提示:"
+echo "1. 数据库密码已保存在 backend/.env 文件中"
+echo "2. 请妥善保管数据库密码和postgres超级用户密码"

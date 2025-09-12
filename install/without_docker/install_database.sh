@@ -51,9 +51,12 @@ log "配置PostgreSQL数据库..."
 
 # 生成随机密码
 DB_PASSWORD=$(openssl rand -base64 32)
+# 生成postgres用户的随机密码
+POSTGRES_PASSWORD=$(openssl rand -base64 32)
 
 # 创建数据库用户和数据库
 sudo -u postgres psql << EOF
+ALTER USER postgres WITH PASSWORD '$POSTGRES_PASSWORD';
 CREATE USER globallink WITH PASSWORD '$DB_PASSWORD';
 CREATE DATABASE globallink OWNER globallink;
 GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;
@@ -65,6 +68,7 @@ log "PostgreSQL配置完成"
 log "数据库用户: globallink"
 log "数据库名称: globallink"
 log "数据库密码: $DB_PASSWORD"
+log "postgres用户密码: $POSTGRES_PASSWORD"
 
 # 创建环境变量文件
 log "创建环境变量文件..."
@@ -74,6 +78,9 @@ POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=globallink
+# PostgreSQL超级用户配置
+POSTGRES_SUPERUSER=postgres
+POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD
 
 # Redis配置
 REDIS_URL=redis://localhost:6379/0
@@ -114,6 +121,6 @@ echo ""
 echo "重要提示:"
 echo "1. 数据库密码已保存在 .env 文件中"
 echo "2. 所有日志数据现在存储在PostgreSQL中"
-echo "3. 请妥善保管数据库密码"
+echo "3. 请妥善保管数据库密码和postgres超级用户密码"
 echo ""
 echo "下一步: 运行后端安装脚本"

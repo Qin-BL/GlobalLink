@@ -233,6 +233,12 @@ setup_postgresql() {
     sudo systemctl start postgresql
     sudo systemctl enable postgresql
     
+    # 生成postgres用户的随机密码
+    POSTGRES_PASSWORD=$(openssl rand -base64 32)
+    
+    # 设置postgres用户密码
+    sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '$POSTGRES_PASSWORD';"
+    
     # 检查数据库是否已存在
     if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw globallink; then
         log_info "数据库 globallink 已存在，跳过创建"
@@ -244,9 +250,12 @@ setup_postgresql() {
         sudo -u postgres psql -c "ALTER USER globallink CREATEDB;"
     fi
     
+    # 保存postgres密码到临时文件，供create_env_file使用
+    echo "POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD" > "$HOME/.globallink_postgres_password"
+    
     mark_component_installed "postgresql_setup"
     log_success "PostgreSQL配置完成"
-}
+    log_info "postgres超级用户密码已生成并将保存到.env文件中"
 
 # 配置Redis
 setup_redis() {
@@ -314,6 +323,13 @@ install_frontend_dependencies() {
 create_env_file() {
     log_info "创建环境配置文件..."
     
+    # 读取postgres密码
+    POSTGRES_SUPERUSER_PASSWORD=""
+    if [ -f "$HOME/.globallink_postgres_password" ]; then
+        source "$HOME/.globallink_postgres_password"
+        rm -f "$HOME/.globallink_postgres_password"
+    fi
+    
     cat > $PROJECT_DIR/backend/.env << EOF
 # 数据库配置
 POSTGRES_SERVER=localhost
@@ -321,6 +337,9 @@ POSTGRES_USER=globallink
 POSTGRES_PASSWORD=globallink_password
 POSTGRES_DB=globallink
 POSTGRES_PORT=5432
+# PostgreSQL超级用户配置
+POSTGRES_SUPERUSER=postgres
+POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_SUPERUSER_PASSWORD
 
 # Redis配置
 REDIS_HOST=localhost
@@ -518,6 +537,7 @@ show_deployment_info() {
     echo "  PostgreSQL数据库: globallink"
     echo "  数据库用户: globallink"
     echo "  数据库密码: globallink_password"
+    echo "  postgres超级用户密码: 查看 $PROJECT_DIR/backend/.env 文件"
     echo ""
     echo "配置文件位置:"
     echo "  后端配置: $PROJECT_DIR/backend/.env"
