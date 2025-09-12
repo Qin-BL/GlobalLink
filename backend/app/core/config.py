@@ -1,44 +1,25 @@
 # -*- coding: utf-8 -*-
 import secrets
-from typing import Any
-from pydantic import AnyHttpUrl, EmailStr, Field
+from typing import Any, List, Union
+import os
+import json
 
 # 兼容不同版本的pydantic
 try:
     from pydantic_settings import BaseSettings
+    from pydantic import field_validator
+    PYDANTIC_V2 = True
 except ImportError:
     try:
-        from pydantic import BaseSettings
+        from pydantic import BaseSettings, validator
+        PYDANTIC_V2 = False
     except ImportError:
         # 如果都没有，创建一个简单的基类
         class BaseSettings:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
-
-# 兼容不同版本的pydantic validator
-try:
-    from pydantic import field_validator
-    PYDANTIC_V2 = True
-except ImportError:
-    try:
-        from pydantic import validator
         PYDANTIC_V2 = False
-        # 为Pydantic v1 创建兼容的field_validator
-        def field_validator(field_name, mode="before"):
-            def decorator(func):
-                if mode == "before":
-                    return validator(field_name, pre=True, allow_reuse=True)(func)
-                else:
-                    return validator(field_name, allow_reuse=True)(func)
-            return decorator
-    except ImportError:
-        # 如果都没有，创建一个简单的装饰器
-        PYDANTIC_V2 = False
-        def field_validator(field_name, mode="before"):
-            def decorator(func):
-                return func
-            return decorator
 
 
 class Settings(BaseSettings):
@@ -55,35 +36,15 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     
     # 允许的主机（安全配置）
-    ALLOWED_HOSTS: list[str] = ["localhost", "127.0.0.1", "*.globallink.com"]
+    ALLOWED_HOSTS: Union[str, List[str]] = ["localhost", "127.0.0.1", "*.globallink.com"]
     
     # CORS配置
-    BACKEND_CORS_ORIGINS: list[str] = [
+    BACKEND_CORS_ORIGINS: Union[str, List[str]] = [
         "http://localhost:3000",
         "http://localhost:3080",
         "http://localhost:8000",
         "http://localhost",
     ]
-
-    @field_validator("BACKEND_CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, str):
-            # 如果是字符串，先尝试解析为JSON列表
-            if v.startswith('[') and v.endswith(']'):
-                try:
-                    import json
-                    return json.loads(v)
-                except json.JSONDecodeError:
-                    # 如果JSON解析失败，按逗号分隔处理
-                    return [i.strip() for i in v.split(',')]
-            else:
-                # 普通字符串按逗号分隔处理
-                return [i.strip() for i in v.split(',')]
-        elif isinstance(v, list):
-            # 已经是列表，直接返回
-            return v
-        raise ValueError(f"Invalid value for CORS origins or allowed hosts: {v}")
 
     # 数据库配置
     POSTGRES_SERVER: str = "localhost"
@@ -91,7 +52,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "globallink_password"
     POSTGRES_DB: str = "globallink"
     POSTGRES_PORT: int = 5432
-    SQLALCHEMY_DATABASE_URI: str | None = None
+    SQLALCHEMY_DATABASE_URI: Union[str, None] = None
 
     # 数据库连接池配置
     DB_POOL_PRE_PING: bool = True
@@ -99,26 +60,12 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 5      # 连接池大小
     DB_POOL_MAX_OVERFLOW: int = 10  # 连接池溢出最大值
     DB_POOL_TIMEOUT: int = 30  # 连接池获取连接的超时时间（秒）
-
-    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
-    @classmethod
-    def assemble_db_connection(cls, v: str | None, values: dict[str, Any]) -> str:
-        if isinstance(v, str):
-            return v
-        return f"postgresql://{values.get('POSTGRES_USER')}:{values.get('POSTGRES_PASSWORD')}@{values.get('POSTGRES_SERVER')}/{values.get('POSTGRES_DB')}"
     
     # Redis配置
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    REDIS_URL: str | None = None
-    
-    @field_validator("REDIS_URL", mode="before")
-    @classmethod
-    def assemble_redis_url(cls, v: str | None, values: dict[str, Any]) -> str:
-        if isinstance(v, str):
-            return v
-        return f"redis://{values.get('REDIS_HOST')}:{values.get('REDIS_PORT')}/{values.get('REDIS_DB')}"
+    REDIS_URL: Union[str, None] = None
     
     # 邮件配置
     MAIL_SERVER: str = "smtp.example.com"
@@ -170,15 +117,82 @@ class Settings(BaseSettings):
     SYSTEM_LOG_LEVEL: str = "WARNING"  # 系统日志记录级别
     API_LOG_LEVEL: str = "INFO"  # API日志记录级别
     ACTIVITY_LOG_LEVEL: str = "INFO"  # 用户活动日志记录级别
+    
+    # 额外的日志配置字段
+    TABLE_NAME_LOGS: str = "system_logs"  # 日志表名
+    ENABLE_ACTIVITY_LOGGING: bool = True  # 启用活动日志记录
 
-    # MAIL_SSL_TLS会根据MAIL_PORT自动设置
-    # 当MAIL_PORT=465时，MAIL_SSL_TLS=True
-    # 当MAIL_PORT=587时，MAIL_SSL_TLS=False
+    # 添加字段验证器来处理列表类型的环境变量
+    if PYDANTIC_V2:
+        @field_validator("BACKEND_CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
+        @classmethod
+        def parse_list_config(cls, value: Union[str, List[str]]) -> List[str]:
+            """解析列表配置，支持字符串和列表格式"""
+            if isinstance(value, str):
+                # 移除引号
+                value = value.strip('"\'')
+                # 如果是字符串，先尝试解析为JSON列表
+                if value.startswith('[') and value.endswith(']'):
+                    try:
+                        return json.loads(value)
+                    except json.JSONDecodeError:
+                        # 如果JSON解析失败，按逗号分隔处理
+                        return [i.strip() for i in value.split(',')]
+                else:
+                    # 普通字符串按逗号分隔处理
+                    return [i.strip() for i in value.split(',') if i.strip()]
+            elif isinstance(value, list):
+                # 已经是列表，直接返回
+                return value
+            return []
 
-    model_config = {
-        "case_sensitive": True,
-        "env_file": ".env"
-    }
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        # 如果不是 Pydantic V2，手动处理列表配置
+        if not PYDANTIC_V2:
+            self.BACKEND_CORS_ORIGINS = self._parse_list_config(self.BACKEND_CORS_ORIGINS)
+            self.ALLOWED_HOSTS = self._parse_list_config(self.ALLOWED_HOSTS)
+        
+        # 构建数据库连接字符串
+        if not self.SQLALCHEMY_DATABASE_URI:
+            self.SQLALCHEMY_DATABASE_URI = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        
+        # 构建Redis连接字符串
+        if not self.REDIS_URL:
+            self.REDIS_URL = f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+    def _parse_list_config(self, value: Union[str, List[str]]) -> List[str]:
+        """解析列表配置，支持字符串和列表格式（用于非 Pydantic V2）"""
+        if isinstance(value, str):
+            # 移除引号
+            value = value.strip('"\'')
+            # 如果是字符串，先尝试解析为JSON列表
+            if value.startswith('[') and value.endswith(']'):
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    # 如果JSON解析失败，按逗号分隔处理
+                    return [i.strip() for i in value.split(',')]
+            else:
+                # 普通字符串按逗号分隔处理
+                return [i.strip() for i in value.split(',') if i.strip()]
+        elif isinstance(value, list):
+            # 已经是列表，直接返回
+            return value
+        return []
+
+    if PYDANTIC_V2:
+        model_config = {
+            "case_sensitive": True,
+            "env_file": ".env",
+            "extra": "ignore"  # 忽略额外的字段
+        }
+    else:
+        class Config:
+            case_sensitive = True
+            env_file = ".env"
+            extra = "ignore"  # 忽略额外的字段
 
 
 settings = Settings()
