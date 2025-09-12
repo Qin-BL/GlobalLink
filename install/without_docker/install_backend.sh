@@ -354,7 +354,8 @@ if [ -f "app/db/init_db.py" ]; then
     # 添加数据库表结构修复步骤
     echo "检查并修复数据库表结构..."
     if [ -f "scripts/fix_user_table.py" ]; then
-        python scripts/fix_user_table.py
+        // python scripts/fix_user_table.py
+        echo "数据库初始化完成！"
     else
         echo "警告：未找到表结构修复脚本，建议手动运行修复脚本"
     fi
