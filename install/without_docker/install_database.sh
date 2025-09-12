@@ -146,37 +146,35 @@ REDIS_DB=0
 TABLE_NAME_LOGS=system_logs
 ENABLE_ACTIVITY_LOGGING=true
 EOF
-
-echo "环境变量文件已创建: $ENV_FILE"
-
-
-
+    
+    log "环境变量文件已创建: $ENV_FILE"
+fi
 
 # 安装Redis
-echo "安装Redis..."
+log "安装Redis..."
 sudo apt install -y redis-server
 
 # 配置Redis以允许远程连接
-echo "配置Redis..."
+log "配置Redis..."
 sudo sed -i 's/bind 127.0.0.1/bind 0.0.0.0/g' /etc/redis/redis.conf
 
 # 启动Redis服务
- echo "启动Redis服务..."
- sudo service redis-server restart
- sudo update-rc.d redis-server enable
+log "启动Redis服务..."
+sudo service redis-server restart
+sudo update-rc.d redis-server enable
 
-echo "===== GlobalLink数据库安装完成 ====="
-echo "PostgreSQL和Redis已安装并配置完成"
-echo ""
-echo "数据库连接信息:"
-echo "  PostgreSQL: localhost:5432/globallink"
-echo "  用户名: globallink"
-echo "  密码: $DB_PASSWORD"
-echo "  Redis: localhost:6379"
-echo ""
-echo "重要提示:"
-echo "1. 数据库密码已保存在 .env 文件中"
-echo "2. 所有日志数据现在存储在PostgreSQL中"
-echo "3. 请妥善保管数据库密码和postgres超级用户密码"
-echo ""
-echo "下一步: 运行后端安装脚本"
+log "===== GlobalLink数据库安装完成 ====="
+log "PostgreSQL和Redis已安装并配置完成"
+log ""
+log "数据库连接信息:" 
+log "  PostgreSQL: localhost:5432/globallink"
+log "  用户名: globallink"
+log "  密码: $DB_PASSWORD"
+log "  Redis: localhost:6379"
+log ""
+log "重要提示:" 
+log "1. 数据库密码已保存在 .env 文件中"
+log "2. 所有日志数据现在存储在PostgreSQL中"
+log "3. 请妥善保管数据库密码和postgres超级用户密码"
+log ""
+log "下一步: 运行后端安装脚本"
