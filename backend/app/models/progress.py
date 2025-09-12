@@ -2,7 +2,7 @@
 """
 学习进度模型
 """
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
