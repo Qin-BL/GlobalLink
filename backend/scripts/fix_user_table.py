@@ -22,7 +22,7 @@ except ImportError:
     # 硬编码配置（如果无法从项目导入）
     class Settings:
         POSTGRES_SERVER = "localhost"
-        POSTGRES_USER = "globallink_user"
+        POSTGRES_USER = "globallink"
         POSTGRES_PASSWORD = "globallink_password"
         POSTGRES_DB = "globallink"
         POSTGRES_PORT = 5432

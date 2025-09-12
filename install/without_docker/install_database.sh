@@ -54,15 +54,15 @@ DB_PASSWORD=$(openssl rand -base64 32)
 
 # 创建数据库用户和数据库
 sudo -u postgres psql << EOF
-CREATE USER globallink_user WITH PASSWORD '$DB_PASSWORD';
-CREATE DATABASE globallink OWNER globallink_user;
-GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink_user;
-ALTER USER globallink_user CREATEDB;
+CREATE USER globallink WITH PASSWORD '$DB_PASSWORD';
+CREATE DATABASE globallink OWNER globallink;
+GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;
+ALTER USER globallink CREATEDB;
 \q
 EOF
 
 log "PostgreSQL配置完成"
-log "数据库用户: globallink_user"
+log "数据库用户: globallink"
 log "数据库名称: globallink"
 log "数据库密码: $DB_PASSWORD"
 
@@ -71,7 +71,7 @@ log "创建环境变量文件..."
 cat > .env << EOF
 # 数据库配置
 POSTGRES_SERVER=localhost
-POSTGRES_USER=globallink_user
+POSTGRES_USER=globallink
 POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=globallink
 
@@ -107,7 +107,7 @@ echo "PostgreSQL和Redis已安装并配置完成"
 echo ""
 echo "数据库连接信息:"
 echo "  PostgreSQL: localhost:5432/globallink"
-echo "  用户名: globallink_user"
+echo "  用户名: globallink"
 echo "  密码: $DB_PASSWORD"
 echo "  Redis: localhost:6379"
 echo ""

@@ -68,7 +68,7 @@ docker-compose logs backend
 docker-compose exec backend bash
 
 # 数据库管理
-docker-compose exec postgres psql -U globallink_user -d globallink
+docker-compose exec postgres psql -U globallink -d globallink
 ```
 
 ## 🖥️ 传统部署
@@ -99,11 +99,11 @@ sudo yum install python3 python3-pip nodejs npm nginx postgresql redis
 #### 2. 数据库设置
 ```bash
 # 创建数据库用户
-sudo -u postgres createuser globallink_user
-sudo -u postgres psql -c "ALTER USER globallink_user PASSWORD 'globallink_password';"
+sudo -u postgres createuser globallink
+sudo -u postgres psql -c "ALTER USER globallink PASSWORD 'globallink_password';"
 
 # 创建数据库
-sudo -u postgres createdb globallink -O globallink_user
+sudo -u postgres createdb globallink -O globallink
 ```
 
 #### 3. 后端部署
@@ -172,7 +172,7 @@ sudo systemctl restart nginx
 ```bash
 # 数据库配置
 POSTGRES_SERVER=localhost
-POSTGRES_USER=globallink_user
+POSTGRES_USER=globallink
 POSTGRES_PASSWORD=globallink_password
 POSTGRES_DB=globallink
 POSTGRES_PORT=5432
@@ -281,7 +281,7 @@ sudo certbot renew --dry-run
 ### 数据库安全
 ```bash
 # 修改默认密码
-sudo -u postgres psql -c "ALTER USER globallink_user PASSWORD 'new-strong-password';"
+sudo -u postgres psql -c "ALTER USER globallink PASSWORD 'new-strong-password';"
 
 # 限制连接
 # 编辑 /etc/postgresql/*/main/pg_hba.conf
@@ -339,7 +339,7 @@ sudo kill -9 <PID>
 sudo systemctl status postgresql
 
 # 测试连接
-pg_isready -h localhost -p 5432 -U globallink_user -d globallink
+pg_isready -h localhost -p 5432 -U globallink -d globallink
 ```
 
 #### 3. 权限问题
@@ -397,7 +397,7 @@ curl http://localhost:8000/api/health
 
 #### 数据库健康检查
 ```bash
-pg_isready -h localhost -p 5432 -U globallink_user -d globallink
+pg_isready -h localhost -p 5432 -U globallink -d globallink
 ```
 
 #### Redis健康检查
@@ -431,10 +431,10 @@ npm run build
 ### 数据库备份
 ```bash
 # 备份数据库
-pg_dump -U globallink_user -h localhost globallink > backup_$(date +%Y%m%d).sql
+pg_dump -U globallink -h localhost globallink > backup_$(date +%Y%m%d).sql
 
 # 恢复数据库
-psql -U globallink_user -h localhost globallink < backup.sql
+psql -U globallink -h localhost globallink < backup.sql
 ```
 
 ### 监控指标

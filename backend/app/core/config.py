@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
     # 数据库配置
     POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "globallink_user"
+    POSTGRES_USER: str = "globallink"
     POSTGRES_PASSWORD: str = "globallink_password"
     POSTGRES_DB: str = "globallink"
     POSTGRES_PORT: int = 5432

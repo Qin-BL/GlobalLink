@@ -115,7 +115,7 @@ create_env_files() {
     cat > ../backend/.env << EOF
 # 数据库配置
 POSTGRES_SERVER=postgres
-POSTGRES_USER=globallink_user
+POSTGRES_USER=globallink
 POSTGRES_PASSWORD=globallink_password
 POSTGRES_DB=globallink
 POSTGRES_PORT=5432
@@ -248,7 +248,7 @@ wait_for_services() {
     # 等待PostgreSQL
     log_info "等待PostgreSQL启动..."
     timeout=60
-    while ! docker-compose exec -T postgres pg_isready -U globallink_user -d globallink > /dev/null 2>&1; do
+    while ! docker-compose exec -T postgres pg_isready -U globallink -d globallink > /dev/null 2>&1; do
         sleep 2
         timeout=$((timeout - 2))
         if [ $timeout -le 0 ]; then
@@ -360,7 +360,7 @@ show_deployment_info() {
     echo "数据库连接信息:"
     echo "  PostgreSQL: localhost:5432"
     echo "  数据库名: globallink"
-    echo "  用户名: globallink_user"
+    echo "  用户名: globallink"
     echo "  密码: globallink_password"
     echo ""
     echo "Redis连接: localhost:6379"

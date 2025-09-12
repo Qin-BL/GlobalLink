@@ -239,9 +239,9 @@ setup_postgresql() {
     else
         log_info "创建数据库和用户..."
         sudo -u postgres psql -c "CREATE DATABASE globallink;"
-        sudo -u postgres psql -c "CREATE USER globallink_user WITH PASSWORD 'globallink_password';"
-        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink_user;"
-        sudo -u postgres psql -c "ALTER USER globallink_user CREATEDB;"
+        sudo -u postgres psql -c "CREATE USER globallink WITH PASSWORD 'globallink_password';"
+        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE globallink TO globallink;"
+        sudo -u postgres psql -c "ALTER USER globallink CREATEDB;"
     fi
     
     mark_component_installed "postgresql_setup"
@@ -317,7 +317,7 @@ create_env_file() {
     cat > $PROJECT_DIR/backend/.env << EOF
 # 数据库配置
 POSTGRES_SERVER=localhost
-POSTGRES_USER=globallink_user
+POSTGRES_USER=globallink
 POSTGRES_PASSWORD=globallink_password
 POSTGRES_DB=globallink
 POSTGRES_PORT=5432
@@ -516,7 +516,7 @@ show_deployment_info() {
     echo ""
     echo "数据库信息:"
     echo "  PostgreSQL数据库: globallink"
-    echo "  数据库用户: globallink_user"
+    echo "  数据库用户: globallink"
     echo "  数据库密码: globallink_password"
     echo ""
     echo "配置文件位置:"
