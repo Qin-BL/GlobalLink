@@ -2,7 +2,7 @@
 """
 安全相关工具函数
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any, Union, Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -22,9 +22,9 @@ def create_access_token(
     创建访问令牌
     """
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
+        expire = datetime.now(UTC) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
     to_encode = {"exp": expire, "sub": str(subject)}
@@ -60,7 +60,7 @@ def generate_password_reset_token(email: str) -> str:
     生成密码重置令牌
     """
     delta = timedelta(hours=settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS)
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     expires = now + delta
     exp = expires.timestamp()
     encoded_jwt = jwt.encode(
