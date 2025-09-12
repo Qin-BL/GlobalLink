@@ -29,19 +29,20 @@ if [ ! -d "backend" ]; then
 fi
 
 # 安装Python 3.12.10和pip
- echo "安装Python 3.12.10和pip..."
- sudo apt update
- sudo apt install -y software-properties-common
- sudo add-apt-repository -y ppa:deadsnakes/ppa
- sudo apt update
- sudo apt install -y python3.12 python3.12-venv python3.12-distutils
- # 安装pip for Python 3.12
- curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12
+echo "安装Python 3.12.10和pip..."
+sudo apt update
+sudo apt install -y software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt update
+# 修改：移除python3.12-distutils，因为在某些系统上不可用
+sudo apt install -y python3.12 python3.12-venv
+# 安装pip for Python 3.12
+curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12
 
 # 创建并激活虚拟环境
- echo "创建Python 3.12虚拟环境..."
- cd backend
- python3.12 -m venv venv
+echo "创建Python 3.12虚拟环境..."
+cd backend
+python3.12 -m venv venv
 source venv/bin/activate
 
 # 安装后端依赖
@@ -50,13 +51,13 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 # 检查项目根目录下的.env文件
- echo "检查环境变量文件..."
- if [ -f "$PROJECT_ROOT/.env" ]; then
-   echo "发现项目根目录下的.env文件，复制到backend目录..."
-   cp "$PROJECT_ROOT/.env" .env
- else
-   echo "未找到项目根目录下的.env文件，创建默认.env文件"
-   cat > .env << EOF
+echo "检查环境变量文件..."
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  echo "发现项目根目录下的.env文件，复制到backend目录..."
+  cp "$PROJECT_ROOT/.env" .env
+else
+  echo "未找到项目根目录下的.env文件，创建默认.env文件"
+  cat > .env << EOF
 POSTGRES_SERVER=localhost
 POSTGRES_USER=globallink
 POSTGRES_PASSWORD=password
@@ -67,8 +68,8 @@ REDIS_PORT=6379
 REDIS_DB=0
 REDIS_PASSWORD=
 EOF
-   echo "警告：请务必修改.env文件中的数据库密码"
- fi
+  echo "警告：请务必修改.env文件中的数据库密码"
+fi
 
 # 修改后端CORS配置
 echo "更新后端CORS配置..."
@@ -78,7 +79,7 @@ sed -i 's/"http:\/\/localhost:3000"/"http:\/\/localhost:3080"/g' app/core/config
 echo "创建启动脚本..."
 cat > ../start_backend.sh << EOF
 #!/bin/bash
-cd "\$(dirname "\$0")/backend"
+cd "$(dirname "$0")/backend"
 source venv/bin/activate
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 EOF
@@ -86,10 +87,10 @@ EOF
 chmod +x ../start_backend.sh
 
 # 创建后端服务管理脚本
- echo "创建服务管理脚本..."
- # 获取当前用户
- CURRENT_USER=$(whoami)
- cat > ../backend.service << EOF
+echo "创建服务管理脚本..."
+# 获取当前用户
+CURRENT_USER=$(whoami)
+cat > ../backend.service << EOF
 [Unit]
 Description=GlobalLink Backend Service
 After=network.target postgresql.service redis-server.service
