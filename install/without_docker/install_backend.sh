@@ -9,7 +9,7 @@ if [ -z "$BASH_VERSION" ]; then
   exit 1
 fi
 
-echo "===== 开始安装GlobalLink后端 ====="
+echo "===== 开始安装GlobalLink后端 ======"
 
 # 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -28,10 +28,15 @@ if [ ! -d "backend" ]; then
   exit 1
 fi
 
+# 安装系统依赖包
+echo "安装系统依赖包..."
+sudo apt update
+sudo apt install -y software-properties-common \
+    libjpeg-dev zlib1g-dev libfreetype6-dev \
+    liblcms2-dev libwebp-dev tcl8.6-dev tk8.6-dev
+
 # 安装Python 3.12.10和pip
 echo "安装Python 3.12.10和pip..."
-sudo apt update
-sudo apt install -y software-properties-common
 sudo add-apt-repository -y ppa:deadsnakes/ppa
 sudo apt update
 # 修改：移除python3.12-distutils，因为在某些系统上不可用
@@ -117,7 +122,7 @@ echo "bash install_service_ubuntu20.sh"
 
 cd ..
 
-echo "===== GlobalLink后端安装完成 ====="
+echo "===== GlobalLink后端安装完成 ======"
 echo "您可以通过以下方式启动后端："
 echo "1. 开发模式：./start_backend.sh"
 echo "2. 服务模式：sudo systemctl start globallink-backend"
