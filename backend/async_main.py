@@ -93,7 +93,7 @@ async def startup_event():
         logger.error(f"❌ 数据库初始化失败: {e}")
     
     # 记录启动信息
-    await log_system(
+    log_system(
         log_type="SYSTEM_STARTUP",
         level="INFO",
         message="GlobalLink异步服务启动成功",

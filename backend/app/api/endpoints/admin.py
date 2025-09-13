@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from ...models import User
 from ...schemas import Token
-from ..db.session import get_async_db
+from ...db.session import get_async_db
 from ...core import security
 from ...core.config import settings
 
