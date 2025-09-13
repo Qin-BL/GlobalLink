@@ -433,7 +433,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$PROJECT_DIR/backend
 Environment=PATH=$PROJECT_DIR/backend/venv/bin
-ExecStart=$PROJECT_DIR/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+ExecStart=$PROJECT_DIR/backend/venv/bin/python $PROJECT_DIR/backend/start_async.py
 Restart=always
 RestartSec=3
 

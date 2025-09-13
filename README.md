@@ -109,7 +109,8 @@ GlobalLink/
 │   │   ├── models/         # 数据模型
 │   │   ├── schemas/        # 数据验证
 │   │   └── utils/          # 工具函数
-│   ├── main.py             # 入口文件
+│   ├── async_main.py       # 异步主入口
+│   └── start_async.py      # 异步服务启动脚本
 │   └── requirements.txt    # 依赖项
 ├── frontend/               # 前端代码
 │   ├── public/

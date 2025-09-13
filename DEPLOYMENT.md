@@ -119,7 +119,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # 启动服务
-python main.py
+python start_async.py
 ```
 
 #### 4. 前端部署
@@ -222,7 +222,7 @@ Group=www-data
 WorkingDirectory=/opt/globallink/backend
 Environment=PYTHONPATH=/opt/globallink/backend
 EnvironmentFile=/opt/globallink/backend/.env
-ExecStart=/opt/globallink/backend/venv/bin/python main.py
+ExecStart=/opt/globallink/backend/venv/bin/python start_async.py
 Restart=always
 RestartSec=3
 
@@ -243,7 +243,7 @@ sudo systemctl status globallink
 npm install -g pm2
 
 # 启动服务
-pm2 start main.py --name globallink --interpreter python3
+pm2 start start_async.py --name globallink --interpreter python3
 
 # 监控服务
 pm2 monit

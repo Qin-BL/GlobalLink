@@ -27,7 +27,7 @@ class AsyncServiceManager:
     
     def __init__(self):
         self.process: Optional[subprocess.Popen] = None
-        self.port = 8001
+        self.port = 8000
         self.host = "0.0.0.0"
         self.reload = self._is_debug_mode()
         

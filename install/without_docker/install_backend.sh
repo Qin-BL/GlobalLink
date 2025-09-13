@@ -354,7 +354,7 @@ cat > ../start_backend.sh << EOF
 #!/bin/bash
 cd "$(dirname "$0")/backend"
 source venv/bin/activate
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python start_async.py
 EOF
 
 chmod +x ../start_backend.sh
@@ -373,7 +373,7 @@ Type=simple
 User=$CURRENT_USER
 Group=$CURRENT_USER
 WorkingDirectory=$PROJECT_ROOT/backend
-ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+ExecStart=$PROJECT_ROOT/backend/venv/bin/python $PROJECT_ROOT/backend/start_async.py
 Restart=always
 RestartSec=3
 Environment="PATH=$PROJECT_ROOT/backend/venv/bin"

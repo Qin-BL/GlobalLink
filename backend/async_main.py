@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 GlobalLink异步主应用
-完全异步版本的FastAPI应用，监听端口8001
+完全异步版本的FastAPI应用，监听端口8000
 """
 import os
 import sys
