@@ -134,7 +134,8 @@ User=$CURRENT_USER
 Group=$CURRENT_USER
 WorkingDirectory=$PROJECT_ROOT/backend
 ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
-Restart=on-failure
+Restart=always
+RestartSec=3
 Environment=\"PATH=$PROJECT_ROOT/backend/venv/bin\"}
 EnvironmentFile=$PROJECT_ROOT/backend/.env
 
