@@ -59,32 +59,58 @@ error_handler() {
       ;;
     "docker")
       log "修复Docker..."
-      sudo service docker restart
+      sudo systemctl restart docker
+      sudo systemctl enable docker
       ;;
     "database")
       log "修复数据库..."
       cd "$PROJECT_ROOT"
-      docker-compose restart database redis
+      if [ -f "docker-compose.yml" ]; then
+        docker-compose restart database redis
+      else
+        log "错误：docker-compose.yml文件不存在，尝试重新生成"
+        bash "$PROJECT_ROOT/install/with_docker/install_database.sh"
+      fi
       ;;
     "backend")
       log "修复后端..."
       cd "$PROJECT_ROOT"
-      docker-compose restart backend
+      if [ -f "docker-compose.yml" ]; then
+        docker-compose restart backend
+      else
+        log "错误：docker-compose.yml文件不存在，尝试重新生成"
+        bash "$PROJECT_ROOT/install/with_docker/install_database.sh"
+      fi
       ;;
     "frontend")
       log "修复前端..."
       cd "$PROJECT_ROOT"
-      docker-compose restart frontend
+      if [ -f "docker-compose.yml" ]; then
+        docker-compose restart frontend
+      else
+        log "错误：docker-compose.yml文件不存在，尝试重新生成"
+        bash "$PROJECT_ROOT/install/with_docker/install_database.sh"
+      fi
       ;;
     "nginx")
       log "修复Nginx..."
-      sudo service nginx restart
+      sudo systemctl restart nginx
+      sudo systemctl enable nginx
+      ;;
+    "service")
+      log "修复服务..."
+      fix_docker_compose
       ;;
     *)
       log "无法确定当前步骤，尝试通用修复..."
       cd "$PROJECT_ROOT"
-      docker-compose down
-      docker-compose up -d
+      if [ -f "docker-compose.yml" ]; then
+        docker-compose down
+        docker-compose up -d
+      else
+        log "错误：docker-compose.yml文件不存在，尝试重新生成"
+        bash "$PROJECT_ROOT/install/with_docker/install_database.sh"
+      fi
       ;;
   esac
   log "修复完成，尝试继续安装..."
@@ -96,6 +122,18 @@ cleanup() {
   log "安装过程中断，进行清理..."
 }
 
+# 修复docker-compose文件
+fix_docker_compose() {
+  log "修复docker-compose.yml文件..."
+  if [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+    # 确保文件权限正确
+    chown $CURRENT_USER:$CURRENT_USER "$PROJECT_ROOT/docker-compose.yml"
+    log "docker-compose.yml文件修复完成"
+  else
+    log "警告：docker-compose.yml文件不存在，将触发重新生成"
+  fi
+}
+
 # 设置错误处理和清理函数
 trap 'error_handler "安装过程中出现错误"' ERR
 trap 'cleanup' EXIT
@@ -103,86 +141,226 @@ trap 'cleanup' EXIT
 # 欢迎信息
 log "===== GlobalLink安装开始（Docker版本）====="
 
-# 检查是否为Ubuntu 20.04
-if [ "$(lsb_release -is)" != "Ubuntu" ] || [ "$(lsb_release -rs)" != "20.04" ]; then
-  log "警告：此脚本针对Ubuntu 20.04优化，当前系统为$(lsb_release -ds)"
-  read -p "是否继续？(y/n) " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    exit 1
+# 检查系统组件函数
+check_system_component() {
+  local component=$1
+  if command -v $component >/dev/null 2>&1; then
+    return 0
+  else
+    return 1
   fi
-fi
+}
 
-# 系统依赖安装
-CURRENT_STEP="system_deps"
-if ! check_status "system_deps"; then
+# 安装系统依赖
+install_system_deps() {
+  CURRENT_STEP="system_deps"
+  if check_status "$CURRENT_STEP"; then
+    log "系统依赖已安装，跳过"
+    return
+  fi
+
+  log "===== 安装系统依赖 ====="
+  # 检查是否为Ubuntu 20.04
+  if [ "$(lsb_release -is)" != "Ubuntu" ] || [ "$(lsb_release -rs)" != "20.04" ]; then
+    log "警告：此脚本针对Ubuntu 20.04优化，当前系统为$(lsb_release -ds)"
+    read -p "是否继续？(y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      exit 1
+    fi
+  fi
+
+  # 更新系统包
   log "更新系统包..."
   sudo apt update -y
   sudo apt upgrade -y
-  set_status "system_deps" "completed"
-fi
+
+  # 安装基本依赖
+  log "安装基本依赖..."
+  sudo apt install -y git curl wget
+
+  set_status "$CURRENT_STEP" "completed"
+}
 
 # 安装Docker和Docker Compose
-CURRENT_STEP="docker"
-if ! check_status "docker"; then
-  log "安装Docker和Docker Compose..."
+install_docker() {
+  CURRENT_STEP="docker"
+  if check_status "$CURRENT_STEP"; then
+    log "Docker已安装，检查Docker状态..."
+    if check_system_component "docker" && docker --version >/dev/null 2>&1; then
+      log "Docker运行正常"
+      return
+    else
+      log "Docker未正常运行，将重新安装"
+    fi
+  fi
+
+  log "===== 安装Docker和Docker Compose ====="
+  # 安装Docker依赖
+  log "安装Docker依赖..."
   sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+  
+  # 添加Docker GPG密钥
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  
+  # 添加Docker仓库
   sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  
+  # 更新并安装Docker
   sudo apt update
   sudo apt install -y docker-ce docker-compose
-  set_status "docker" "completed"
-fi
+  
+  # 启动并启用Docker服务
+  sudo systemctl start docker
+  sudo systemctl enable docker
+  
+  set_status "$CURRENT_STEP" "completed"
+}
 
-# 将当前用户添加到docker组
-sudo usermod -aG docker $USER
-log "请注销并重新登录以应用docker组权限"
-log "提示：如果不想注销，可以使用 'newgrp docker' 命令临时应用权限"
+# 配置Docker用户组
+configure_docker_user() {
+  # 将当前用户添加到docker组
+  if ! groups $USER | grep -q docker; then
+    log "将当前用户添加到docker组..."
+    sudo usermod -aG docker $USER
+    log "请注销并重新登录以应用docker组权限"
+    log "提示：如果不想注销，可以使用 'newgrp docker' 命令临时应用权限"
+  fi
+}
 
-# 运行数据库安装脚本
-CURRENT_STEP="database"
-if ! check_status "database"; then
-  log "安装数据库..."
+# 安装数据库
+execute_database_install() {
+  CURRENT_STEP="database"
+  if check_status "$CURRENT_STEP"; then
+    log "数据库已安装，检查数据库服务..."
+    if [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+      cd "$PROJECT_ROOT"
+      if docker-compose ps | grep -q database; then
+        log "数据库容器正在运行"
+      else
+        log "数据库容器未运行，将重新启动"
+        docker-compose up -d database redis
+      fi
+    else
+      log "docker-compose.yml文件不存在，将重新运行数据库安装"
+      cd "$PROJECT_ROOT"
+      bash ./install/with_docker/install_database.sh
+    fi
+    return
+  fi
+
+  log "===== 安装数据库 ====="
   cd "$PROJECT_ROOT"
   bash ./install/with_docker/install_database.sh
-  set_status "database" "completed"
-fi
+  set_status "$CURRENT_STEP" "completed"
+}
 
-# 运行后端安装脚本
-CURRENT_STEP="backend"
-if ! check_status "backend"; then
-  log "安装后端..."
+# 安装后端
+execute_backend_install() {
+  CURRENT_STEP="backend"
+  if check_status "$CURRENT_STEP"; then
+    log "后端已安装，检查后端服务..."
+    if [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+      cd "$PROJECT_ROOT"
+      if docker-compose ps | grep -q backend; then
+        log "后端容器正在运行"
+      else
+        log "后端容器未运行，将重新启动"
+        docker-compose up -d backend
+      fi
+    else
+      log "docker-compose.yml文件不存在，将重新运行数据库安装"
+      cd "$PROJECT_ROOT"
+      bash ./install/with_docker/install_database.sh
+    fi
+    return
+  fi
+
+  log "===== 安装后端 ====="
   cd "$PROJECT_ROOT"
   bash ./install/with_docker/install_backend.sh
-  set_status "backend" "completed"
-fi
+  set_status "$CURRENT_STEP" "completed"
+}
 
-# 运行前端安装脚本
-CURRENT_STEP="frontend"
-if ! check_status "frontend"; then
-  log "安装前端..."
+# 安装前端
+execute_frontend_install() {
+  CURRENT_STEP="frontend"
+  if check_status "$CURRENT_STEP"; then
+    log "前端已安装，检查前端服务..."
+    if [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+      cd "$PROJECT_ROOT"
+      if docker-compose ps | grep -q frontend; then
+        log "前端容器正在运行"
+      else
+        log "前端容器未运行，将重新启动"
+        docker-compose up -d frontend
+      fi
+    else
+      log "docker-compose.yml文件不存在，将重新运行数据库安装"
+      cd "$PROJECT_ROOT"
+      bash ./install/with_docker/install_database.sh
+    fi
+    return
+  fi
+
+  log "===== 安装前端 ====="
   cd "$PROJECT_ROOT"
   bash ./install/with_docker/install_frontend.sh
-  set_status "frontend" "completed"
-fi
+  set_status "$CURRENT_STEP" "completed"
+}
 
-# 运行Nginx安装脚本
-CURRENT_STEP="nginx"
-if ! check_status "nginx"; then
-  log "安装Nginx..."
+# 安装Nginx
+execute_nginx_install() {
+  CURRENT_STEP="nginx"
+  if check_status "$CURRENT_STEP"; then
+    log "Nginx已安装，检查Nginx服务..."
+    if sudo systemctl is-active --quiet nginx; then
+      log "Nginx服务正在运行"
+    else
+      log "Nginx服务未运行，将重新启动"
+      sudo systemctl start nginx
+      sudo systemctl enable nginx
+    fi
+    return
+  fi
+
+  log "===== 安装Nginx ====="
   cd "$PROJECT_ROOT"
   bash ./install/with_docker/install_nginx.sh
-  set_status "nginx" "completed"
-fi
+  set_status "$CURRENT_STEP" "completed"
+}
 
 # 启动服务
-CURRENT_STEP="service"
-if ! check_status "service"; then
-  log "启动GlobalLink服务..."
+start_services() {
+  CURRENT_STEP="service"
+  if check_status "$CURRENT_STEP"; then
+    log "服务已启动，检查服务状态..."
+    if [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+      cd "$PROJECT_ROOT"
+      docker-compose ps
+      return
+    else
+      log "docker-compose.yml文件不存在，将重新运行数据库安装"
+      cd "$PROJECT_ROOT"
+      bash ./install/with_docker/install_database.sh
+    fi
+  fi
+
+  log "===== 启动GlobalLink服务 ====="
   cd "$PROJECT_ROOT"
   docker-compose up -d
-  set_status "service" "completed"
-fi
+  set_status "$CURRENT_STEP" "completed"
+}
+
+# 执行安装步骤
+install_system_deps
+install_docker
+configure_docker_user
+execute_database_install
+execute_backend_install
+execute_frontend_install
+execute_nginx_install
+start_services
 
 # 安装完成
 log "===== GlobalLink安装完成 ====="
@@ -196,4 +374,4 @@ log "重要提示："
 log "1. 如果遇到权限问题，请确保已注销并重新登录以应用docker组权限"
 log "2. 如果服务无法访问，请检查防火墙设置"
 log "3. 查看日志可以帮助排查问题：docker-compose logs"
-log "4. 如需卸载，请运行：docker-compose down && rm -rf $PROJECT_ROOT"
+log "4. 如需卸载，请运行：docker-compose down"
