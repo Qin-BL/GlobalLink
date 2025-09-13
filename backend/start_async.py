@@ -312,7 +312,7 @@ def check_environment():
         required_settings = [
             ('BACKEND_PORT', settings.BACKEND_PORT),
             ('HOST', settings.HOST),
-            ('DATABASE_URL', settings.DATABASE_URL)
+            ('SQLALCHEMY_DATABASE_URI', settings.SQLALCHEMY_DATABASE_URI)
         ]
         
         missing = []
