@@ -410,13 +410,17 @@ cd ..
 # 这会导致首次部署时表不存在或字段不完整
 
 # 在安装依赖之后，添加数据库表结构初始化
+cd "$PROJECT_ROOT/backend"
 if [ -f "app/db/init_db.py" ]; then
     echo "初始化数据库表结构..."
     source venv/bin/activate
-    python -c "import asyncio; from app.db.init_db import init_db; asyncio.run(init_db())" 
+    python -c "import sys, os; sys.path.insert(0, os.getcwd()); import asyncio; from app.db.init_db import init_db; asyncio.run(init_db())" 
+    echo "✓ 数据库表结构初始化完成"
 else
     echo "警告：未找到数据库初始化脚本，建议手动初始化数据库表结构"
+    echo "路径：$(pwd)/app/db/init_db.py" 
 fi
+cd - > /dev/null
 
 # 在最终验证部分，添加数据库连接测试
 cd backend

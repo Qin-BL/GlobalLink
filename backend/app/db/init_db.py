@@ -36,23 +36,26 @@ async def init_db() -> None:
 async def create_initial_users(db: AsyncSession) -> None:
     """创建初始用户（异步版本）"""
     try:
-        # 检查是否已存在超级用户
+        # 使用管理员用户名生成邮箱地址
+        admin_email = f"{settings.ADMIN_USERNAME}@globallink.com"
+        
+        # 检查是否已存在管理员用户（通过用户名查找）
         result = await db.execute(
-            select(User).where(User.email == settings.FIRST_SUPERUSER_EMAIL)
+            select(User).where(User.username == settings.ADMIN_USERNAME)
         )
         user = result.scalar_one_or_none()
         
         if not user:
-            # 创建超级用户
+            # 创建管理员用户
             user_in = {
-                "username": settings.FIRST_SUPERUSER_USERNAME,
-                "email": settings.FIRST_SUPERUSER_EMAIL,
-                "hashed_password": get_password_hash(settings.FIRST_SUPERUSER_PASSWORD),
-                "full_name": "Super User",
+                "username": settings.ADMIN_USERNAME,
+                "email": admin_email,
+                "hashed_password": get_password_hash(settings.ADMIN_PASSWORD),
+                "full_name": "Admin User",
                 "is_superuser": True,
                 "is_admin": True,
                 "is_active": True,
-                "referral_code": "SUPERUSER"
+                "referral_code": "ADMIN"
             }
             
             user = User(**user_in)
@@ -60,9 +63,9 @@ async def create_initial_users(db: AsyncSession) -> None:
             await db.commit()
             await db.refresh(user)
             
-            logger.info(f"创建超级用户: {user.username}")
+            logger.info(f"创建管理员用户: {user.username}")
         else:
-            logger.info("超级用户已存在，跳过创建")
+            logger.info("管理员用户已存在，跳过创建")
             
     except Exception as e:
         logger.error(f"创建初始用户失败: {e}")
