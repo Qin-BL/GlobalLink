@@ -14,7 +14,7 @@ from pydantic import EmailStr
 
 from ...models import User
 from ...schemas import Token, UserCreate, UserResponse
-from ..deps import get_db
+from ...db.session import get_async_db
 from ...core import security
 from ...core.config import settings
 
@@ -54,7 +54,7 @@ async def _create_tokens(user_id: int) -> dict[str, Any]:
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """用户登录"""
@@ -91,7 +91,7 @@ async def login_for_access_token(
 @router.post("/register", response_model=UserResponse)
 async def register(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     user_in: UserCreate,
 ) -> Any:
     """用户注册"""

@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from ...api.deps import get_current_active_user, get_db
+from ...api.deps import get_current_active_user
+from ...db.session import get_async_db
 from ...models import User, Course
 from ...schemas import CourseCreate, CourseUpdate, CourseResponse
 
@@ -15,7 +16,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[CourseResponse])
 async def get_courses(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
@@ -30,7 +31,7 @@ async def get_courses(
 @router.post("/", response_model=CourseResponse)
 async def create_course(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     course_in: CourseCreate,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -46,7 +47,7 @@ async def create_course(
 @router.get("/{course_id}", response_model=CourseResponse)
 async def get_course(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     course_id: int,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -62,7 +63,7 @@ async def get_course(
 @router.put("/{course_id}", response_model=CourseResponse)
 async def update_course(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     course_id: int,
     course_in: CourseUpdate,
     current_user: User = Depends(get_current_active_user),
@@ -87,7 +88,7 @@ async def update_course(
 @router.delete("/{course_id}")
 async def delete_course(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     course_id: int,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:

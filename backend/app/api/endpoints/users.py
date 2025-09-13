@@ -12,7 +12,8 @@ from sqlalchemy import select, func
 
 from ...models import User
 from ...schemas import UserResponse, UserCreate, UserUpdate
-from ..deps import get_db, get_current_active_user, get_current_admin
+from ..deps import get_current_active_user, get_current_admin
+from ...db.session import get_async_db
 from ...core.security import get_password_hash
 
 router = APIRouter()
@@ -28,7 +29,7 @@ async def read_user_me(
 
 @router.get("/", response_model=list[UserResponse])
 async def read_users(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     skip: int = 0,
     limit: int = 100,
     current_user: User = Depends(get_current_admin),
@@ -44,7 +45,7 @@ async def read_users(
 @router.post("/", response_model=UserResponse)
 async def create_user(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     user_in: UserCreate,
     current_user: User = Depends(get_current_admin),
 ) -> Any:
@@ -77,7 +78,7 @@ async def create_user(
 async def read_user(
     user_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> Any:
     """获取指定用户信息"""
     # 用户只能查看自己的信息，除非是管理员

@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from ...api.deps import get_current_active_user, get_db
+from ...api.deps import get_current_active_user
+from ...db.session import get_async_db
 from ...models import User, Progress
 from ...schemas import ProgressCreate, ProgressUpdate, ProgressResponse
 
@@ -15,7 +16,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ProgressResponse])
 async def get_progress_list(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
@@ -32,7 +33,7 @@ async def get_progress_list(
 @router.post("/", response_model=ProgressResponse)
 async def create_progress(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     progress_in: ProgressCreate,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -50,7 +51,7 @@ async def create_progress(
 @router.get("/{progress_id}", response_model=ProgressResponse)
 async def get_progress(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     progress_id: int,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -71,7 +72,7 @@ async def get_progress(
 @router.put("/{progress_id}", response_model=ProgressResponse)
 async def update_progress(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     progress_id: int,
     progress_in: ProgressUpdate,
     current_user: User = Depends(get_current_active_user),
@@ -101,7 +102,7 @@ async def update_progress(
 @router.delete("/{progress_id}")
 async def delete_progress(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     progress_id: int,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
