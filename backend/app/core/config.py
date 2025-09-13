@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     FRONTEND_HOST: str = "http://localhost:3080"
     
     # 服务端口配置
-    BACKEND_PORT: int = 8001
+    BACKEND_PORT: int = 8000
     # 服务主机配置
     HOST: str = "0.0.0.0"
     
