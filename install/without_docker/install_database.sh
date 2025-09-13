@@ -98,7 +98,8 @@ if [ -f "$ENV_FILE" ]; then
            [[ $line == POSTGRES_DB=* ]] || \
            [[ $line == POSTGRES_PORT=* ]] || \
            [[ $line == POSTGRES_SUPERUSER=* ]] || \
-           [[ $line == POSTGRES_SUPERUSER_PASSWORD=* ]]; then
+           [[ $line == POSTGRES_SUPERUSER_PASSWORD=* ]] || \
+           [[ $line == SQLALCHEMY_DATABASE_URI=* ]]; then
             continue
         fi
         echo "$line" >> "$TEMP_FILE"
@@ -111,6 +112,7 @@ if [ -f "$ENV_FILE" ]; then
     echo "POSTGRES_PASSWORD=$DB_PASSWORD" >> "$TEMP_FILE"
     echo "POSTGRES_DB=globallink" >> "$TEMP_FILE"
     echo "POSTGRES_PORT=5432" >> "$TEMP_FILE"
+    echo "SQLALCHEMY_DATABASE_URI=postgresql://globallink:$DB_PASSWORD@localhost:5432/globallink" >> "$TEMP_FILE"
     echo "# PostgreSQL超级用户配置" >> "$TEMP_FILE"
     echo "POSTGRES_SUPERUSER=postgres" >> "$TEMP_FILE"
     echo "POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD" >> "$TEMP_FILE"
@@ -133,6 +135,7 @@ POSTGRES_USER=globallink
 POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=globallink
 POSTGRES_PORT=5432
+SQLALCHEMY_DATABASE_URI=postgresql://globallink:$DB_PASSWORD@localhost:5432/globallink
 # PostgreSQL超级用户配置
 POSTGRES_SUPERUSER=postgres
 POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD
