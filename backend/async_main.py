@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
-from app.api.api_v1.api import api_router
+from app.api.api import api_router
 from app.db.init_db import init_db
 from app.utils.async_logger import log_system, ensure_async_logger_shutdown
 
