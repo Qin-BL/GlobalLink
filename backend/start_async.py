@@ -58,10 +58,20 @@ class AsyncServiceManager:
             logger.info("🔧 调试模式已启用，代码修改将自动重载")
         else:
             # 生产模式下设置工作进程数
+            # 注意：根据uvicorn版本兼容性，--workers参数可能需要调整
             from app.core.config import settings
-            workers = os.environ.get("WORKERS", str(settings.WORKERS))
-            cmd.extend(["--workers", workers])
-            logger.info(f"🏭 生产模式，工作进程数: {workers}")
+            try:
+                workers = os.environ.get("WORKERS", str(settings.WORKERS))
+                # 检查uvicorn版本是否支持workers参数
+                import uvicorn
+                if hasattr(uvicorn, '__version__') and uvicorn.__version__ >= '0.20.0':
+                    # 较新版本的uvicorn可能需要调整参数格式
+                    cmd.extend(["--workers", workers])
+                    logger.info(f"🏭 生产模式，工作进程数: {workers}")
+                else:
+                    logger.info("🏭 生产模式，使用默认工作进程设置")
+            except Exception as e:
+                logger.warning(f"⚠️ 无法设置工作进程数: {e}")
         
         # 设置日志级别
         from app.core.config import settings

@@ -157,12 +157,35 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     
-    # 使用uvicorn运行异步应用
-    uvicorn.run(
-        "async_main:app",
-        host="0.0.0.0",
-        port=settings.BACKEND_PORT,
-        reload=settings.DEBUG,
-        log_level="info",
-        workers=settings.WORKERS if not settings.DEBUG else 1
-    )
+    # 创建uvicorn配置参数
+    config = {
+        "app": "async_main:app",
+        "host": "0.0.0.0",
+        "port": settings.BACKEND_PORT,
+        "reload": settings.DEBUG,
+        "log_level": "info"
+    }
+    
+    try:
+        # 检查uvicorn版本是否支持workers参数
+        if hasattr(uvicorn, '__version__') and uvicorn.__version__ >= '0.20.0':
+            # 较新版本的uvicorn支持workers参数
+            config["workers"] = settings.WORKERS if not settings.DEBUG else 1
+        else:
+            print("⚠️ 当前uvicorn版本不支持workers参数，将使用默认工作进程设置")
+        
+        # 使用uvicorn运行异步应用
+        uvicorn.run(**config)
+    except Exception as e:
+        print(f"❌ 启动应用失败: {e}")
+        # 尝试不使用workers参数启动
+        try:
+            uvicorn.run(
+                "async_main:app",
+                host="0.0.0.0",
+                port=settings.BACKEND_PORT,
+                reload=settings.DEBUG,
+                log_level="info"
+            )
+        except Exception as fallback_error:
+            print(f"❌ 尝试回退启动方式也失败: {fallback_error}")
