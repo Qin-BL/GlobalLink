@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
-Group=ubuntu
-WorkingDirectory=/home/ubuntu/GlobalLink/frontend
+User=root
+Group=root
+WorkingDirectory=/home/admin/test/GlobalLink/frontend
 ExecStart=/usr/bin/npm start
 Restart=on-failure
 Environment=PORT=3080
