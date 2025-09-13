@@ -4,14 +4,22 @@ After=network.target postgresql.service redis-server.service
 
 [Service]
 Type=simple
-User=root
-Group=root
+# 建议使用非root用户运行，这里使用admin用户作为示例
+User=admin
+Group=admin
 WorkingDirectory=/home/admin/test/GlobalLink/backend
-ExecStart=/home/admin/test/GlobalLink/backend/venv/bin/python /home/admin/test/GlobalLink/backend/start_async.py
+ExecStart=/home/admin/test/GlobalLink/backend/venv/bin/python -u /home/admin/test/GlobalLink/backend/start_async.py
 Restart=always
 RestartSec=3
+RestartPreventExitStatus=1 2 15
 Environment="PATH=/home/admin/test/GlobalLink/backend/venv/bin"
 EnvironmentFile=/home/admin/test/GlobalLink/backend/.env
+# 确保日志输出到systemd日志系统
+StandardOutput=journal
+StandardError=journal
+# 增加超时设置
+TimeoutStartSec=30
+TimeoutStopSec=10
 
 [Install]
 WantedBy=multi-user.target
