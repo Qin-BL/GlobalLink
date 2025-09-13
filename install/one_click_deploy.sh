@@ -330,6 +330,10 @@ create_env_file() {
         rm -f "$HOME/.globallink_postgres_password"
     fi
     
+    # 对密码进行URL编码以处理特殊字符
+    ENCODED_POSTGRES_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('globallink_password'))")
+    ENCODED_POSTGRES_SUPERUSER_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$POSTGRES_SUPERUSER_PASSWORD'))")
+    
     cat > $PROJECT_DIR/backend/.env << EOF
 # 数据库配置
 POSTGRES_SERVER=localhost
@@ -340,6 +344,10 @@ POSTGRES_PORT=5432
 # PostgreSQL超级用户配置
 POSTGRES_SUPERUSER=postgres
 POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_SUPERUSER_PASSWORD
+
+# 数据库URL编码密码（用于处理特殊字符）
+ENCODED_POSTGRES_PASSWORD=$ENCODED_POSTGRES_PASSWORD
+ENCODED_POSTGRES_SUPERUSER_PASSWORD=$ENCODED_POSTGRES_SUPERUSER_PASSWORD
 
 # Redis配置
 REDIS_HOST=localhost

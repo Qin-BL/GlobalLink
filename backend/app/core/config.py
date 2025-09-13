@@ -154,9 +154,28 @@ class Settings(BaseSettings):
             self.BACKEND_CORS_ORIGINS = self._parse_list_config(self.BACKEND_CORS_ORIGINS)
             self.ALLOWED_HOSTS = self._parse_list_config(self.ALLOWED_HOSTS)
         
-        # 构建数据库连接字符串
+        # 构建数据库连接字符串 - 对密码进行URL编码以处理特殊字符
+        import urllib.parse
+        
+        # 编码密码中的特殊字符
+        encoded_password = urllib.parse.quote(self.POSTGRES_PASSWORD, safe='')
+        
         if not self.SQLALCHEMY_DATABASE_URI:
-            self.SQLALCHEMY_DATABASE_URI = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            self.SQLALCHEMY_DATABASE_URI = f"postgresql://{self.POSTGRES_USER}:{encoded_password}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        else:
+            # 如果用户已经提供了完整的连接字符串，检查是否需要解码密码
+            try:
+                # 解析连接字符串
+                from urllib.parse import urlparse, parse_qs
+                result = urlparse(self.SQLALCHEMY_DATABASE_URI)
+                # 如果密码部分存在但未被编码，重新构建连接字符串
+                if result.password and ('/' in result.password or '+' in result.password or '=' in result.password):
+                    encoded_password = urllib.parse.quote(result.password, safe='')
+                    # 重新构建连接字符串
+                    self.SQLALCHEMY_DATABASE_URI = f"{result.scheme}://{result.username}:{encoded_password}@{result.netloc.split('@')[1]}{result.path}"
+            except Exception:
+                # 如果解析失败，保持原连接字符串不变
+                pass
         
         # 构建Redis连接字符串
         if not self.REDIS_URL:

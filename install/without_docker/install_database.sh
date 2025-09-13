@@ -49,10 +49,13 @@ sudo systemctl enable postgresql
 # 配置PostgreSQL
 log "配置PostgreSQL数据库..."
 
-# 生成随机密码
+# 生成随机密码 - 使用URL安全的base64编码
 DB_PASSWORD=$(openssl rand -base64 32)
 # 生成postgres用户的随机密码
 POSTGRES_PASSWORD=$(openssl rand -base64 32)
+
+# 对密码进行URL编码以处理特殊字符（用于直接构建连接字符串的情况）
+ENCODED_DB_PASSWORD=$(echo -n "$DB_PASSWORD" | python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.stdin.read(), safe=''))")
 
 # 创建数据库用户和数据库
 sudo -u postgres psql << EOF
@@ -112,7 +115,8 @@ if [ -f "$ENV_FILE" ]; then
     echo "POSTGRES_PASSWORD=$DB_PASSWORD" >> "$TEMP_FILE"
     echo "POSTGRES_DB=globallink" >> "$TEMP_FILE"
     echo "POSTGRES_PORT=5432" >> "$TEMP_FILE"
-    echo "SQLALCHEMY_DATABASE_URI=postgresql://globallink:$DB_PASSWORD@localhost:5432/globallink" >> "$TEMP_FILE"
+    # 使用编码后的密码构建连接字符串
+    echo "SQLALCHEMY_DATABASE_URI=postgresql://globallink:$ENCODED_DB_PASSWORD@localhost:5432/globallink" >> "$TEMP_FILE"
     echo "# PostgreSQL超级用户配置" >> "$TEMP_FILE"
     echo "POSTGRES_SUPERUSER=postgres" >> "$TEMP_FILE"
     echo "POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD" >> "$TEMP_FILE"
@@ -135,7 +139,8 @@ POSTGRES_USER=globallink
 POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=globallink
 POSTGRES_PORT=5432
-SQLALCHEMY_DATABASE_URI=postgresql://globallink:$DB_PASSWORD@localhost:5432/globallink
+# 使用编码后的密码构建连接字符串
+SQLALCHEMY_DATABASE_URI=postgresql://globallink:$ENCODED_DB_PASSWORD@localhost:5432/globallink
 # PostgreSQL超级用户配置
 POSTGRES_SUPERUSER=postgres
 POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_PASSWORD

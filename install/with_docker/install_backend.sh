@@ -98,6 +98,9 @@ if [ ! -f "$ENV_FILE" ]; then
         log "已从.env.example创建.env文件，请根据需要修改配置"
     else
         log_warning "未找到.env.example文件，创建默认.env文件"
+        # 对密码进行URL编码以处理特殊字符
+        ENCODED_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('password'))")
+        
         cat > "$ENV_FILE" << EOF
 # 数据库配置
 POSTGRES_SERVER=db
@@ -108,6 +111,10 @@ POSTGRES_PORT=5432
 # PostgreSQL超级用户配置
 POSTGRES_SUPERUSER=postgres
 POSTGRES_SUPERUSER_PASSWORD=password
+
+# 数据库URL编码密码（用于处理特殊字符）
+ENCODED_POSTGRES_PASSWORD=$ENCODED_PASSWORD
+ENCODED_POSTGRES_SUPERUSER_PASSWORD=$ENCODED_PASSWORD
 
 # Redis配置
 REDIS_HOST=redis

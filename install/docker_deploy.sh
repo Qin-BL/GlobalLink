@@ -112,6 +112,9 @@ create_env_files() {
     log_info "创建环境配置文件..."
     
     # 后端环境配置
+    # 对密码进行URL编码以处理特殊字符
+    ENCODED_POSTGRES_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('globallink_password'))")
+    
     cat > ../backend/.env << EOF
 # 数据库配置
 POSTGRES_SERVER=postgres
@@ -119,6 +122,9 @@ POSTGRES_USER=globallink
 POSTGRES_PASSWORD=globallink_password
 POSTGRES_DB=globallink
 POSTGRES_PORT=5432
+
+# 数据库URL编码密码（用于处理特殊字符）
+ENCODED_POSTGRES_PASSWORD=$ENCODED_POSTGRES_PASSWORD
 
 # Redis配置
 REDIS_HOST=redis
