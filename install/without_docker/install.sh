@@ -101,7 +101,7 @@ fix_service_paths() {
     sed -i "s|WorkingDirectory=.*|WorkingDirectory=$PROJECT_ROOT/backend|" "$PROJECT_ROOT/backend.service"
     sed -i "s|ExecStart=.*|ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000|" "$PROJECT_ROOT/backend.service"
     sed -i "s|Environment=PATH=.*|Environment=\"PATH=$PROJECT_ROOT/backend/venv/bin\"|" "$PROJECT_ROOT/backend.service"
-    sed -i "s|EnvironmentFile=.*|EnvironmentFile=$PROJECT_ROOT/.env|" "$PROJECT_ROOT/backend.service"
+    sed -i "s|EnvironmentFile=.*|EnvironmentFile=$PROJECT_ROOT/backend/.env|" "$PROJECT_ROOT/backend.service"
     log "backend.service修复完成"
   else
     log "警告：backend.service文件不存在，将重新创建"
@@ -136,7 +136,7 @@ WorkingDirectory=$PROJECT_ROOT/backend
 ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 Environment=\"PATH=$PROJECT_ROOT/backend/venv/bin\"}
-EnvironmentFile=$PROJECT_ROOT/.env
+EnvironmentFile=$PROJECT_ROOT/backend/.env
 
 [Install]
 WantedBy=multi-user.target

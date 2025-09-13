@@ -376,7 +376,7 @@ WorkingDirectory=$PROJECT_ROOT/backend
 ExecStart=$PROJECT_ROOT/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 Environment="PATH=$PROJECT_ROOT/backend/venv/bin"
-EnvironmentFile=$PROJECT_ROOT/.env
+EnvironmentFile=$PROJECT_ROOT/backend/.env
 
 [Install]
 WantedBy=multi-user.target
