@@ -146,10 +146,11 @@ class IntegrationAPITest(unittest.TestCase):
     
     def setUp(self):
         """测试前准备"""
-        self.base_url = "http://localhost:8000"
+        from test_config import test_config
+        self.base_url = test_config.BASE_URL
         self.test_credentials = {
-            'email': 'test@example.com',
-            'password': 'test_password'
+            'email': test_config.TEST_EMAIL,
+            'password': test_config.TEST_PASSWORD
         }
     
     @patch('requests.Session')

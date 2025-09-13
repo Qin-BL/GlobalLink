@@ -102,12 +102,12 @@ async def startup_event():
             "version": settings.VERSION,
             "environment": settings.ENVIRONMENT,
             "api_prefix": settings.API_V1_STR,
-            "port": 8001
+            "port": settings.BACKEND_PORT
         }
     )
     
-    logger.info(f"✅ GlobalLink异步服务已启动成功，监听端口: 8001")
-    logger.info(f"✅ 文档地址: http://localhost:8001/docs")
+    logger.info(f"✅ GlobalLink异步服务已启动成功，监听端口: {settings.BACKEND_PORT}")
+    logger.info(f"✅ 文档地址: http://localhost:{settings.BACKEND_PORT}/docs")
 
 # 关闭事件处理器
 @app.on_event("shutdown")
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "async_main:app",
         host="0.0.0.0",
-        port=8001,
+        port=settings.BACKEND_PORT,
         reload=settings.DEBUG,
         log_level="info",
         workers=settings.WORKERS if not settings.DEBUG else 1

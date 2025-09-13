@@ -180,17 +180,28 @@ python3 test_error_notification.py http://localhost:8000 test@example.com 123456
 
 ## ⚙️ 配置说明
 
-### 默认配置
+### 测试配置文件
+
+项目现在使用集中化的测试配置文件 `test_config.py`，该文件位于 test 目录中。这个配置文件包含了所有测试需要的配置项，并且可以通过环境变量进行覆盖。
+
+### 使用配置文件
+
+在测试文件中，可以这样导入和使用配置：
 
 ```python
-# 默认服务器配置
-DEFAULT_BASE_URL = "http://localhost:8000"
-DEFAULT_EMAIL = "15010993510@163.com"
-DEFAULT_PASSWORD = "12345678"
+from test_config import test_config
 
-# 默认超时设置
-DEFAULT_TIMEOUT = 30  # 秒
-DEFAULT_RETRY_COUNT = 3
+# 获取基础URL
+base_url = test_config.BASE_URL
+
+# 获取测试账号信息
+email = test_config.TEST_EMAIL
+password = test_config.TEST_PASSWORD
+
+# 获取SSH连接信息
+ssh_host = test_config.SSH_HOST
+ssh_key = test_config.SSH_KEY
+ssh_username = test_config.SSH_USERNAME
 ```
 
 ### 环境变量
@@ -200,8 +211,14 @@ DEFAULT_RETRY_COUNT = 3
 ```bash
 export TEST_SERVER="localhost"
 export TEST_PORT="8000"
+export TEST_BASE_URL="http://custom-server:8080"
 export TEST_EMAIL="your-test@example.com"
 export TEST_PASSWORD="your-password"
+export SSH_HOST="your-server-ip"
+export SSH_KEY="/path/to/your/ssh/key.pem"
+export SSH_USERNAME="your-username"
+export TEST_TIMEOUT="60"
+export TEST_RETRY_COUNT="5"
 ```
 
 ## 🔧 高级用法

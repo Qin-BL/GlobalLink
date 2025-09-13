@@ -346,9 +346,12 @@ class BlackBoxAPITester:
         
         return passed_tests == total_tests
 
-def run_blackbox_tests(base_url: str = "http://localhost:8000") -> bool:
+def run_blackbox_tests(base_url: str = None) -> bool:
     """运行黑盒测试"""
-    tester = BlackBoxAPITester(base_url)
+    from test_config import test_config
+    # 如果未提供base_url，则使用配置文件中的值
+    url = base_url if base_url else test_config.BASE_URL
+    tester = BlackBoxAPITester(url)
     return tester.run_all_blackbox_tests()
 
 # 单元测试类（用于集成到unittest框架）
@@ -358,7 +361,8 @@ class BlackBoxTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """设置测试类"""
-        cls.base_url = "http://localhost:8000"
+        from test_config import test_config
+        cls.base_url = test_config.BASE_URL
         cls.tester = BlackBoxAPITester(cls.base_url)
     
     def test_endpoints_exist(self):

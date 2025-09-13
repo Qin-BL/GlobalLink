@@ -27,8 +27,10 @@ class AsyncServiceManager:
     
     def __init__(self):
         self.process: Optional[subprocess.Popen] = None
-        self.port = 8000
-        self.host = "0.0.0.0"
+        # 从配置文件导入设置
+        from app.core.config import settings
+        self.port = settings.BACKEND_PORT
+        self.host = settings.HOST
         self.reload = self._is_debug_mode()
         
     def _is_debug_mode(self) -> bool:
@@ -56,12 +58,14 @@ class AsyncServiceManager:
             logger.info("🔧 调试模式已启用，代码修改将自动重载")
         else:
             # 生产模式下设置工作进程数
-            workers = os.environ.get("WORKERS", "2")
+            from app.core.config import settings
+            workers = os.environ.get("WORKERS", str(settings.WORKERS))
             cmd.extend(["--workers", workers])
             logger.info(f"🏭 生产模式，工作进程数: {workers}")
         
         # 设置日志级别
-        log_level = os.environ.get("LOG_LEVEL", "info")
+        from app.core.config import settings
+        log_level = os.environ.get("LOG_LEVEL", settings.LOG_LEVEL.lower())
         cmd.extend(["--log-level", log_level])
         
         try:
@@ -149,12 +153,14 @@ class AsyncServiceManager:
 
 def print_banner():
     """打印启动横幅"""
-    banner = """
+    # 从配置文件导入端口设置
+    from app.core.config import settings
+    banner = f"""
     ╔════════════════════════════════════════════════════════════╗
     ║                     GlobalLink Async                       ║
     ╠════════════════════════════════════════════════════════════╣
     ║                        异步服务启动器                      ║
-    ║          端口: 8001          文档: /docs                  ║
+    ║          端口: {settings.BACKEND_PORT}          文档: /docs                  ║
     ╚════════════════════════════════════════════════════════════╝
     """
     print(banner)

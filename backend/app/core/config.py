@@ -79,6 +79,23 @@ class Settings(BaseSettings):
     # 前端地址配置
     FRONTEND_HOST: str = "http://localhost:3080"
     
+    # 服务端口配置
+    BACKEND_PORT: int = 8001
+    # 服务主机配置
+    HOST: str = "0.0.0.0"
+    
+    # 环境配置
+    ENVIRONMENT: str = "development"  # development, testing, production
+    
+    # 缓存配置
+    CACHE_TTL: int = 3600  # 缓存过期时间（秒）
+    
+    # 请求频率限制配置
+    REQUESTS_PER_MINUTE: int = 100  # 每分钟允许的请求数
+    
+    # 工作进程配置
+    WORKERS: int = 2  # 生产环境下的工作进程数
+    
     # 错误通知配置
     ERROR_NOTIFICATION_RECIPIENTS: str = ""
     ERROR_NOTIFICATION_ENABLED: bool = False

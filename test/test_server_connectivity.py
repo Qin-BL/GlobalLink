@@ -238,17 +238,13 @@ class ServerConnectivityTester:
 
 def main():
     """主函数"""
-    # 从命令行参数获取配置
-    host = "47.108.76.21"
-    ssh_key = "~/Desktop/global_link47.108.76.21.pem"
-    username = "ubuntu"
+    # 从配置文件导入设置
+    from test_config import test_config
     
-    if len(sys.argv) > 1:
-        host = sys.argv[1]
-    if len(sys.argv) > 2:
-        ssh_key = sys.argv[2]
-    if len(sys.argv) > 3:
-        username = sys.argv[3]
+    # 从命令行参数获取配置（如果提供）
+    host = sys.argv[1] if len(sys.argv) > 1 else test_config.SSH_HOST
+    ssh_key = sys.argv[2] if len(sys.argv) > 2 else test_config.SSH_KEY
+    username = sys.argv[3] if len(sys.argv) > 3 else test_config.SSH_USERNAME
     
     # 创建测试器并运行测试
     tester = ServerConnectivityTester(host, ssh_key, username)
