@@ -100,6 +100,10 @@ class Settings(BaseSettings):
     ERROR_NOTIFICATION_RECIPIENTS: str = ""
     ERROR_NOTIFICATION_ENABLED: bool = False
     
+    # 管理员账户配置
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin123"  # 注意：生产环境中请修改为强密码
+    
     # 邮件令牌过期时间配置
     EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = 1  # 密码重置令牌有效期（小时）
     

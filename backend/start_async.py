@@ -82,9 +82,11 @@ class AsyncServiceManager:
             except Exception as e:
                 logger.warning(f"⚠️ 无法设置工作进程数: {e}")
         
-        # 设置日志级别
+        # 设置日志级别 - 确保日志级别始终是小写的
         from app.core.config import settings
-        log_level = os.environ.get("LOG_LEVEL", settings.LOG_LEVEL.lower())
+        log_level = os.environ.get("LOG_LEVEL", settings.LOG_LEVEL)
+        # 强制转换为小写，因为uvicorn只接受小写的日志级别
+        log_level = log_level.lower()
         cmd.extend(["--log-level", log_level])
         
         # 添加其他兼容性参数
