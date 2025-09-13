@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from ...models import User
 from ...schemas import Token
-from ..deps import get_db
+from ..db.session import get_async_db
 from ...core import security
 from ...core.config import settings
 
@@ -21,7 +21,7 @@ router = APIRouter()
 @router.post("/login", response_model=Token)
 async def admin_login(
     *,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     username: str = Body(..., description="管理员用户名"),
     password: str = Body(..., description="管理员密码")
 ) -> Any:
