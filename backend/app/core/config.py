@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     
     # CORS配置
     BACKEND_CORS_ORIGINS: Union[str, List[str]] = [
-        "http://localhost:3000",
+        "http://localhost:3080",
         "http://localhost:3080",
         "http://localhost:8000",
         "http://localhost",
