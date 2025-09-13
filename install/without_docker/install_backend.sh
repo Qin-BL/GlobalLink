@@ -384,10 +384,24 @@ WantedBy=multi-user.target
 EOF
 
 echo "服务文件已创建：$(pwd)/../backend.service"
-echo ""
-echo "要安装并启动服务，请执行："
-echo "cd $(dirname $(pwd))"
-echo "bash install_service_ubuntu20.sh"
+
+# 检查是否需要更新系统服务文件
+echo "检查系统服务文件状态..."
+if [ -f "/etc/systemd/system/globallink-backend.service" ]; then
+    echo "发现已存在的系统服务文件，准备更新..."
+    # 备份当前服务文件
+    sudo cp /etc/systemd/system/globallink-backend.service /etc/systemd/system/globallink-backend.service.bak.$(date +'%Y%m%d%H%M%S')
+    # 复制新的服务文件
+    sudo cp "$(pwd)/../backend.service" /etc/systemd/system/globallink-backend.service
+    # 重新加载systemd配置
+    sudo systemctl daemon-reload
+    echo "✓ 系统服务文件已更新"
+    echo "提示：请执行 'sudo systemctl restart globallink-backend' 使更改生效"
+else
+    echo "系统服务文件不存在，请运行主安装脚本完成服务安装："
+    echo "cd $(dirname $(pwd))"
+    echo "bash install/without_docker/install.sh"
+fi
 
 cd ..
 
