@@ -12,7 +12,7 @@ from sqlalchemy import select
 from ...models import User
 from ...schemas import Token
 from ...db.session import get_async_db
-from ...core import security
+from ...core import async_security as security
 from ...core.config import settings
 
 router = APIRouter()
@@ -41,7 +41,7 @@ async def admin_login(
             detail="管理员用户名或密码错误"
         )
     
-    if not security.verify_password(password, admin_user.hashed_password):
+    if not await security.verify_password(password, admin_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="管理员用户名或密码错误"
@@ -59,8 +59,11 @@ async def admin_login(
         admin_user.id, expires_delta=access_token_expires
     )
     
-    # 生成刷新令牌
-    refresh_token = await security.create_refresh_token(admin_user.id)
+    # 生成刷新令牌（使用更长的过期时间）
+    refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS or 7)
+    refresh_token = await security.create_access_token(
+        admin_user.id, expires_delta=refresh_token_expires
+    )
     
     return {
         "access_token": access_token,
