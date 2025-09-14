@@ -18,7 +18,7 @@ from ...schemas import UserResponse
 from ...db.session import get_async_db
 from ...core import security
 from ...core.config import settings
-from ...core.deps import get_current_active_user
+from ...deps import get_current_active_user
 from ...utils.totp_utils import (
     generate_totp_secret, 
     generate_totp_uri,
