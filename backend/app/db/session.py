@@ -48,14 +48,32 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     if AsyncSessionLocal is None:
         raise RuntimeError("异步数据库会话不可用，请安装asyncpg")
     
-    async with AsyncSessionLocal() as session:
+    session = None
+    try:
+        # 手动创建会话，而不是使用上下文管理器
+        session = AsyncSessionLocal()
+        
         try:
             yield session
-        except Exception:
-            await session.rollback()
+            # 如果没有异常，尝试提交任何未提交的更改
+            await session.commit()
+        except Exception as e:
+            # 发生异常时回滚
+            logger.error(f"数据库操作异常: {e}")
+            try:
+                if session:
+                    await session.rollback()
+            except Exception as rollback_err:
+                logger.error(f"事务回滚失败: {rollback_err}")
             raise
-        finally:
-            await session.close()
+    finally:
+        # 确保会话被关闭
+        if session:
+            try:
+                if not session.is_closed():
+                    await session.close()
+            except Exception as close_err:
+                logger.error(f"数据库会话关闭失败: {close_err}")
 
 # Redis连接
 import redis.asyncio as aioredis
