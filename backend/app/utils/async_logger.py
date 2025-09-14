@@ -187,7 +187,8 @@ class AsyncLogger:
         finally:
             # 确保关闭会话和异步生成器
             try:
-                if session and not session.is_closed():
+                if session:
+                    # 直接尝试关闭会话，不再检查is_closed()
                     await session.close()
             except Exception as close_err:
                 logger.error(f"数据库会话关闭失败: {close_err}")
