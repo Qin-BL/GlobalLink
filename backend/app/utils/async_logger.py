@@ -34,21 +34,24 @@ class AsyncLogger:
     _lock = threading.Lock()
     
     # 日志队列
-    _system_log_queue = queue.Queue()
-    _activity_log_queue = queue.Queue()
-    _api_log_queue = queue.Queue()
-    
-    # 批处理状态
-    _stop_event = threading.Event()
-    _worker_thread = None
-    
-    def __new__(cls):
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = super(AsyncLogger, cls).__new__(cls)
-                cls._instance._initialize()
-            return cls._instance
-    
+    def __init__(self):
+        """初始化异步日志处理器"""
+        # 创建日志队列
+        # 使用默认队列大小，因为settings中没有LOG_QUEUE_SIZE配置
+        self._system_log_queue = queue.Queue(maxsize=1000)
+        self._activity_log_queue = queue.Queue(maxsize=1000)
+        self._api_log_queue = queue.Queue(maxsize=1000)
+        
+        # 创建工作线程和停止事件
+        self._worker_thread = None
+        self._stop_event = threading.Event()
+        
+        # 初始化一个专用的事件循环
+        self._loop = None
+        
+        # 立即初始化
+        self._initialize()
+        
     def _initialize(self):
         """初始化异步日志处理器"""
         # 启动工作线程
@@ -56,8 +59,6 @@ class AsyncLogger:
             self._stop_event.clear()
             self._worker_thread = threading.Thread(target=self._process_logs, daemon=True)
             self._worker_thread.start()
-            # 初始化一个专用的事件循环
-            self._loop = None
     
     def _process_logs(self):
         """处理日志队列，批量写入数据库"""
