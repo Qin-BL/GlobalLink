@@ -6,7 +6,7 @@ import asyncio
 import functools
 from typing import Any, Callable, Optional, Union, TypeVar, cast
 
-from app.utils.async_logger import log_system
+# 避免循环导入，将log_system的导入移至函数内部
 
 # 定义泛型类型变量
 T = TypeVar('T')
@@ -53,6 +53,9 @@ def async_with_error_handling(
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
+                # 避免循环导入，在函数内部导入log_system
+                from app.utils.async_logger import log_system
+                
                 # 记录错误日志
                 await log_system(
                     log_type=log_type,
@@ -95,6 +98,9 @@ def sync_async_pair(
             else:
                 return sync_func(*args, **kwargs)
         except Exception as e:
+            # 避免循环导入，在函数内部导入log_system
+            from app.utils.async_logger import log_system
+            
             await log_system(
                 log_type=log_type,
                 level="ERROR",
