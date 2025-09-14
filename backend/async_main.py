@@ -120,7 +120,7 @@ async def shutdown_event():
     
     # 记录关闭信息
     try:
-        await log_system(
+        log_system(
             log_type="SYSTEM_SHUTDOWN",
             level="INFO",
             message="GlobalLink异步服务关闭成功",
