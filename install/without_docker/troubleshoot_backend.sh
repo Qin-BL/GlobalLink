@@ -27,6 +27,14 @@ echo "=== Python环境检查 ==="
 if command -v python3.12 >/dev/null 2>&1; then
     echo "✓ Python 3.12: $(python3.12 --version)"
     echo "  路径: $(which python3.12)"
+    
+    # 检查distutils模块是否可用
+    if python3.12 -c "import distutils.core" 2>/dev/null; then
+        echo "✓ distutils模块: 可用"
+    else
+        echo "✗ distutils模块: 不可用"
+        echo "  解决方案: 运行 sudo apt install python3.12-distutils 或 python3-distutils"
+    fi
 else
     echo "✗ Python 3.12 未安装"
     echo "  解决方案: 运行 sudo apt install python3.12 python3.12-venv python3.12-dev"
@@ -39,6 +47,7 @@ dependencies=(
     "gcc" "g++" "make" "pkg-config"
     "libffi-dev" "libssl-dev" "zlib1g-dev"
     "libjpeg-dev" "libfreetype6-dev"
+    "python3.12-distutils" "python3-distutils"
 )
 
 for dep in "${dependencies[@]}"; do

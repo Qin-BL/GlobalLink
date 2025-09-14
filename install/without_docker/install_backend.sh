@@ -115,9 +115,18 @@ sudo apt install -y python3.12 python3.12-venv python3.12-dev || {
     exit 1
 }
 
-# 尝试安装distutils（某些系统可能没有）
-sudo apt install -y python3.12-distutils 2>/dev/null || {
-    echo "警告：python3.12-distutils不可用，将使用get-pip.py安装pip"
+# 安装distutils模块（解决依赖安装问题的关键步骤）
+echo "安装distutils模块（解决依赖安装问题）..."
+# 首先尝试直接安装python3.12-distutils
+sudo apt install -y python3.12-distutils || {
+    echo "尝试通用distutils包..."
+    sudo apt install -y python3-distutils || {
+        echo "尝试使用python3.12的distutils..."
+        # 对于某些系统，可能需要使用不同的包名
+        sudo apt install -y python3.12-venv python3.12-distutils 2>/dev/null || {
+            echo "警告：无法通过包管理器安装distutils，将使用get-pip.py安装pip和distutils"
+        }
+    }
 }
 
 # 安装pip for Python 3.12
@@ -126,9 +135,26 @@ if ! python3.12 -m pip --version >/dev/null 2>&1; then
     echo "使用get-pip.py安装pip..."
     curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12 || {
         echo "错误：无法安装pip"
-        exit 1
+        echo "提示：可能需要检查网络连接或Python安装状态"
+        echo "尝试使用替代源安装："
+        curl -sS https://bootstrap.pypa.io/pip/3.12/get-pip.py | sudo python3.12 || {
+            echo "错误：pip安装失败，请手动安装pip"
+            exit 1
+        }
     }
 fi
+
+# 验证distutils是否可用
+echo "验证distutils模块是否可用..."
+python3.12 -c "import distutils.core; print('✓ distutils模块导入成功')" || {
+    echo "警告：distutils模块不可用，尝试修复..."
+    # 尝试重新安装pip，这通常会修复distutils问题
+    curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12 || {
+        echo "错误：distutils模块缺失，这会导致依赖安装失败"
+        echo "请确保您的Python安装包含distutils模块"
+        exit 1
+    }
+}","},{
 
 # 验证Python安装
 echo "验证Python 3.12安装..."
@@ -211,21 +237,30 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple numpy || {
 
 # 安装requirements.txt中的依赖
 echo "安装项目依赖..."
-# 首先尝试使用清华源
-if ! pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt; then
+# 设置安装选项以提高兼容性
+export PYTHONPATH=$PYTHONPATH:/usr/lib/python3.12
+
+# 首先尝试使用清华源安装依赖
+if ! pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir -r requirements.txt; then
     echo "清华源安装失败，尝试使用官方源..."
-    if ! pip install -r requirements.txt; then
-        echo "官方源也失败，尝试逐个安装..."
-        # 逐个安装，跳过失败的包
-        while IFS= read -r line; do
-            if [[ $line =~ ^[^#]*[a-zA-Z] ]]; then
-                package=$(echo "$line" | sed 's/[>=<].*//')
-                echo "安装包: $package"
-                pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "$package" || {
-                    echo "警告：包 $package 安装失败，跳过..."
-                }
-            fi
-        done < requirements.txt
+    if ! pip install --no-cache-dir -r requirements.txt; then
+        echo "官方源也失败，尝试使用其他镜像源..."
+        if ! pip install -i https://pypi.douban.com/simple --no-cache-dir -r requirements.txt; then
+            echo "所有镜像源都失败，尝试逐个安装..."
+            # 逐个安装，跳过失败的包
+            while IFS= read -r line; do
+                if [[ $line =~ ^[^#]*[a-zA-Z] ]]; then
+                    package=$(echo "$line" | sed 's/[>=<].*//')
+                    echo "安装包: $package"
+                    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir "$package" || {
+                        echo "警告：包 $package 安装失败，尝试降级版本..."
+                        pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir "$package"=="$(echo "$line" | sed 's/[a-zA-Z0-9_\-]*==//' | sed 's/>=//' | sed 's/<//')" || {
+                            echo "警告：包 $package 安装失败，跳过..."
+                        }
+                    }
+                fi
+            done < requirements.txt
+        fi
     fi
 fi
 
