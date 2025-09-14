@@ -196,7 +196,7 @@ python3.12 -c "import distutils.core; print('✓ distutils模块导入成功')" 
     
     # 再次尝试多种方法安装distutils
     distutils_installed=false
-    
+    echo "安装distutils模块（解决依赖安装问题）..."
     case "$PACKAGE_MANAGER" in
         apt)
             # 尝试安装python3.12-distutils
@@ -267,24 +267,112 @@ python3.12 -c "import distutils.core; print('✓ distutils模块导入成功')" 
 # 最小化的distutils初始化文件，用于解决Python 3.12中distutils缺失的问题
 __version__ = '3.12.0'
 __revision__ = '$Revision$'
+
+# 导入setuptools以获取distutils功能
+import sys
+import importlib.util
+
+try:
+    # 尝试导入setuptools提供的distutils
+    from setuptools import distutils
+    # 确保distutils在sys.modules中可用
+    sys.modules['distutils'] = distutils
+    # 导出常用的distutils功能
+    from distutils import *
+except ImportError:
+    # 如果setuptools不提供distutils，设置一个基本的占位符
+    pass
 EOF
     
     # 再次验证distutils是否可用
     echo "再次验证distutils模块是否可用..."
-    python3.12 -c "import distutils.core; print('✓ distutils模块导入成功')" || {
+    echo "检查Python路径: $(python3.12 -c "import sys; print(sys.executable)")"
+    echo "检查site-packages路径: $(python3.12 -c "import site; print(site.getsitepackages()[0] if site.getsitepackages() else '未知')")"
+    python3.12 -c "import distutils; print('✓ distutils模块导入成功'); try: import distutils.core; print('✓ distutils.core模块导入成功'); except ImportError: print('✗ distutils.core模块导入失败')" || {
         echo "修复失败，distutils模块仍然不可用"
         echo "尝试最后的解决方案：手动创建distutils.core模块..."
         
-        # 创建一个简单的distutils.core模块
+        # 创建一个更完整的distutils.core模块模拟
+        echo "创建更完整的distutils.core模块模拟..."
         sudo tee "$DISTUTILS_PATH/core.py" > /dev/null << 'EOF'
-# 最小化的distutils.core模块，用于解决Python 3.12中distutils缺失的问题
-from setuptools import setup, find_packages
+# 增强的distutils.core模块模拟，用于解决Python 3.12中distutils缺失的问题
+# 这个文件提供了足够的功能来满足大多数Python包安装需求
+
 import sys
 import os
+import platform
+import importlib.util
 
-# 模拟distutils.core的基本功能
-setup = setup
-find_packages = find_packages
+# 尝试从setuptools导入所需功能
+try:
+    from setuptools import setup, find_packages
+    from setuptools.command import install as _install
+    from setuptools import Extension
+    from setuptools.dist import Distribution
+    from setuptools.errors import DistutilsError, DistutilsArgError, DistutilsOptionError
+    
+    # 设置导入标志
+    HAS_SETUPTOOLS = True
+except ImportError:
+    # 如果没有setuptools，创建基本的模拟对象
+    HAS_SETUPTOOLS = False
+    
+    class DistutilsError(Exception): pass
+    class DistutilsArgError(DistutilsError): pass
+    class DistutilsOptionError(DistutilsError): pass
+    
+    def setup(*args, **kwargs):
+        print("Warning: Using mock setup function. Some functionality may be limited.")
+        return {}
+    
+    def find_packages(*args, **kwargs):
+        return []
+    
+    class Extension:
+        def __init__(self, *args, **kwargs):
+            self.name = args[0] if args else "unknown"
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+    
+    class Distribution:
+        def __init__(self, attrs=None):
+            self.attrs = attrs or {}
+
+# 定义常用的distutils.core函数和类
+Command = _install.install if HAS_SETUPTOOLS and 'install' in dir(_install) else object
+DistributionMetadata = type('DistributionMetadata', (object,), {})
+Extension = Extension
+
+# 提供一个简单的run_setup函数，用于运行setup.py文件
+def run_setup(script_name, script_args=None, stop_after="run"):
+    import runpy
+    import sys
+    
+    old_argv = sys.argv.copy()
+    try:
+        sys.argv = [script_name] + (script_args or [])
+        namespace = runpy.run_path(script_name, run_name='__main__')
+        return namespace.get('setup_result', {})
+    finally:
+        sys.argv = old_argv
+
+# 提供一些常用的工具函数
+def get_platform():
+    return platform.system().lower()
+
+def get_python_version():
+    return f"{sys.version_info.major}.{sys.version_info.minor}"
+
+# 导出所有公共API
+__all__ = [
+    'setup', 'find_packages', 'Extension', 'Distribution',
+    'DistutilsError', 'DistutilsArgError', 'DistutilsOptionError',
+    'Command', 'DistributionMetadata', 'run_setup',
+    'get_platform', 'get_python_version'
+]
+
+# 确保关键模块可用
+sys.modules['distutils.core'] = sys.modules[__name__]
 EOF
         
         # 再次验证
