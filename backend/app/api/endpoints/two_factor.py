@@ -72,7 +72,7 @@ async def setup_two_factor(
     secret_key = generate_totp_secret()
     
     # 生成TOTP URI
-    totp_uri = generate_totp_uri(
+    totp_uri = get_totp_uri(
         secret=secret_key,
         username=current_user.username,
         issuer_name=settings.PROJECT_NAME or "GlobalLink"
