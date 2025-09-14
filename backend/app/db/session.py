@@ -3,6 +3,7 @@
 数据库会话管理
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 import redis
 import logging
 from functools import lru_cache
