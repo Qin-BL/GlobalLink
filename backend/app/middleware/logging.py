@@ -47,6 +47,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 ip_address=client_ip,
                 user_agent=user_agent,
                 request_path=request.url.path,
+                full_path=str(request.url),
                 http_method=request.method,
                 session_id=session_id
             )
@@ -62,14 +63,24 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         # 记录响应信息（根据配置的日志级别）
         log_level = "WARNING" if response.status_code >= 400 else "INFO"
         try:
+            # 对于4xx和5xx状态码，增强日志信息
+            if response.status_code >= 400:
+                message = f"请求完成: {response.status_code} {response.status_code}"
+                # 特别处理401未授权错误
+                if response.status_code == 401:
+                    message = f"未授权访问: {request.method} {request.url.path} - 状态码: 401"
+            else:
+                message = f"请求完成: {response.status_code}"
+            
             log_system(
                 log_type="REQUEST_END",
                 level=log_level,
-                message=f"请求完成: {response.status_code}",
+                message=message,
                 user_id=user_id,
                 ip_address=client_ip,
                 user_agent=user_agent,
                 request_path=request.url.path,
+                full_path=str(request.url),
                 http_method=request.method,
                 status_code=response.status_code,
                 response_time=int(process_time * 1000),  # 转换为毫秒

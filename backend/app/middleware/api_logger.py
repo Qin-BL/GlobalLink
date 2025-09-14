@@ -66,6 +66,7 @@ class APILoggerMiddleware(BaseHTTPMiddleware):
             async_log_api(
                 method=request.method,
                 path=request.url.path,
+                full_path=str(request.url),
                 status_code=response.status_code,
                 response_time=process_time,
                 user_id=user_id,
@@ -73,6 +74,10 @@ class APILoggerMiddleware(BaseHTTPMiddleware):
                 user_agent=user_agent,
                 request_data=request_data
             )
+            
+            # 对于401未授权错误，额外记录详细日志信息
+            if response.status_code == 401:
+                logger.warning(f"未授权访问: {request.method} {request.url.path} - IP: {client_ip}")
         except Exception as e:
             logger.error(f"记录API请求日志失败: {e}")
         

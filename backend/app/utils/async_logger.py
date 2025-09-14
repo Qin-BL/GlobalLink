@@ -154,6 +154,7 @@ class AsyncLogger:
                   ip_address: Optional[str] = None,
                   user_agent: Optional[str] = None,
                   request_path: Optional[str] = None,
+                  full_path: Optional[str] = None,
                   http_method: Optional[str] = None,
                   status_code: Optional[int] = None,
                   response_time: Optional[int] = None,
@@ -164,11 +165,15 @@ class AsyncLogger:
             return False
         
         # 构建日志数据
+        log_details = details or {}
+        if full_path:
+            log_details['full_path'] = full_path
+        
         log_data = {
             "log_type": log_type,
             "level": level,
             "message": message,
-            "details": details or {},
+            "details": log_details,
             "user_id": user_id,
             "ip_address": ip_address,
             "user_agent": user_agent,
@@ -230,13 +235,18 @@ class AsyncLogger:
                ip_address: Optional[str] = None,
                user_agent: Optional[str] = None,
                request_data: Optional[Dict[str, Any]] = None,
-               error_message: Optional[str] = None):
+               error_message: Optional[str] = None,
+               full_path: Optional[str] = None):
         """记录API请求日志"""
         # 检查日志级别
         if not self._should_log("INFO", settings.API_LOG_LEVEL):
             return False
         
         # 构建日志数据
+        log_details = {}
+        if full_path:
+            log_details['full_path'] = full_path
+        
         log_data = {
             "method": method,
             "path": path,
@@ -247,6 +257,7 @@ class AsyncLogger:
             "user_agent": user_agent,
             "request_data": request_data or {},
             "error_message": error_message,
+            "details": log_details,
             "created_at": datetime.utcnow()
         }
         
