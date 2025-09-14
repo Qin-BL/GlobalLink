@@ -25,6 +25,7 @@ psycopg2-binary>=2.9.7
 asyncpg>=0.30.0
 # 加密依赖
 pycryptodome==3.18.0
+pyotp>=2.9.0
 
 redis==4.5.5
 
