@@ -18,7 +18,7 @@ from ...schemas import UserResponse
 from ...db.session import get_async_db
 from ...core import security
 from ...core.config import settings
-from ...deps import get_current_active_user
+from ..deps import get_current_active_user
 from ...utils.totp_utils import (
     generate_totp_secret, 
     generate_totp_uri,
@@ -26,7 +26,6 @@ from ...utils.totp_utils import (
     verify_totp_code,
     generate_recovery_codes,
     hash_recovery_codes,
-    verify_recovery_code
 )
 
 logger = logging.getLogger(__name__)
