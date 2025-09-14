@@ -102,6 +102,7 @@ const AdminLogin = () => {
     if (score <= 1) return { color: '#c53030', text: '弱' };
     if (score <= 3) return { color: '#ed8936', text: '中' };
     return { color: '#38a169', text: '强' };
+  };
 
   return (
     <div className="admin-login-container">
