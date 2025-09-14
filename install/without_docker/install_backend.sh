@@ -203,7 +203,7 @@ sudo python3.12 -m pip install --upgrade pip setuptools wheel
 # 步骤3：创建必要的目录和文件
 echo "步骤3: 检查并创建distutils路径和模块..."
 # 安全地获取site-packages路径，避免索引错误
-PYTHON_SITE_PACKAGES=$(python3.12 -c "import site, sys; try: sp = site.getsitepackages(); print(sp[0] if sp else '/usr/lib/python3.12/site-packages') except: print('/usr/lib/python3.12/site-packages')")
+PYTHON_SITE_PACKAGES=$(python3.12 -c "import site, sys\ntry:\n    sp = site.getsitepackages()\n    print(sp[0] if sp else '/usr/lib/python3.12/site-packages')\nexcept:\n    print('/usr/lib/python3.12/site-packages')")
 DISTUTILS_PATH="$PYTHON_SITE_PACKAGES/distutils"
 
 # 确保site-packages目录存在且可写
