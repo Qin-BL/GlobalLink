@@ -3,7 +3,7 @@
 管理员端点
 """
 from datetime import timedelta, datetime
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
