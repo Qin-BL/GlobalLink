@@ -26,8 +26,8 @@ async def create_access_token(
     异步创建访问令牌
     """
     try:
-        # 使用asyncio.create_task让令牌创建在后台执行
-        return await asyncio.create_task(_create_access_token_sync(subject, expires_delta))
+        # 直接在线程池执行同步操作，避免创建不必要的任务
+        return _create_access_token_sync(subject, expires_delta)
     except Exception as e:
         await log_system(
             log_type="SECURITY_ERROR",
@@ -60,8 +60,8 @@ async def decode_access_token(token: str) -> Optional[dict]:
     异步解码访问令牌
     """
     try:
-        # 使用asyncio.create_task让令牌解码在后台执行
-        return await asyncio.create_task(_decode_access_token_sync(token))
+        # 直接在线程池执行同步操作，避免创建不必要的任务
+        return _decode_access_token_sync(token)
     except Exception as e:
         await log_system(
             log_type="SECURITY_ERROR",
@@ -124,8 +124,8 @@ async def generate_password_reset_token(email: str) -> str:
     异步生成密码重置令牌
     """
     try:
-        # 使用asyncio.create_task让令牌生成在后台执行
-        return await asyncio.create_task(_generate_password_reset_token_sync(email))
+        # 直接在线程池执行同步操作，避免创建不必要的任务
+        return _generate_password_reset_token_sync(email)
     except Exception as e:
         await log_system(
             log_type="SECURITY_ERROR",
@@ -155,8 +155,8 @@ async def verify_password_reset_token(token: str) -> Optional[str]:
     异步验证密码重置令牌
     """
     try:
-        # 使用asyncio.create_task让令牌验证在后台执行
-        return await asyncio.create_task(_verify_password_reset_token_sync(token))
+        # 直接在线程池执行同步操作，避免创建不必要的任务
+        return _verify_password_reset_token_sync(token)
     except Exception as e:
         await log_system(
             log_type="SECURITY_ERROR",
