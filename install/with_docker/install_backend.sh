@@ -339,6 +339,13 @@ build_docker_images() {
     exit 1
   }
   
+  # 验证Docker镜像中的distutils模块是否正常工作
+  log "验证Docker镜像中的Python环境..."
+  docker run --rm globallink-backend python -c "import distutils.core; print('✓ distutils模块在Docker镜像中正常工作')" || {
+    log_error "Docker镜像中的distutils模块验证失败，这可能会影响依赖安装"
+    log_warning "建议尝试使用: docker-compose build --no-cache backend 重新构建镜像"
+  }
+  
   log "Docker镜像构建成功"
   set_status "$CURRENT_STEP" "completed"
 }
