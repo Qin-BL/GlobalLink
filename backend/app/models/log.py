@@ -5,6 +5,7 @@
 from sqlalchemy import Column, String, DateTime, Text, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
+from datetime import datetime
 
 from .base import Base
 
@@ -50,6 +51,9 @@ class SystemLog(Base):
     # 会话ID
     session_id = Column(String(100), nullable=True, index=True)
     
+    # 创建时间
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    
     def __repr__(self) -> str:
         return f"<SystemLog(id={self.id}, type='{self.log_type}', level='{self.level}')>"
 
@@ -79,6 +83,9 @@ class UserActivity(Base):
     
     # 会话ID
     session_id = Column(String(100), nullable=True, index=True)
+    
+    # 创建时间
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     
     def __repr__(self) -> str:
         return f"<UserActivity(id={self.id}, user_id={self.user_id}, type='{self.activity_type}')>"
@@ -116,6 +123,9 @@ class ApiLog(Base):
     
     # 错误信息（如果有）
     error_message = Column(Text, nullable=True)
+    
+    # 创建时间
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     
     def __repr__(self) -> str:
         return f"<ApiLog(id={self.id}, method='{self.method}', path='{self.path}', status={self.status_code})>"
