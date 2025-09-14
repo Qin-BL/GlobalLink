@@ -127,8 +127,6 @@ class Settings(BaseSettings):
     YEARLY_MEMBERSHIP_PRICE: float = 299.0
 
     # 日志系统配置
-    # 异步日志记录开关
-    ASYNC_LOGGING_ENABLED: bool = True
     # 批量写入配置
     LOG_BATCH_SIZE: int = 50  # 批量写入的日志数量阈值
     LOG_FLUSH_INTERVAL: int = 5  # 日志刷新间隔（秒）
