@@ -21,7 +21,7 @@ from ...core.config import settings
 from ..deps import get_current_active_user
 from ...utils.totp_utils import (
     generate_totp_secret, 
-    generate_totp_uri,
+    get_totp_uri,
     generate_qr_code_data,
     verify_totp_code,
     generate_recovery_codes,
