@@ -117,17 +117,59 @@ sudo apt install -y python3.12 python3.12-venv python3.12-dev || {
 
 # 安装distutils模块（解决依赖安装问题的关键步骤）
 echo "安装distutils模块（解决依赖安装问题）..."
-# 首先尝试直接安装python3.12-distutils
-sudo apt install -y python3.12-distutils || {
-    echo "尝试通用distutils包..."
-    sudo apt install -y python3-distutils || {
-        echo "尝试使用python3.12的distutils..."
-        # 对于某些系统，可能需要使用不同的包名
-        sudo apt install -y python3.12-venv python3.12-distutils 2>/dev/null || {
-            echo "警告：无法通过包管理器安装distutils，将使用get-pip.py安装pip和distutils"
-        }
-    }
-}
+# 检测Linux发行版包管理器类型
+PACKAGE_MANAGER="apt"
+if command -v yum &> /dev/null; then
+    PACKAGE_MANAGER="yum"
+elif command -v dnf &> /dev/null; then
+    PACKAGE_MANAGER="dnf"
+fi
+
+# 针对不同包管理器安装distutils
+distutils_installed=false
+case "$PACKAGE_MANAGER" in
+    apt)
+        # 首先检查python3-distutils是否已安装
+        if dpkg -l | grep -q "python3-distutils"; then
+            echo "✓ python3-distutils 已安装"
+            distutils_installed=true
+        fi
+        
+        # 尝试直接安装python3.12-distutils
+        if ! $distutils_installed; then
+            echo "尝试安装python3.12-distutils..."
+            sudo apt install -y python3.12-distutils 2>/dev/null && distutils_installed=true
+        fi
+        
+        # 如果上面的尝试失败，安装通用python3-distutils包
+        if ! $distutils_installed; then
+            echo "无法找到python3.12-distutils包，尝试安装python3-distutils..."
+            sudo apt install -y python3-distutils 2>/dev/null && distutils_installed=true
+        fi
+        
+        # 如果仍然失败，尝试通过pip安装setuptools
+        if ! $distutils_installed; then
+            echo "警告：无法通过包管理器安装distutils，尝试通过pip安装setuptools..."
+            # 确保pip已安装
+            if ! python3.12 -m pip --version >/dev/null 2>&1; then
+                curl -sS https://bootstrap.pypa.io/get-pip.py | sudo python3.12
+            fi
+            # 安装setuptools，这通常包含distutils
+            sudo python3.12 -m pip install --upgrade setuptools
+        fi
+        ;;
+    yum|dnf)
+        # CentOS/RHEL系统的安装方法
+        echo "使用$PACKAGE_MANAGER安装Python 3.12相关包..."
+        sudo $PACKAGE_MANAGER install -y python3.12 python3.12-devel
+        # 安装setuptools，这通常包含distutils
+        sudo python3.12 -m pip install --upgrade setuptools
+        ;;
+    *)
+        echo "警告：未知的包管理器，尝试通过pip安装setuptools..."
+        sudo python3.12 -m pip install --upgrade setuptools
+        ;;
+esac
 
 # 安装pip for Python 3.12
 echo "安装pip for Python 3.12..."
@@ -154,7 +196,7 @@ python3.12 -c "import distutils.core; print('✓ distutils模块导入成功')" 
         echo "请确保您的Python安装包含distutils模块"
         exit 1
     }
-}","},{
+}
 
 # 验证Python安装
 echo "验证Python 3.12安装..."
