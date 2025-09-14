@@ -5,6 +5,25 @@
  */
 
 /**
+ * 简单的替代加密算法（作为降级方案）
+ * @param {string} password - 原始密码
+ * @param {string} salt - 盐值
+ * @returns {string} 加密后的密码
+ */
+const simpleEncrypt = (password, salt) => {
+  // 一个简单的替代加密方案
+  let encrypted = '';
+  for (let i = 0; i < password.length; i++) {
+    const charCode = password.charCodeAt(i);
+    const saltCode = salt.charCodeAt(i % salt.length);
+    // 简单的异或和位移操作
+    const encryptedCode = (charCode ^ saltCode) & 0xFF;
+    encrypted += encryptedCode.toString(16).padStart(2, '0');
+  }
+  return encrypted;
+};
+
+/**
  * 加密密码
  * @param {string} password - 原始密码
  * @returns {Promise<string>} 加密后的密码哈希
@@ -35,16 +54,26 @@ export const encryptPassword = async (password) => {
       hash: hashHex,
       timestamp: timestamp,
       salt: randomSalt,
-      domain: domain
+      domain: domain,
+      method: 'sha256'
     });
     return result;
   } catch (error) {
-    // 如果加密失败，返回原始密码（降级处理）
+    // 降级为简单加密方案，确保不发送明文密码
+    const timestamp = Date.now();
+    const randomSalt = Math.random().toString(36).substring(2, 15);
+    const domain = window.location.origin || 'unknown';
+    
+    // 使用简单的替代加密算法
+    const encryptedPassword = simpleEncrypt(password, randomSalt);
+    
     const fallbackResult = JSON.stringify({
-      hash: password,
-      timestamp: Date.now(),
-      salt: 'fallback',
-      error: 'encryption_failed'
+      hash: encryptedPassword,
+      timestamp: timestamp,
+      salt: randomSalt,
+      domain: domain,
+      method: 'simple_encrypt',
+      error: 'crypto_api_failed'
     });
     return fallbackResult;
   }

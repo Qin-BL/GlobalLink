@@ -53,12 +53,8 @@ const AdminLogin = () => {
         return;
       }
 
-      // 检查加密功能是否可用并加密密码
-      const encryptionSupported = isEncryptionSupported();
-      let encryptedPassword = formData.password;
-      if (encryptionSupported) {
-        encryptedPassword = await encryptPassword(formData.password);
-      }
+      // 始终加密密码，依赖 encryptPassword 内部的降级机制
+      const encryptedPassword = await encryptPassword(formData.password);
 
       // 创建包含加密密码的请求数据
       const requestData = {
