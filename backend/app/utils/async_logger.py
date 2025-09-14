@@ -56,9 +56,16 @@ class AsyncLogger:
             self._stop_event.clear()
             self._worker_thread = threading.Thread(target=self._process_logs, daemon=True)
             self._worker_thread.start()
+            # 初始化一个专用的事件循环
+            self._loop = None
     
     def _process_logs(self):
         """处理日志队列，批量写入数据库"""
+        # 为工作线程创建专用的事件循环
+        if self._loop is None:
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+            
         while not self._stop_event.is_set():
             try:
                 # 收集一批日志
@@ -66,13 +73,8 @@ class AsyncLogger:
                 
                 # 如果有日志需要处理，则异步写入数据库
                 if logs_to_process:
-                    # 创建一个新的事件循环来执行异步操作
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        loop.run_until_complete(self._write_logs_to_db(logs_to_process))
-                    finally:
-                        loop.close()
+                    # 使用专用的事件循环
+                    self._loop.run_until_complete(self._write_logs_to_db(logs_to_process))
                 
                 # 等待一段时间或直到队列中有新的日志
                 self._stop_event.wait(settings.LOG_FLUSH_INTERVAL)
@@ -333,6 +335,14 @@ class AsyncLogger:
         self._stop_event.set()
         if self._worker_thread:
             self._worker_thread.join(timeout=5.0)
+        
+        # 关闭专用的事件循环
+        if hasattr(self, '_loop') and self._loop:
+            if not self._loop.is_closed():
+                self._loop.call_soon_threadsafe(self._loop.stop)
+                self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+                self._loop.close()
+                self._loop = None
 
 
 # 创建全局异步日志处理器实例
@@ -358,6 +368,16 @@ def ensure_async_logger_shutdown():
     if async_logger._worker_thread and async_logger._worker_thread.is_alive():
         async_logger.shutdown()
         logger.info("异步日志处理器已关闭")
+    
+    # 确保事件循环被正确关闭
+    if hasattr(async_logger, '_loop') and async_logger._loop:
+        if not async_logger._loop.is_closed():
+            try:
+                async_logger._loop.call_soon_threadsafe(async_logger._loop.stop)
+                async_logger._loop.close()
+                async_logger._loop = None
+            except Exception as e:
+                logger.error(f"关闭事件循环失败: {e}")
 
 
 # 注册程序退出时的清理函数
