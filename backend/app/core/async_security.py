@@ -5,37 +5,17 @@
 """
 from datetime import datetime, timedelta, UTC
 from typing import Any, Union, Optional
-import asyncio
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 import secrets
 import string
 
 from .config import settings
-from ..utils.async_logger import log_system
+from ..utils.async_utils import sync_async_pair, async_with_error_handling
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = "HS256"
-
-
-async def create_access_token(
-    subject: Union[str, Any], expires_delta: timedelta = None
-) -> str:
-    """
-    异步创建访问令牌
-    """
-    try:
-        # 直接在线程池执行同步操作，避免创建不必要的任务
-        return _create_access_token_sync(subject, expires_delta)
-    except Exception as e:
-        await log_system(
-            log_type="SECURITY_ERROR",
-            level="ERROR",
-            message=f"创建访问令牌失败",
-            details={"error": str(e)},
-        )
-        raise
 
 
 def _create_access_token_sync(
@@ -55,21 +35,12 @@ def _create_access_token_sync(
     return encoded_jwt
 
 
-async def decode_access_token(token: str) -> Optional[dict]:
-    """
-    异步解码访问令牌
-    """
-    try:
-        # 直接在线程池执行同步操作，避免创建不必要的任务
-        return _decode_access_token_sync(token)
-    except Exception as e:
-        await log_system(
-            log_type="SECURITY_ERROR",
-            level="ERROR",
-            message=f"解码访问令牌失败",
-            details={"error": str(e)},
-        )
-        return None
+# 使用sync_async_pair创建异步版本
+create_access_token = sync_async_pair(
+    _create_access_token_sync,
+    log_type="SECURITY_ERROR",
+    log_message="创建访问令牌失败"
+)
 
 
 def _decode_access_token_sync(token: str) -> Optional[dict]:
@@ -85,55 +56,52 @@ def _decode_access_token_sync(token: str) -> Optional[dict]:
         return None
 
 
+# 使用装饰器创建带错误处理的异步版本
+@async_with_error_handling(
+    log_type="SECURITY_ERROR",
+    log_message="解码访问令牌失败",
+    raise_exception=False,
+    default_return=None
+)
+async def decode_access_token(token: str) -> Optional[dict]:
+    """
+    异步解码访问令牌
+    """
+    return _decode_access_token_sync(token)
+
+
+@async_with_error_handling(
+    log_type="SECURITY_ERROR",
+    log_message="密码验证失败",
+    raise_exception=False,
+    default_return=False
+)
 async def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     异步验证密码
+    使用线程池执行CPU密集型操作
     """
-    try:
-        # 使用asyncio.to_thread在线程池执行CPU密集型操作
-        return await asyncio.to_thread(pwd_context.verify, plain_password, hashed_password)
-    except Exception as e:
-        await log_system(
-            log_type="SECURITY_ERROR",
-            level="ERROR",
-            message=f"密码验证失败",
-            details={"error": str(e)},
-        )
-        return False
+    # 使用asyncio.to_thread在线程池执行CPU密集型操作
+    return await sync_async_pair(
+        pwd_context.verify,
+        use_thread=True
+    )(plain_password, hashed_password)
 
 
+@async_with_error_handling(
+    log_type="SECURITY_ERROR",
+    log_message="生成密码哈希失败"
+)
 async def get_password_hash(password: str) -> str:
     """
     异步获取密码哈希
+    使用线程池执行CPU密集型操作
     """
-    try:
-        # 使用asyncio.to_thread在线程池执行CPU密集型操作
-        return await asyncio.to_thread(pwd_context.hash, password)
-    except Exception as e:
-        await log_system(
-            log_type="SECURITY_ERROR",
-            level="ERROR",
-            message=f"生成密码哈希失败",
-            details={"error": str(e)},
-        )
-        raise
-
-
-async def generate_password_reset_token(email: str) -> str:
-    """
-    异步生成密码重置令牌
-    """
-    try:
-        # 直接在线程池执行同步操作，避免创建不必要的任务
-        return _generate_password_reset_token_sync(email)
-    except Exception as e:
-        await log_system(
-            log_type="SECURITY_ERROR",
-            level="ERROR",
-            message=f"生成密码重置令牌失败",
-            details={"error": str(e)},
-        )
-        raise
+    # 使用asyncio.to_thread在线程池执行CPU密集型操作
+    return await sync_async_pair(
+        pwd_context.hash,
+        use_thread=True
+    )(password)
 
 
 def _generate_password_reset_token_sync(email: str) -> str:
@@ -150,21 +118,12 @@ def _generate_password_reset_token_sync(email: str) -> str:
     return encoded_jwt
 
 
-async def verify_password_reset_token(token: str) -> Optional[str]:
-    """
-    异步验证密码重置令牌
-    """
-    try:
-        # 直接在线程池执行同步操作，避免创建不必要的任务
-        return _verify_password_reset_token_sync(token)
-    except Exception as e:
-        await log_system(
-            log_type="SECURITY_ERROR",
-            level="ERROR",
-            message=f"验证密码重置令牌失败",
-            details={"error": str(e)},
-        )
-        return None
+# 使用sync_async_pair创建异步版本
+generate_password_reset_token = sync_async_pair(
+    _generate_password_reset_token_sync,
+    log_type="SECURITY_ERROR",
+    log_message="生成密码重置令牌失败"
+)
 
 
 def _verify_password_reset_token_sync(token: str) -> Optional[str]:
@@ -178,26 +137,33 @@ def _verify_password_reset_token_sync(token: str) -> Optional[str]:
         return None
 
 
-async def generate_random_string(length: int = 32) -> str:
+# 使用装饰器创建带错误处理的异步版本
+@async_with_error_handling(
+    log_type="SECURITY_ERROR",
+    log_message="验证密码重置令牌失败",
+    raise_exception=False,
+    default_return=None
+)
+async def verify_password_reset_token(token: str) -> Optional[str]:
     """
-    异步生成随机字符串
+    异步验证密码重置令牌
     """
-    try:
-        # 使用asyncio.to_thread在线程池执行随机字符串生成
-        return await asyncio.to_thread(_generate_random_string_sync, length)
-    except Exception as e:
-        await log_system(
-            log_type="SECURITY_ERROR",
-            level="ERROR",
-            message=f"生成随机字符串失败",
-            details={"error": str(e)},
-        )
-        raise
+    return _verify_password_reset_token_sync(token)
 
 
+# 完成generate_random_string函数的重构
 def _generate_random_string_sync(length: int = 32) -> str:
     """
     同步生成随机字符串的实际实现
     """
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+# 使用sync_async_pair创建异步版本，在线程池执行
+generate_random_string = sync_async_pair(
+    _generate_random_string_sync,
+    log_type="SECURITY_ERROR",
+    log_message="生成随机字符串失败",
+    use_thread=True
+)

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..core.config import settings
 from ..models.log import SystemLog, UserActivity, ApiLog
 from ..db.session import get_async_db
+from .async_utils import async_with_error_handling
 
 logger = logging.getLogger(__name__)
 
@@ -117,73 +118,72 @@ class AsyncLogger:
         
         return collected_logs
     
+    @async_with_error_handling(
+        log_type="LOGGER_ERROR",
+        log_message="日志写入数据库失败",
+        raise_exception=False
+    )
     async def _write_logs_to_db(self, logs: Dict[str, List[Dict[str, Any]]]):
         """异步将日志批量写入数据库"""
         session = None
         db_gen = None
         try:
             # 获取数据库会话
-            try:
-                db_gen = get_async_db()
-                session = await db_gen.__anext__()
-            except Exception as e:
-                logger.error(f"获取数据库会话失败: {e}")
-                return
-                
+            db_gen = get_async_db()
+            session = await db_gen.__anext__()
+            
             if not session:
                 logger.error("数据库会话不可用")
                 return
                 
-            try:
-                # 写入系统日志
-                if logs["system"]:
-                    system_logs = []
-                    for log_data in logs["system"]:
-                        try:
-                            system_logs.append(SystemLog(**log_data))
-                        except Exception as e:
-                            logger.error(f"创建系统日志记录失败: {e}, 数据: {log_data}")
-                    if system_logs:
-                        session.add_all(system_logs)
-                        await session.flush()
-                
-                # 写入用户活动日志
-                if logs["activity"]:
-                    activity_logs = []
-                    for log_data in logs["activity"]:
-                        try:
-                            activity_logs.append(UserActivity(**log_data))
-                        except Exception as e:
-                            logger.error(f"创建活动日志记录失败: {e}, 数据: {log_data}")
-                    if activity_logs:
-                        session.add_all(activity_logs)
-                        await session.flush()
-                
-                # 写入API日志
-                if logs["api"]:
-                    api_logs = []
-                    for log_data in logs["api"]:
-                        try:
-                            api_logs.append(ApiLog(**log_data))
-                        except Exception as e:
-                            logger.error(f"创建API日志记录失败: {e}, 数据: {log_data}")
-                    if api_logs:
-                        session.add_all(api_logs)
-                        await session.flush()
-                
-                # 提交事务
-                await session.commit()
-                
-                logger.debug(f"批量写入日志成功: system={len(logs['system'])}, activity={len(logs['activity'])}, api={len(logs['api'])}")
-                
-            except Exception as e:
-                logger.error(f"批量写入日志失败: {e}")
+            # 写入系统日志
+            if logs["system"]:
+                system_logs = []
+                for log_data in logs["system"]:
+                    try:
+                        system_logs.append(SystemLog(**log_data))
+                    except Exception as e:
+                        logger.error(f"创建系统日志记录失败: {e}, 数据: {log_data}")
+                if system_logs:
+                    session.add_all(system_logs)
+                    await session.flush()
+            
+            # 写入用户活动日志
+            if logs["activity"]:
+                activity_logs = []
+                for log_data in logs["activity"]:
+                    try:
+                        activity_logs.append(UserActivity(**log_data))
+                    except Exception as e:
+                        logger.error(f"创建活动日志记录失败: {e}, 数据: {log_data}")
+                if activity_logs:
+                    session.add_all(activity_logs)
+                    await session.flush()
+            
+            # 写入API日志
+            if logs["api"]:
+                api_logs = []
+                for log_data in logs["api"]:
+                    try:
+                        api_logs.append(ApiLog(**log_data))
+                    except Exception as e:
+                        logger.error(f"创建API日志记录失败: {e}, 数据: {log_data}")
+                if api_logs:
+                    session.add_all(api_logs)
+                    await session.flush()
+            
+            # 提交事务
+            await session.commit()
+            
+            logger.debug(f"批量写入日志成功: system={len(logs['system'])}, activity={len(logs['activity'])}, api={len(logs['api'])}")
+            
+        except Exception as e:
+            logger.error(f"批量写入日志失败: {e}")
+            if session:
                 try:
                     await session.rollback()
                 except Exception as rollback_err:
                     logger.error(f"事务回滚失败: {rollback_err}")
-        except Exception as e:
-            logger.error(f"日志处理整体异常: {e}")
         finally:
             # 确保关闭会话和异步生成器
             try:

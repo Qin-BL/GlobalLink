@@ -7,9 +7,16 @@ from typing import Dict, Any, Optional
 # 直接导入异步日志处理器
 from .async_logger import log_activity as async_log_activity
 from .async_logger import log_api as async_log_api
+from .async_utils import async_with_error_handling
 
 logger = logging.getLogger(__name__)
 
+@async_with_error_handling(
+    log_type="ACTIVITY_LOGGER_ERROR",
+    log_message="记录用户活动失败",
+    raise_exception=False,
+    default_return=False
+)
 def log_user_activity(
     user_id: int,
     action: str,
@@ -30,20 +37,22 @@ def log_user_activity(
     Returns:
         bool: 是否记录成功
     """
-    try:
-        # 直接使用异步日志处理器
-        return async_log_activity(
-            user_id=user_id,
-            activity_type=action,
-            description="",
-            details=details,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
-    except Exception as e:
-        logger.error(f"记录用户活动失败: {e}")
-        return False
+    # 直接使用异步日志处理器
+    return async_log_activity(
+        user_id=user_id,
+        activity_type=action,
+        description="",
+        details=details,
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
 
+@async_with_error_handling(
+    log_type="API_LOGGER_ERROR",
+    log_message="记录API请求失败",
+    raise_exception=False,
+    default_return=False
+)
 def log_api_request(
     method: str,
     path: str,
@@ -70,18 +79,14 @@ def log_api_request(
     Returns:
         bool: 是否记录成功
     """
-    try:
-        # 直接使用异步日志处理器
-        return async_log_api(
-            method=method,
-            path=path,
-            status_code=status_code,
-            response_time=response_time,
-            user_id=user_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            request_data=request_data
-        )
-    except Exception as e:
-        logger.error(f"记录API请求失败: {e}")
-        return False
+    # 直接使用异步日志处理器
+    return async_log_api(
+        method=method,
+        path=path,
+        status_code=status_code,
+        response_time=response_time,
+        user_id=user_id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        request_data=request_data
+    )
