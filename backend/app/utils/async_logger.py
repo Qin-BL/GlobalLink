@@ -119,9 +119,10 @@ class AsyncLogger:
     
     async def _write_logs_to_db(self, logs: Dict[str, List[Dict[str, Any]]]):
         """异步将日志批量写入数据库"""
+        session = None
+        db_gen = None
         try:
             # 获取数据库会话
-            session = None
             try:
                 db_gen = get_async_db()
                 session = await db_gen.__anext__()
@@ -181,14 +182,22 @@ class AsyncLogger:
                     await session.rollback()
                 except Exception as rollback_err:
                     logger.error(f"事务回滚失败: {rollback_err}")
-            finally:
-                # 关闭会话
-                try:
-                    await session.close()
-                except Exception as close_err:
-                    logger.error(f"数据库会话关闭失败: {close_err}")
         except Exception as e:
             logger.error(f"日志处理整体异常: {e}")
+        finally:
+            # 确保关闭会话和异步生成器
+            try:
+                if session and not session.is_closed():
+                    await session.close()
+            except Exception as close_err:
+                logger.error(f"数据库会话关闭失败: {close_err}")
+            
+            # 确保异步生成器被正确关闭
+            if db_gen:
+                try:
+                    await db_gen.aclose()
+                except:
+                    pass
     
     def _should_log(self, log_level: str, configured_level: str) -> bool:
         """检查是否应该记录此级别的日志"""
