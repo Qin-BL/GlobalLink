@@ -16,7 +16,7 @@ from ...schemas import Token, UserCreate, UserResponse, TwoFactorResponse
 from ...db.session import get_async_db
 from ...core import security
 from ...core.config import settings
-from ...core.totp_utils import verify_totp_code, verify_recovery_code
+from ...utils.totp_utils import verify_totp_code, verify_recovery_code
 
 logger = logging.getLogger(__name__)
 
@@ -104,11 +104,9 @@ async def login_for_access_token(
                 )
                 if is_valid:
                     # 验证成功，更新恢复码列表
-                    from ...core.totp_utils import hash_recovery_codes
-                    # 使用用户ID作为盐值
-                    salt = str(user.id)
+                    from ...utils.totp_utils import hash_recovery_codes
                     user.two_factor_recovery_codes = hash_recovery_codes(
-                        updated_codes, salt
+                        updated_codes
                     ) if updated_codes else None
                     user.two_factor_last_verified = datetime.now(timezone.utc)
                     await db.commit()

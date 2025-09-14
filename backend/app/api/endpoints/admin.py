@@ -15,7 +15,7 @@ from ...db.session import get_async_db
 from ...core import async_security as security
 from ...core.config import settings
 from ...utils.password_decrypt import decrypt_user_password
-from ...core.totp_utils import verify_totp_code, verify_recovery_code, should_enforce_2fa
+from ...utils.totp_utils import verify_totp_code, verify_recovery_code
 
 router = APIRouter()
 
@@ -82,11 +82,9 @@ async def admin_login(
                 )
                 if is_valid:
                     # 验证成功，更新恢复码列表
-                    from ...core.totp_utils import hash_recovery_codes
-                    # 使用用户ID作为盐值
-                    salt = str(admin_user.id)
+                    from ...utils.totp_utils import hash_recovery_codes
                     admin_user.two_factor_recovery_codes = hash_recovery_codes(
-                        updated_codes, salt
+                        updated_codes
                     ) if updated_codes else None
                     admin_user.two_factor_last_verified = datetime.now(timezone.utc)
                     await db.commit()

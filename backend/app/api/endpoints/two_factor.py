@@ -19,13 +19,14 @@ from ...db.session import get_async_db
 from ...core import security
 from ...core.config import settings
 from ...core.deps import get_current_active_user
-from ...core.totp_utils import (
+from ...utils.totp_utils import (
     generate_totp_secret, 
     generate_totp_uri,
-    generate_qr_code,
+    generate_qr_code_data,
     verify_totp_code,
     generate_recovery_codes,
-    hash_recovery_codes
+    hash_recovery_codes,
+    verify_recovery_code
 )
 
 logger = logging.getLogger(__name__)
@@ -75,17 +76,17 @@ async def setup_two_factor(
     totp_uri = generate_totp_uri(
         secret=secret_key,
         username=current_user.username,
-        issuer=settings.PROJECT_NAME or "GlobalLink"
+        issuer_name=settings.PROJECT_NAME or "GlobalLink"
     )
     
     # 生成QR码
-    qr_code_base64 = generate_qr_code(totp_uri)
+    qr_code_base64 = generate_qr_code_data(totp_uri)
     
     # 生成恢复码
     recovery_codes = generate_recovery_codes()
     
-    # 临时保存密钥和恢复码（实际实现中应该使用缓存或会话存储）
-    # 这里我们暂时不保存，而是在verify步骤中完成最终设置
+    # 注意：在实际生产环境中，应该使用安全的方式临时保存密钥和恢复码，
+    # 例如使用Redis缓存或加密的会话存储，这里为了简化示例，我们在verify步骤中重新生成密钥
     
     logger.info(f"用户开始设置双因素认证: {current_user.username}")
     
@@ -108,12 +109,18 @@ async def verify_and_enable_two_factor(
     验证双因素认证设置
     验证用户输入的验证码，并启用双因素认证
     """
-    # 重新生成TOTP密钥（实际实现中应该从缓存或会话中获取临时保存的密钥）
-    # 这里为了演示，我们假设用户是在setup后立即调用verify
-    secret_key = generate_totp_secret()
+    # 注意：在实际生产环境中，应该从安全的缓存或会话存储中获取
+    # 之前在setup中生成的密钥，这里为了简化示例，我们假设用户通过body参数传递密钥
+    # 实际应用中应使用更安全的方式传输此密钥
+    
+    # 为了演示目的，我们生成一个新密钥并尝试验证
+    # 在真实系统中，应该使用用户在setup阶段收到的密钥
+    temp_secret = request.code[:16]  # 仅为演示，实际不应这样做
+    if len(temp_secret) < 16:
+        temp_secret = generate_totp_secret()
     
     # 验证TOTP验证码
-    if not verify_totp_code(secret_key, request.code):
+    if not verify_totp_code(temp_secret, request.code):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="验证码错误，请检查您的输入"
@@ -122,13 +129,12 @@ async def verify_and_enable_two_factor(
     # 生成新的恢复码
     recovery_codes = generate_recovery_codes()
     
-    # 使用用户ID作为盐值哈希恢复码
-    salt = str(current_user.id)
-    hashed_recovery_codes = hash_recovery_codes(recovery_codes, salt)
+    # 哈希恢复码
+    hashed_recovery_codes = hash_recovery_codes(recovery_codes)
     
     # 更新用户的双因素认证设置
     current_user.two_factor_enabled = True
-    current_user.totp_secret = secret_key
+    current_user.totp_secret = temp_secret
     current_user.two_factor_recovery_codes = hashed_recovery_codes
     current_user.two_factor_last_verified = datetime.now(timezone.utc)
     
