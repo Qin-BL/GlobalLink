@@ -4,7 +4,7 @@ API路由集合
 """
 from fastapi import APIRouter
 
-from app.api.endpoints import auth_router, users_router, admin_router, courses_router, membership_router, progress_router
+from app.api.endpoints import auth_router, users_router, admin_router, courses_router, membership_router, progress_router, two_factor_router
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -49,4 +49,11 @@ api_router.include_router(
     progress_router, 
     prefix="/progress", 
     tags=["学习进度"]
+)
+
+# 双因素认证相关路由
+api_router.include_router(
+    two_factor_router, 
+    prefix="/two-factor", 
+    tags=["双因素认证"]
 )

@@ -35,6 +35,12 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     
+    # 双因素认证相关字段
+    two_factor_enabled = Column(Boolean, default=False, nullable=False)  # 是否启用双因素认证
+    totp_secret = Column(String(100), nullable=True)  # TOTP密钥
+    two_factor_recovery_codes = Column(Text, nullable=True)  # 恢复码（加密存储）
+    two_factor_last_verified = Column(DateTime(timezone=True), nullable=True)  # 上次验证时间
+    
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}')>"
     

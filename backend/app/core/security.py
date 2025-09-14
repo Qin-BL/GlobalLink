@@ -8,8 +8,11 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 import secrets
 import string
+import logging
 
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -43,11 +46,39 @@ def decode_access_token(token: str) -> Optional[dict]:
     except JWTError:
         return None
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(plain_password: str, hashed_password: str, username: Optional[str] = None) -> bool:
     """
-    验证密码
+    验证密码并记录审计日志
+    
+    Args:
+        plain_password: 明文密码
+        hashed_password: 哈希密码
+        username: 可选的用户名，用于审计日志
+    
+    Returns:
+        密码是否验证成功
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        is_valid = pwd_context.verify(plain_password, hashed_password)
+        
+        # 记录审计日志
+        log_data = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "username": username or "unknown",
+            "result": "success" if is_valid else "failed",
+            "action": "password_verification"
+        }
+        
+        # 根据结果使用不同的日志级别
+        if is_valid:
+            logger.info(f"密码验证成功: {log_data}")
+        else:
+            logger.warning(f"密码验证失败: {log_data}")
+            
+        return is_valid
+    except Exception as e:
+        logger.error(f"密码验证过程中发生错误: {str(e)}")
+        return False
 
 def get_password_hash(password: str) -> str:
     """

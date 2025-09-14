@@ -6,6 +6,7 @@ from .admin import router as admin_router
 from .courses import router as courses_router
 from .membership import router as membership_router
 from .progress import router as progress_router
+from .two_factor import router as two_factor_router
 
 __all__ = [
     'auth_router',
@@ -13,5 +14,6 @@ __all__ = [
     'admin_router',
     'courses_router',
     'membership_router',
-    'progress_router'
+    'progress_router',
+    'two_factor_router'
 ]

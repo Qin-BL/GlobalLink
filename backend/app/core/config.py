@@ -98,7 +98,29 @@ class Settings(BaseSettings):
     
     # 错误通知配置
     ERROR_NOTIFICATION_RECIPIENTS: str = ""
+    
+    # 密码策略配置
+    PASSWORD_MIN_LENGTH: int = 8  # 密码最小长度
+    PASSWORD_REQUIRE_UPPERCASE: bool = True  # 是否需要大写字母
+    PASSWORD_REQUIRE_LOWERCASE: bool = True  # 是否需要小写字母
+    PASSWORD_REQUIRE_DIGITS: bool = True  # 是否需要数字
+    PASSWORD_REQUIRE_SPECIAL: bool = True  # 是否需要特殊字符
+    PASSWORD_EXPIRATION_DAYS: int = 90  # 密码过期时间（天）
+    PASSWORD_HISTORY_SIZE: int = 5  # 密码历史记录限制（不允许重复使用最近N个密码）
+    
+    # 加密配置
+    ENCRYPTION_KEY: str = secrets.token_urlsafe(32)  # 用于密码加密的密钥
+    EXPECTED_DOMAIN: str = "globallink.com"  # 用于前端密码加密验证的域名
     ERROR_NOTIFICATION_ENABLED: bool = False
+    
+    # 密钥管理配置
+    KEY_VERSION: int = 1  # 密钥版本号，用于密钥轮换
+    KEY_ROTATION_INTERVAL_DAYS: int = 90  # 密钥轮换间隔天数
+    KEY_ROTATION_GRACE_PERIOD_DAYS: int = 30  # 密钥轮换宽限期天数
+    SUPPORTED_KEY_VERSIONS: List[int] = [1]  # 当前支持的密钥版本列表
+    ENCRYPTION_KEYS: dict = {  # 多版本密钥存储
+        1: ENCRYPTION_KEY
+    }
     
     # 管理员账户配置
     ADMIN_USERNAME: str = "admin"

@@ -19,3 +19,13 @@ class TokenPayload(BaseModel):
     exp: Optional[int] = None
     iat: Optional[int] = None
     type: Optional[str] = None
+
+
+class TwoFactorResponse(BaseModel):
+    """双因素认证响应模型"""
+    requires_two_factor: bool
+    user_id: int
+    session_id: Optional[str] = None
+    qr_code: Optional[str] = None
+    secret_key: Optional[str] = None
+    recovery_codes: Optional[list] = None
