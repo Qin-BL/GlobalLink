@@ -203,14 +203,16 @@ sudo python3.12 -m pip install --upgrade pip setuptools wheel
 # 步骤3：运行专门的Python脚本来修复distutils
 echo "步骤3: 使用专门的Python脚本修复distutils模块..."
 # 运行独立的Python脚本进行distutils修复
-if [ -f "fix_distutils.py" ]; then
+# 使用SCRIPT_DIR变量构建正确的绝对路径
+FIX_DISTUTILS_SCRIPT="$SCRIPT_DIR/fix_distutils.py"
+if [ -f "$FIX_DISTUTILS_SCRIPT" ]; then
     echo "运行fix_distutils.py脚本..."
-    sudo python3.12 fix_distutils.py
+    sudo python3.12 "$FIX_DISTUTILS_SCRIPT"
     if [ $? -ne 0 ]; then
         echo "警告：distutils修复脚本执行失败，但将继续安装过程..."
     fi
 else
-    echo "错误：找不到fix_distutils.py脚本，无法修复distutils！"
+    echo "错误：找不到fix_distutils.py脚本（路径：$FIX_DISTUTILS_SCRIPT），无法修复distutils！"
     exit 1
 fi
 
