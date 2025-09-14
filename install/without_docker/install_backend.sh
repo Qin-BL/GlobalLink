@@ -200,145 +200,19 @@ esac
 echo "步骤2: 使用pip安装setuptools（通常包含distutils）..."
 sudo python3.12 -m pip install --upgrade pip setuptools wheel
 
-# 步骤3：创建必要的目录和文件
-echo "步骤3: 检查并创建distutils路径和模块..."
-# 安全地获取site-packages路径，避免索引错误
-PYTHON_SITE_PACKAGES=$(python3.12 -c "import site, sys\ntry:\n    sp = site.getsitepackages()\n    print(sp[0] if sp else '/usr/lib/python3.12/site-packages')\nexcept:\n    print('/usr/lib/python3.12/site-packages')")
-DISTUTILS_PATH="$PYTHON_SITE_PACKAGES/distutils"
-
-# 确保site-packages目录存在且可写
-sudo mkdir -p "$PYTHON_SITE_PACKAGES" 2>/dev/null
-sudo chmod -R a+rx "$PYTHON_SITE_PACKAGES" 2>/dev/null
-
-# 创建distutils路径（如果不存在）
-if [ ! -d "$DISTUTILS_PATH" ]; then
-    echo "创建distutils路径: $DISTUTILS_PATH"
-    sudo mkdir -p "$DISTUTILS_PATH"
+# 步骤3：运行专门的Python脚本来修复distutils
+echo "步骤3: 使用专门的Python脚本修复distutils模块..."
+# 运行独立的Python脚本进行distutils修复
+if [ -f "fix_distutils.py" ]; then
+    echo "运行fix_distutils.py脚本..."
+    sudo python3.12 fix_distutils.py
+    if [ $? -ne 0 ]; then
+        echo "警告：distutils修复脚本执行失败，但将继续安装过程..."
+    fi
+else
+    echo "错误：找不到fix_distutils.py脚本，无法修复distutils！"
+    exit 1
 fi
-
-# 创建或更新__init__.py文件
-echo "创建/更新distutils__init__.py文件..."
-sudo tee "$DISTUTILS_PATH/__init__.py" > /dev/null << 'EOF'
-# 最小化的distutils初始化文件，用于解决Python 3.12中distutils缺失的问题
-__version__ = '3.12.0'
-__revision__ = '$Revision$'
-
-# 导入setuptools以获取distutils功能
-import sys
-import importlib.util
-
-try:
-    # 尝试导入setuptools提供的distutils
-    from setuptools import distutils
-    # 确保distutils在sys.modules中可用
-    sys.modules['distutils'] = distutils
-    # 导出常用的distutils功能
-    from distutils import *
-except ImportError:
-    # 如果setuptools不提供distutils，设置一个基本的占位符
-    pass
-EOF
-
-# 创建core.py文件
-echo "创建/更新distutils.core模块..."
-sudo tee "$DISTUTILS_PATH/core.py" > /dev/null << 'EOF'
-# 增强的distutils.core模块模拟，用于解决Python 3.12中distutils缺失的问题
-# 这个文件提供了足够的功能来满足大多数Python包安装需求
-
-import sys
-import os
-import platform
-import importlib.util
-
-# 尝试从setuptools导入所需功能
-try:
-    from setuptools import setup, find_packages
-    from setuptools.command import install as _install
-    from setuptools import Extension
-    from setuptools.dist import Distribution
-    from setuptools.errors import DistutilsError, DistutilsArgError, DistutilsOptionError
-    
-    # 设置导入标志
-    HAS_SETUPTOOLS = True
-except ImportError:
-    # 如果没有setuptools，创建基本的模拟对象
-    HAS_SETUPTOOLS = False
-    
-    class DistutilsError(Exception): pass
-    class DistutilsArgError(DistutilsError): pass
-    class DistutilsOptionError(DistutilsError): pass
-    
-    def setup(*args, **kwargs):
-        print("Warning: Using mock setup function. Some functionality may be limited.")
-        return {}
-    
-    def find_packages(*args, **kwargs):
-        return []
-    
-    class Extension:
-        def __init__(self, *args, **kwargs):
-            self.name = args[0] if args else "unknown"
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-    
-    class Distribution:
-        def __init__(self, attrs=None):
-            self.attrs = attrs or {}
-
-# 定义常用的distutils.core函数和类
-Command = _install.install if HAS_SETUPTOOLS and 'install' in dir(_install) else object
-DistributionMetadata = type('DistributionMetadata', (object,), {})
-Extension = Extension
-
-# 提供一个简单的run_setup函数，用于运行setup.py文件
-def run_setup(script_name, script_args=None, stop_after="run"):
-    import runpy
-    import sys
-    
-    old_argv = sys.argv.copy()
-    try:
-        sys.argv = [script_name] + (script_args or [])
-        namespace = runpy.run_path(script_name, run_name='__main__')
-        return namespace.get('setup_result', {})
-    finally:
-        sys.argv = old_argv
-
-# 提供一些常用的工具函数
-def get_platform():
-    return platform.system().lower()
-
-def get_python_version():
-    return f"{sys.version_info.major}.{sys.version_info.minor}"
-
-# 导出所有公共API
-__all__ = [
-    'setup', 'find_packages', 'Extension', 'Distribution',
-    'DistutilsError', 'DistutilsArgError', 'DistutilsOptionError',
-    'Command', 'DistributionMetadata', 'run_setup',
-    'get_platform', 'get_python_version'
-]
-
-# 确保关键模块可用
-sys.modules['distutils.core'] = sys.modules[__name__]
-EOF
-
-# 步骤4：验证distutils是否可用
-echo "=== 验证distutils模块安装结果 ==="
-echo "检查Python路径: $(python3.12 -c "import sys; print(sys.executable)")"
-echo "检查site-packages路径: $PYTHON_SITE_PACKAGES"
-echo "检查distutils路径: $DISTUTILS_PATH"
-
-# 设置PYTHONPATH以确保能找到新创建的模块
-export PYTHONPATH="$PYTHON_SITE_PACKAGES:$PYTHONPATH"
-
-# 进行最终验证
-python3.12 -c "import distutils; print('✓ distutils模块导入成功'); try: import distutils.core; print('✓ distutils.core模块导入成功'); except ImportError: print('✗ distutils.core模块导入失败')" || {
-    echo "警告：自动修复完成，但导入测试失败。不过这可能不影响实际使用，因为我们已经创建了所需的模拟模块。"
-    echo "继续安装过程..."
-}
-
-# 确认修复完成
-echo "✓ Python 3.12 distutils缺失问题已成功修复！"
 
 # 验证Python安装
 echo "验证Python 3.12安装..."
