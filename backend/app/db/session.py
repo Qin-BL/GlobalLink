@@ -86,12 +86,26 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 # Redis连接
-@lru_cache()
-def get_redis():
-    """获取Redis连接"""
-    return redis.Redis(
-        host=settings.REDIS_HOST, 
-        port=settings.REDIS_PORT, 
-        db=settings.REDIS_DB, 
-        decode_responses=True
-    )
+import redis.asyncio as aioredis
+
+# 全局Redis客户端实例
+_redis_client = None
+
+async def get_redis():
+    """获取异步Redis连接"""
+    global _redis_client
+    if _redis_client is None:
+        try:
+            _redis_client = aioredis.Redis(
+                host=settings.REDIS_HOST, 
+                port=settings.REDIS_PORT, 
+                db=settings.REDIS_DB, 
+                decode_responses=True
+            )
+            # 测试连接
+            await _redis_client.ping()
+            logger.info("✅ Redis连接成功")
+        except Exception as e:
+            logger.error(f"❌ Redis连接失败: {e}")
+            # 即使连接失败，也返回客户端对象，让上层处理错误
+    return _redis_client
