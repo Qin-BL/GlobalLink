@@ -1,5 +1,5 @@
-const { spawn } = require('child_process');
 const os = require('os');
+const { spawn } = require('child_process');
 
 // 根据系统内存自动调整Node内存限制
 function getOptimalMemory() {
