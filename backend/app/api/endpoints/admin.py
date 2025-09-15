@@ -3,7 +3,8 @@
 管理员端点
 """
 from datetime import timedelta, datetime, timezone
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,7 @@ from ...models import User
 from ...schemas import Token, TwoFactorResponse
 from ...db.session import get_async_db
 from ...core import async_security as security
+from ...core.security import create_access_token as create_access_token_sync
 from ...core.config import settings
 from ...utils.password_decrypt import decrypt_user_password
 from ...utils.totp_utils import verify_totp_code, verify_recovery_code
@@ -45,30 +47,42 @@ async def admin_login(
             detail="管理员用户名或密码错误"
         )
     
-    # 解密前端加密的密码
-    decrypted_password = decrypt_user_password(password)
-    
-    if not await security.verify_password(decrypted_password, admin_user.hashed_password, username):
+    # 解密前端加密的密码；若不是加密格式或解密失败，则回退使用原始明文密码
+    decrypted_password = None
+    try:
+        decrypted_password = decrypt_user_password(password)
+    except Exception:
+        decrypted_password = None
+
+    candidate_password = decrypted_password or password
+
+    if not await security.verify_password(candidate_password, admin_user.hashed_password, username):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="管理员用户名或密码错误"
         )
     
-    if not admin_user.is_active:
+    # 强制从实例读取原生值，避免 Column 类型干扰
+    is_active_val = bool(getattr(admin_user, "is_active", False))
+    if not is_active_val:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="管理员账户已被禁用"
         )
     
     # 检查是否需要双因素认证
-    if admin_user.two_factor_enabled:
+    two_factor_enabled = bool(getattr(admin_user, "two_factor_enabled", False))
+    if two_factor_enabled:
         # 如果用户提供了验证码或恢复码，则进行验证
         if two_factor_code or recovery_code:
+            totp_secret_val = getattr(admin_user, "totp_secret", None)
+            recovery_codes_val = getattr(admin_user, "two_factor_recovery_codes", None)
+
             # 验证TOTP验证码
-            if two_factor_code and admin_user.totp_secret:
-                if verify_totp_code(admin_user.totp_secret, two_factor_code):
+            if two_factor_code and totp_secret_val:
+                if verify_totp_code(str(totp_secret_val), two_factor_code):
                     # 验证成功，更新上次验证时间
-                    admin_user.two_factor_last_verified = datetime.now(timezone.utc)
+                    setattr(admin_user, "two_factor_last_verified", datetime.now(timezone.utc))
                     await db.commit()
                 else:
                     raise HTTPException(
@@ -76,17 +90,16 @@ async def admin_login(
                         detail="双因素认证验证码错误"
                     )
             # 验证恢复码
-            elif recovery_code and admin_user.two_factor_recovery_codes:
+            elif recovery_code and recovery_codes_val:
                 is_valid, updated_codes = verify_recovery_code(
-                    admin_user.two_factor_recovery_codes, recovery_code
+                    str(recovery_codes_val), recovery_code
                 )
                 if is_valid:
                     # 验证成功，更新恢复码列表
                     from ...utils.totp_utils import hash_recovery_codes
-                    admin_user.two_factor_recovery_codes = hash_recovery_codes(
-                        updated_codes
-                    ) if updated_codes else None
-                    admin_user.two_factor_last_verified = datetime.now(timezone.utc)
+                    new_codes = hash_recovery_codes(updated_codes) if updated_codes else None
+                    setattr(admin_user, "two_factor_recovery_codes", new_codes)
+                    setattr(admin_user, "two_factor_last_verified", datetime.now(timezone.utc))
                     await db.commit()
                 else:
                     raise HTTPException(
@@ -100,29 +113,29 @@ async def admin_login(
                 )
         # 如果用户未提供验证码，则要求进行双因素认证
         else:
-            # 生成会话ID（实际实现中应该使用更安全的方式，如存储在缓存中）
+            # 生成会话ID（实际实现中应使用更安全的方式）
             session_id = secrets.token_urlsafe(16)
-            
             return TwoFactorResponse(
                 requires_two_factor=True,
-                user_id=admin_user.id,
+                user_id=int(getattr(admin_user, "id")),
                 session_id=session_id
             )
     
     # 生成访问令牌
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = await security.create_access_token(
-        admin_user.id, expires_delta=access_token_expires
+    # 使用同步版本创建 Token，避免 await str 类型问题
+    access_token = create_access_token_sync(
+        str(getattr(admin_user, "id")), expires_delta=access_token_expires
     )
-    
+
     # 生成刷新令牌（使用更长的过期时间）
-    refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS or 7)
-    refresh_token = await security.create_access_token(
-        admin_user.id, expires_delta=refresh_token_expires
+    refresh_token_expires = timedelta(days=(settings.REFRESH_TOKEN_EXPIRE_DAYS or 7))
+    refresh_token = create_access_token_sync(
+        str(getattr(admin_user, "id")), expires_delta=refresh_token_expires
     )
-    
+
     # 更新最后登录时间
-    admin_user.last_login_at = datetime.now(timezone.utc)
+    setattr(admin_user, "last_login_at", datetime.now(timezone.utc))
     await db.commit()
     
     return {
