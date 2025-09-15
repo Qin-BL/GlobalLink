@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.api.api import api_router
 from app.db.init_db import init_db
 from app.utils.async_logger import log_system, ensure_async_logger_shutdown
+from app.db.session import close_redis
 
 # 设置日志
 logging.basicConfig(
@@ -156,11 +157,14 @@ async def startup_event():
 async def shutdown_event():
     """\应用关闭事件处理器"""
     logger.info("🛑 GlobalLink异步服务关闭中...")
-    
-    # 确保异步日志处理器关闭
+    # 先关闭 Redis（避免事件循环切换导致的跨 loop 问题）
+    try:
+        await close_redis()
+    except Exception as e:
+        logger.error(f"关闭 Redis 失败: {e}")
+    # 再关闭异步日志处理器（此时已无 DB 写入）
     ensure_async_logger_shutdown()
-    
-    # 记录关闭信息
+    # 记录关闭信息（仅入内存队列，不落库）
     try:
         log_system(
             log_type="SYSTEM_SHUTDOWN",
@@ -173,7 +177,6 @@ async def shutdown_event():
         )
     except Exception as e:
         logger.error(f"记录关闭日志失败: {e}")
-    
     logger.info("✅ GlobalLink异步服务已安全关闭")
 
 # 根路由

@@ -77,7 +77,6 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
 
 # Redis连接
 import redis.asyncio as aioredis
-import atexit
 import asyncio
 
 # 全局Redis客户端实例
@@ -117,19 +116,5 @@ async def close_redis():
                 logger.error(f"❌ Redis连接关闭失败: {e}")
 
 
-def ensure_redis_shutdown():
-    """确保Redis连接在程序退出前关闭"""
-    if _redis_client is not None:
-        try:
-            # 创建一个临时事件循环来执行异步关闭操作
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(close_redis())
-            finally:
-                loop.close()
-        except Exception as e:
-            logger.error(f"❌ 确保Redis关闭时发生错误: {e}")
-
-# 注册程序退出时的Redis清理函数
-atexit.register(ensure_redis_shutdown)
+# 去掉 atexit 的新事件循环关闭方式，改为在应用 shutdown 时调用 close_redis()
+# 由 FastAPI 的 shutdown 事件调用：await close_redis()
