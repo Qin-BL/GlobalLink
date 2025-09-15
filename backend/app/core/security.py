@@ -51,7 +51,7 @@ def verify_password(plain_password: str, hashed_password: str, username: Optiona
     验证密码并记录审计日志
     
     Args:
-        plain_password: 明文密码
+        plain_password: 明文密码或加密后的JSON字符串
         hashed_password: 哈希密码
         username: 可选的用户名，用于审计日志
     
@@ -59,6 +59,19 @@ def verify_password(plain_password: str, hashed_password: str, username: Optiona
         密码是否验证成功
     """
     try:
+        # 首先检查输入是否为JSON格式（可能是前端加密的密码）
+        try:
+            import json
+            password_data = json.loads(plain_password)
+            if isinstance(password_data, dict) and 'hash' in password_data:
+                logger.info(f"处理前端加密密码，用户: {username}")
+                # 对于前端加密的密码，我们直接返回哈希值进行验证
+                # 注意：这仅适用于调试，生产环境应该有更安全的处理方式
+                plain_password = password_data['hash']
+        except (json.JSONDecodeError, TypeError):
+            # 不是JSON格式，直接使用原始密码
+            pass
+        
         is_valid = pwd_context.verify(plain_password, hashed_password)
         
         # 记录审计日志

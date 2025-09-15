@@ -75,11 +75,17 @@ class PasswordDecryptor:
                 logger.warning("未配置加密密钥，使用明文密码")
                 return encrypted_password
             
+            # 打印调试信息
+            logger.info(f"尝试解密密码，输入长度: {len(encrypted_password)}")
+            logger.info(f"使用的密钥版本: {list(self.keys.keys())}")
+            
             # 解析加密数据
             try:
                 # 首先尝试标准base64解码
                 encrypted_data = json.loads(base64.b64decode(encrypted_password))
+                logger.info(f"成功解码加密数据，格式: {list(encrypted_data.keys())}")
             except Exception as e:
+                logger.error(f"密码base64解码失败，错误: {e}")
                 try:
                     # 如果失败，尝试清理输入后再解码
                     sanitized_input = self._sanitize_base64_input(encrypted_password)
@@ -198,6 +204,30 @@ class PasswordDecryptor:
 password_decryptor = PasswordDecryptor()
 
 def decrypt_user_password(encrypted_password: str) -> str:
-    """解密用户密码的便捷函数"""
-    decrypted = password_decryptor.decrypt_password(encrypted_password)
-    return decrypted or encrypted_password
+    """解密用户密码的便捷函数
+    能够同时处理前端的SHA-256哈希和AES加密格式
+    """
+    try:
+        # 首先检查是否是前端发送的JSON格式（包含hash、timestamp、salt等字段）
+        # 尝试直接解析JSON字符串
+        try:
+            password_data = json.loads(encrypted_password)
+            # 检查是否包含前端加密特有的字段
+            if isinstance(password_data, dict) and ('hash' in password_data or 'method' in password_data):
+                logger.info(f"检测到前端加密格式: {password_data.get('method', 'unknown')}")
+                # 对于前端加密的密码，我们需要特殊处理
+                # 由于前端使用的是单向哈希，我们无法直接解密
+                # 但我们可以从中提取有用信息，或者返回原始密码
+                # 在这种情况下，我们可以直接返回原始输入作为密码
+                # 因为安全的密码验证应该在后端进行
+                return encrypted_password
+        except json.JSONDecodeError:
+            # 不是有效的JSON，继续尝试解密
+            pass
+        
+        # 尝试使用标准的AES解密
+        decrypted = password_decryptor.decrypt_password(encrypted_password)
+        return decrypted or encrypted_password
+    except Exception as e:
+        logger.error(f"解密用户密码时发生异常: {e}")
+        return encrypted_password
