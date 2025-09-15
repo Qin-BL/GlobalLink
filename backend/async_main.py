@@ -36,12 +36,54 @@ logger = logging.getLogger(__name__)
 # 创建FastAPI应用实例
 app = FastAPI(
     title=settings.PROJECT_NAME,
+    version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
     debug=settings.DEBUG,
     description="""
-    GlobalLink 异步API服务
-    提供课程管理、用户管理、认证授权等功能的完全异步版本
-    """
+    # GlobalLink 异步API服务
+    
+    ## 概述
+    GlobalLink是一个完整的课程管理与学习平台，提供用户管理、认证授权、课程管理等功能的完全异步版本。
+    
+    ## 主要功能模块
+    - **用户认证与授权**：支持JWT令牌认证、角色权限管理
+    - **课程管理**：课程的创建、更新、查询和删除
+    - **用户管理**：用户信息、角色和权限管理
+    - **学习进度跟踪**：记录和查询学习进度
+    
+    ## 技术特点
+    - 完全异步实现，基于FastAPI和SQLAlchemy
+    - 高性能数据库连接池管理
+    - 完善的日志系统和错误处理
+    - 请求频率限制和缓存机制
+    - CORS跨域支持
+    
+    ## API版本
+    当前版本：v2.0.0
+    
+    ## 联系我们
+    如有问题或建议，请联系support@globallink.com
+    """,
+    contact={
+        "name": "GlobalLink Support",
+        "email": "support@globallink.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    servers=[
+        {
+            "url": f"http://localhost:{settings.BACKEND_PORT}",
+            "description": "开发环境"
+        },
+        {
+            "url": "https://api.globallink.com",
+            "description": "生产环境"
+        }
+    ]
 )
 
 # 添加CORS中间件
