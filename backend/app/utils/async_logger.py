@@ -73,7 +73,7 @@ class AsyncLogger:
                 logs_to_process = self._collect_logs()
                 
                 # 如果有日志需要处理，则异步写入数据库
-                if logs_to_process:
+                if any(logs_to_process.values()):  # 检查是否有任何类型的日志需要处理
                     # 使用专用的事件循环
                     self._loop.run_until_complete(self._write_logs_to_db(logs_to_process))
                 
@@ -83,6 +83,67 @@ class AsyncLogger:
                 logger.error(f"处理日志失败: {e}")
                 # 短暂暂停后继续，避免在错误状态下无限循环
                 self._stop_event.wait(1.0)
+                
+    @async_with_error_handling(
+        log_type="LOGGER_ERROR",
+        log_message="日志写入数据库失败",
+        raise_exception=False
+    )
+    async def _write_logs_to_db(self, logs: Dict[str, List[Dict[str, Any]]]):
+        """异步将日志批量写入数据库"""
+        # 在当前事件循环中获取新的数据库会话
+        async for session in get_async_db():
+            try:
+                # 写入系统日志
+                if logs["system"]:
+                    system_logs = []
+                    for log_data in logs["system"]:
+                        try:
+                            system_logs.append(SystemLog(**log_data))
+                        except Exception as e:
+                            logger.error(f"创建系统日志记录失败: {e}, 数据: {log_data}")
+                    if system_logs:
+                        session.add_all(system_logs)
+                        await session.flush()
+                
+                # 写入用户活动日志
+                if logs["activity"]:
+                    activity_logs = []
+                    for log_data in logs["activity"]:
+                        try:
+                            activity_logs.append(UserActivity(**log_data))
+                        except Exception as e:
+                            logger.error(f"创建活动日志记录失败: {e}, 数据: {log_data}")
+                    if activity_logs:
+                        session.add_all(activity_logs)
+                        await session.flush()
+                
+                # 写入API日志
+                if logs["api"]:
+                    api_logs = []
+                    for log_data in logs["api"]:
+                        try:
+                            api_logs.append(ApiLog(**log_data))
+                        except Exception as e:
+                            logger.error(f"创建API日志记录失败: {e}, 数据: {log_data}")
+                    if api_logs:
+                        session.add_all(api_logs)
+                        await session.flush()
+                
+                # 提交事务
+                await session.commit()
+                
+                logger.debug(f"批量写入日志成功: system={len(logs['system'])}, activity={len(logs['activity'])}, api={len(logs['api'])}")
+                break  # 成功处理后退出循环
+                
+            except Exception as e:
+                logger.error(f"批量写入日志失败: {e}")
+                if session:
+                    try:
+                        await session.rollback()
+                    except Exception as rollback_err:
+                        logger.error(f"事务回滚失败: {rollback_err}")
+                break  # 发生错误时退出循环
     
     def _collect_logs(self) -> Dict[str, List[Dict[str, Any]]]:
         """从队列中收集日志，直到达到批处理大小"""
@@ -121,87 +182,7 @@ class AsyncLogger:
         
         return collected_logs
     
-    @async_with_error_handling(
-        log_type="LOGGER_ERROR",
-        log_message="日志写入数据库失败",
-        raise_exception=False
-    )
-    async def _write_logs_to_db(self, logs: Dict[str, List[Dict[str, Any]]]):
-        """异步将日志批量写入数据库"""
-        session = None
-        db_gen = None
-        try:
-            # 获取数据库会话
-            db_gen = get_async_db()
-            session = await db_gen.__anext__()
-            
-            if not session:
-                logger.error("数据库会话不可用")
-                return
-                
-            # 写入系统日志
-            if logs["system"]:
-                system_logs = []
-                for log_data in logs["system"]:
-                    try:
-                        system_logs.append(SystemLog(**log_data))
-                    except Exception as e:
-                        logger.error(f"创建系统日志记录失败: {e}, 数据: {log_data}")
-                if system_logs:
-                    session.add_all(system_logs)
-                    await session.flush()
-            
-            # 写入用户活动日志
-            if logs["activity"]:
-                activity_logs = []
-                for log_data in logs["activity"]:
-                    try:
-                        activity_logs.append(UserActivity(**log_data))
-                    except Exception as e:
-                        logger.error(f"创建活动日志记录失败: {e}, 数据: {log_data}")
-                if activity_logs:
-                    session.add_all(activity_logs)
-                    await session.flush()
-            
-            # 写入API日志
-            if logs["api"]:
-                api_logs = []
-                for log_data in logs["api"]:
-                    try:
-                        api_logs.append(ApiLog(**log_data))
-                    except Exception as e:
-                        logger.error(f"创建API日志记录失败: {e}, 数据: {log_data}")
-                if api_logs:
-                    session.add_all(api_logs)
-                    await session.flush()
-            
-            # 提交事务
-            await session.commit()
-            
-            logger.debug(f"批量写入日志成功: system={len(logs['system'])}, activity={len(logs['activity'])}, api={len(logs['api'])}")
-            
-        except Exception as e:
-            logger.error(f"批量写入日志失败: {e}")
-            if session:
-                try:
-                    await session.rollback()
-                except Exception as rollback_err:
-                    logger.error(f"事务回滚失败: {rollback_err}")
-        finally:
-            # 确保关闭会话和异步生成器
-            try:
-                if session:
-                    # 直接尝试关闭会话，不再检查is_closed()
-                    await session.close()
-            except Exception as close_err:
-                logger.error(f"数据库会话关闭失败: {close_err}")
-            
-            # 确保异步生成器被正确关闭
-            if db_gen:
-                try:
-                    await db_gen.aclose()
-                except:
-                    pass
+
     
     def _should_log(self, log_level: str, configured_level: str) -> bool:
         """检查是否应该记录此级别的日志"""
